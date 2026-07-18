@@ -1,0 +1,173 @@
+# ===========================================================================
+# Sentinel — Docker Compose for Local Development
+# ===========================================================================
+#
+# Purpose: Provide local development environment with PostgreSQL, Redis, and
+#          MinIO matching 09-Deployment-Architecture §2 (Environment Parity)
+#
+# Usage:
+#   docker compose up -d
+#   docker compose ps              # verify all healthy
+#   docker compose down
+#   docker compose down -v         # remove volumes
+#
+# Reference: 09-Deployment-Architecture §5 (Container Architecture),
+#            06-Repository-Structure §12 (docker-compose.yml)
+#
+# ===========================================================================
+
+services:
+  # =========================================================================
+  # PostgreSQL 16 — System of Record
+  # =========================================================================
+  # Per 09-Deployment-Architecture §8: "PostgreSQL is the durable system
+  # of record for all structured metadata... its underlying storage volume
+  # is persistent and independent of any single API or Worker container's
+  # lifecycle."
+  #
+  # Per 04-Database-Design: PostgreSQL 16 with asyncpg driver.
+  # Per 07-Backend-Development-Standards: async SQLAlchemy connection.
+  # =========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: sentinel-postgres
+    environment:
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+      POSTGRES_DB: sentinel
+      # Reduce logging verbosity in development
+      POSTGRES_INITDB_ARGS: "-c log_statement=none"
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persistent volume for database files
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # =========================================================================
+  # Redis 7 — Queue Broker
+  # =========================================================================
+  # Per 09-Deployment-Architecture §3: "Redis / Queue — the durable
+  # hand-off mechanism between the API (producer) and Workers (consumer)."
+  #
+  # Per 00-Project-Context: asynchronous pipeline with Celery + Redis.
+  # =========================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: sentinel-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      # Persistent volume for queue data
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # =========================================================================
+  # MinIO — S3-Compatible Object Storage
+  # =========================================================================
+  # Per 09-Deployment-Architecture §8: "Raw binary content (uploaded files)
+  # persists in S3-compatible Object Storage... In Development, this may be
+  # an emulated local container."
+  #
+  # Per 00-Project-Context §6: files are never stored in PostgreSQL;
+  # S3-compatible store required.
+  # =========================================================================
+
+  minio:
+    image: minio/minio:latest
+    container_name: sentinel-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      # API port (used by S3 clients)
+      - "9000:9000"
+      # Console port (web UI)
+      - "9001:9001"
+    volumes:
+      # Persistent volume for object storage
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # =========================================================================
+  # MinIO Client — Auto-create Default Bucket
+  # =========================================================================
+  # Per 09-Deployment-Architecture §5: Services should be initialized
+  # with required configuration (health checks, startup validation).
+  #
+  # This init container creates the default bucket (sentinel-assets)
+  # on MinIO startup, matching .env.example S3_BUCKET_NAME.
+  # =========================================================================
+
+  minio-init:
+    image: minio/mc:latest
+    container_name: sentinel-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host add minio http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb --ignore-existing minio/sentinel-assets;
+      exit 0;
+      "
+    restart: "no"
+
+volumes:
+  # Persistent volume for PostgreSQL data
+  postgres_data:
+    driver: local
+
+  # Persistent volume for Redis data (AOF)
+  redis_data:
+    driver: local
+
+  # Persistent volume for MinIO object storage
+  minio_data:
+    driver: local
+
+# ===========================================================================
+# Notes
+# ===========================================================================
+#
+# Environment Variables:
+#   Services are configured with development defaults matching .env.example.
+#   To override: copy .env.example to .env and adjust values before
+#   docker compose up, or pass via docker compose environment flags.
+#
+# Health Checks:
+#   All services include health checks per 09-Deployment-Architecture §10.
+#   Use `docker compose ps` to verify all services show (healthy).
+#
+# Networking:
+#   Services communicate via the internal Docker network created by
+#   docker compose; service names (postgres, redis, minio) resolve
+#   automatically.
+#
+# Volume Persistence:
+#   Volumes are named and persist across container restarts.
+#   Use `docker compose down -v` to remove volumes and reset state.
+#
+# ===========================================================================

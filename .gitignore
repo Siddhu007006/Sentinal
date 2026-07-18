@@ -1,14 +1,30 @@
-# Python
+# ===========================================================================
+# Sentinel .gitignore
+# ===========================================================================
+
+# Python bytecode and packaging
 __pycache__/
 *.py[cod]
+*$py.class
 *.egg-info/
 *.egg
 .eggs/
+dist/
+build/
+*.whl
+
+# Virtual environments
 .venv/
 venv/
+ENV/
+
+# Tool caches
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
 
 # Node / frontend
 node_modules/
@@ -16,16 +32,31 @@ dist/
 build/
 .next/
 
-# Environment / secrets
+# Environment / secrets — NEVER commit secrets
 .env
 .env.*
 !.env.example
 
 # OS / editor
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/
 *.swp
+*.swo
+*~
 
 # Logs
 *.log
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.sqlite3
+*.db
+
+# UV lock file is committed (reproducible builds),
+# but local UV caches are not.
+.uv/

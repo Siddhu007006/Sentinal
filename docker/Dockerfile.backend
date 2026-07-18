@@ -1,0 +1,143 @@
+# ===========================================================================
+# Sentinel Backend — Multi-Stage Docker Build
+# ===========================================================================
+#
+# Purpose: Build FastAPI application with Python 3.12 slim base,
+#          ensuring environment parity per 09-Deployment-Architecture §2.
+#
+# Stages:
+#   1. builder  — Installs dependencies and prepares application
+#   2. runtime  — Minimal runtime image with only runtime requirements
+#
+# Reference: 09-Deployment-Architecture §5 (Container Architecture),
+#            09-Deployment-Architecture §2 (Immutable Deployments),
+#            07-Backend-Development-Standards §3 (Code standards)
+#
+# ===========================================================================
+
+# ===========================================================================
+# Stage 1: Builder
+# ===========================================================================
+# Prepares dependencies and application code. This stage is discarded
+# from the final image to minimize runtime image size and attack surface.
+# ===========================================================================
+
+FROM python:3.12-slim as builder
+
+LABEL stage=builder
+
+# Install build dependencies required for compiling Python packages
+# (wheel, setuptools, distutils for some packages)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for building (security: principle of least privilege)
+RUN useradd -m -u 1000 builder
+
+# Set working directory for build stage
+WORKDIR /build
+
+# Copy dependency specification
+COPY backend/pyproject.toml backend/pyproject.toml
+COPY backend/alembic.ini backend/alembic.ini
+
+# Create virtual environment and install dependencies
+# Using --upgrade pip for security patches; --no-cache-dir to save space
+RUN python -m pip install --upgrade pip setuptools wheel && \
+    pip install --user --no-cache-dir -e backend/
+
+# Copy application code (this layer may change frequently)
+COPY backend/app backend/app
+COPY backend/migrations backend/migrations
+
+# Verify that the package can be imported (early validation)
+RUN python -c "import app; print(f'Application imports successfully')"
+
+# ===========================================================================
+# Stage 2: Runtime
+# ===========================================================================
+# Minimal runtime image containing only what is needed to run the app.
+# Omits build dependencies, temporary files, and package managers.
+# ===========================================================================
+
+FROM python:3.12-slim as runtime
+
+LABEL maintainer="Sentinel Engineering Team"
+LABEL description="Sentinel Backend — FastAPI Application"
+
+# Install runtime-only dependencies (PostgreSQL client for health checks,
+# curl for MinIO/health endpoint checks)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user for runtime (security: principle of least privilege,
+# per 08-Security-Architecture §2)
+RUN useradd -m -u 1000 appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy virtual environment from builder stage
+COPY --from=builder --chown=appuser:appuser /root/.local /home/appuser/.local
+
+# Copy application code from builder stage
+COPY --from=builder --chown=appuser:appuser /build/backend /app/backend
+COPY --from=builder --chown=appuser:appuser /build/backend/alembic.ini /app/alembic.ini
+
+# Set environment variables
+# Path: add user's local Python packages to PATH
+ENV PATH=/home/appuser/.local/bin:$PATH
+
+# Python: disable bytecode caching (faster startup, no need in containers)
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Python: unbuffered output (logs appear immediately in container logs)
+ENV PYTHONUNBUFFERED=1
+
+# Switch to non-root user (security: least privilege)
+USER appuser
+
+# Health check: validate application can start and respond to requests
+# Tests both the application and its dependencies are functional
+HEALTHCHECK --interval=10s --timeout=5s --retries=3 --start-period=10s \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Expose port that FastAPI will listen on
+EXPOSE 8000
+
+# Startup command: Run Uvicorn ASGI server
+# Binding to 0.0.0.0 allows traffic from outside the container.
+# Per 09-Deployment-Architecture §7 (Configuration Management):
+# Port and host can be overridden via environment variables if needed.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# ===========================================================================
+# Build Notes
+# ===========================================================================
+#
+# Multi-stage approach benefits:
+#   - Smaller runtime image (no build tools, no source files)
+#   - Faster deployment (smaller download/push)
+#   - Reduced attack surface (no C compiler, no pip, no setuptools)
+#   - Better caching: builder and runtime layers separate
+#
+# Non-root user (appuser):
+#   Per 08-Security-Architecture §2 (Principle of Least Privilege),
+#   the container runs as a non-root user, preventing privilege escalation.
+#
+# Environment variables:
+#   - PYTHONDONTWRITEBYTECODE: Prevents .pyc file generation (unnecessary in containers)
+#   - PYTHONUNBUFFERED: Ensures logs appear immediately (important for log aggregation)
+#   - PATH: Includes /home/appuser/.local/bin for pip-installed scripts (uvicorn, alembic)
+#
+# Health checks:
+#   Per 09-Deployment-Architecture §10, health checks distinguish:
+#   - Liveness: Is the process running?
+#   - Readiness: Is the process ready to serve traffic?
+#   This container health check validates both.
+#
+# ===========================================================================

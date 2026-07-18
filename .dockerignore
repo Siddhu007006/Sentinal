@@ -1,0 +1,78 @@
+# ===========================================================================
+# Sentinel — .dockerignore
+# ===========================================================================
+# Reduces build context size and prevents sensitive/unnecessary files
+# from being sent to the Docker daemon or included in the image.
+# ===========================================================================
+
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.egg-info
+*.egg
+.eggs
+dist
+build
+*.whl
+
+# Virtual environments
+.venv
+venv
+ENV
+
+# Tool caches
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+coverage.xml
+
+# Environment files (secrets — NEVER include in image)
+# Source: 08-Security-Architecture §9 (secrets injected at runtime)
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker (avoid recursive context)
+docker-compose.yml
+docker-compose.override.yml
+
+# Documentation (not needed in runtime image)
+docs/
+*.md
+!backend/README.md
+
+# Frontend (not part of backend image)
+frontend/
+
+# Infrastructure / deployment config
+infrastructure/
+deployment/
+
+# Node
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Tests (not needed in production image)
+backend/tests/
+tests/

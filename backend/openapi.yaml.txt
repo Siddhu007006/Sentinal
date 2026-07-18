@@ -1,0 +1,2275 @@
+openapi: 3.1.0
+
+============================================================
+DOCUMENTED ASSUMPTIONS
+(The literal wire-format details of 05-API-Specification.md
+were not pasted verbatim into this session. This file is
+therefore derived from the authoritative narrative context
+supplied — PRD, Domain Model, Architecture, Database Design,
+and API Specification summary — and encodes the following
+explicit design decisions as binding contract rules rather
+than invented behavior):
+1. Digital Asset identity is the SHA-256 hash of its content,
+NEVER the filename. Two Uploads with the same hash resolve
+to the SAME DigitalAsset (deduplication).
+2. DigitalAsset is immutable. There is no update endpoint.
+If content changes, a new DigitalAsset (new hash) is created.
+3. Analysis records are append-only and versioned. Re-running
+an analyzer against the same asset creates Analysis vN+1;
+it never overwrites vN. There is no update endpoint for
+Analysis.
+4. The platform never emits a bare "safe" verdict. Every
+Analysis/Report carries verdict + evidence + confidence +
+recommendation ("explainability first").
+5. Uploads are processed through an async pipeline (validate →
+hash → duplicate-check → store → extract metadata → queue).
+Analyses are triggered explicitly against a DigitalAsset by
+selecting one or more Analyzers, and are executed
+asynchronously by workers (queue/worker pattern). Workers
+never talk to browsers directly; clients poll or fetch
+results via REST.
+6. Files are stored in S3-compatible object storage; PostgreSQL
+stores metadata only. This has no direct bearing on the
+wire contract but explains why Upload/DigitalAsset expose
+a storageRef/download-style relationship rather than
+embedding binary content in JSON responses.
+7. Roles: admin, analyst, viewer (assumed from PRD personas).
+8. Max upload size assumed at 100 MB; allow-listed MIME types
+assumed (pdf, common image types, zip, common docs).
+9. Idempotency-Key is honored on POST /uploads and POST
+/analyses so retried client requests do not create
+duplicate Upload/Analysis records.
+10. Rate limiting returns 429 with a Retry-After header.
+============================================================
+info:
+title: Sentinel API
+description: |
+Sentinel is an AI-native Digital Asset Intelligence Platform.
+
+text
+
+Rather than answering "is this malware?" the way legacy antivirus tools do,
+Sentinel answers a broader set of trust questions for any digital asset a
+user encounters — files, images, emails, URLs, QR codes, archives:
+
+- Can I trust this?
+- Is this phishing?
+- Is this fake?
+- Is this suspicious?
+- What evidence supports that conclusion?
+- What should I do?
+
+## Platform-first pipeline
+Every asset type flows through the same generic pipeline:
+
+`Upload → Validate → Hash → Duplicate Detection → Object Storage →
+Metadata → Queue → Worker → Analyzer → Analysis → Report → History`
+
+Only the **Analyzer** varies by asset type or intelligence need
+(Security Analyzer, OCR Analyzer, Metadata Analyzer, AI Document
+Analyzer, Image Analyzer, and future custom analyzers).
+
+## Core invariants enforced by this API
+- **Immutable assets**: a `DigitalAsset`'s identity is its SHA-256 hash,
+  never its filename. Re-uploading identical content resolves to the
+  same asset.
+- **Versioned analyses**: analyses are append-only. Re-analyzing an
+  asset creates a new `Analysis` version; prior versions are preserved.
+- **Explainability**: no endpoint ever returns a bare "safe" verdict —
+  every analysis result includes evidence, confidence, and a
+  recommendation.
+- **Asynchronous processing**: uploads and analyses are queued and
+  processed by workers; clients poll for status or retrieve completed
+  results.
+
+## Authentication
+JWT access/refresh tokens. Obtain a pair via `POST /auth/login`,
+authenticate with `Authorization: Bearer <accessToken>`, and renew via
+`POST /auth/refresh` using `Authorization: Bearer <refreshToken>`.
+
+## Idempotency
+`POST /uploads` and `POST /analyses` accept an `Idempotency-Key` header
+so that safe client retries do not create duplicate resources.
+
+## Errors
+All errors share a single envelope (see `Error` schema) and carry a
+`requestId` for correlation with server-side logs.
+version: 1.0.0
+contact:
+name: Sentinel Platform Team
+email: api-support@sentinel.example.com
+url: https://sentinel.example.com/support
+license:
+name: Proprietary
+url: https://sentinel.example.com/legal/api-license
+servers:
+
+url: http://localhost:8000/api/v1
+description: Development
+url: https://staging-api.sentinel.example.com/api/v1
+description: Staging
+url: https://api.sentinel.example.com/api/v1
+description: Production
+tags:
+name: Authentication
+description: Registration, login, token refresh, and session termination.
+name: Users
+description: User account management.
+name: Uploads
+description: Raw content intake. Triggers the validate → hash → dedupe → store pipeline.
+name: DigitalAssets
+description: Immutable, hash-identified assets produced by the upload pipeline.
+name: Analyzers
+description: Available intelligence analyzers (security, OCR, metadata, AI document, image, custom).
+name: Analyses
+description: Versioned, append-only analysis jobs executed against digital assets.
+name: Reports
+description: Human-facing, explainable presentation of a specific analysis version.
+name: AuditLogs
+description: Immutable record of system and user actions.
+name: Health
+description: Service liveness and readiness.
+security:
+bearerAuth: []
+paths:
+/auth/register:
+post:
+operationId: registerUser
+summary: Register a new user
+description: Creates a new user account.
+tags: [Authentication]
+security: []
+requestBody:
+$ref: '#/components/requestBodies/RegisterRequestBody'
+responses:
+'201':
+description: User created successfully.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/User'
+example:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+'400':
+$ref: '#/components/responses/BadRequest'
+'409':
+$ref: '#/components/responses/Conflict'
+'422':
+$ref: '#/components/responses/UnprocessableEntity'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+/auth/login:
+post:
+operationId: loginUser
+summary: Authenticate and obtain tokens
+description: Validates credentials and returns a JWT access/refresh token pair.
+tags: [Authentication]
+security: []
+requestBody:
+$ref: '#/components/requestBodies/LoginRequestBody'
+responses:
+'200':
+description: Authentication successful.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AuthTokenResponse'
+example:
+accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.access
+refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.refresh
+tokenType: bearer
+expiresIn: 900
+user:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+'400':
+$ref: '#/components/responses/BadRequest'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'422':
+$ref: '#/components/responses/UnprocessableEntity'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/auth/refresh:
+post:
+operationId: refreshToken
+summary: Refresh an access token
+description: Exchanges a valid refresh token (sent as a Bearer token) for a new access/refresh token pair.
+tags: [Authentication]
+security:
+- refreshTokenAuth: []
+responses:
+'200':
+description: New token pair issued.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AuthTokenResponse'
+example:
+accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.newaccess
+refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.newrefresh
+tokenType: bearer
+expiresIn: 900
+user:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/auth/logout:
+post:
+operationId: logoutUser
+summary: Revoke the current session
+description: Invalidates the supplied refresh token. If omitted, all sessions for the user are revoked.
+tags: [Authentication]
+requestBody:
+required: false
+content:
+application/json:
+schema:
+type: object
+properties:
+refreshToken:
+type: string
+example:
+refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.refresh
+responses:
+'204':
+description: Session revoked successfully.
+'401':
+$ref: '#/components/responses/Unauthorized'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/auth/me:
+get:
+operationId: getCurrentUser
+summary: Get the authenticated user
+tags: [Authentication]
+responses:
+'200':
+description: Current user profile.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/User'
+example:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/users:
+get:
+operationId: listUsers
+summary: List users
+description: Requires the admin role.
+tags: [Users]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- $ref: '#/components/parameters/SortParam'
+responses:
+'200':
+description: Paginated list of users.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/UserListResponse'
+example:
+data:
+- id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/users/{userId}:
+parameters:
+- $ref: '#/components/parameters/UserIdPathParam'
+get:
+operationId: getUserById
+summary: Get a user by ID
+tags: [Users]
+responses:
+'200':
+description: User found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/User'
+example:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+patch:
+operationId: updateUser
+summary: Update a user
+description: Partial update. User account fields may change; identity fields (id, email) are immutable post-creation except by admin-level flows not covered here.
+tags: [Users]
+requestBody:
+$ref: '#/components/requestBodies/UpdateUserRequestBody'
+responses:
+'200':
+description: User updated.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/User'
+example:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane A. Doe
+role: analyst
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-02-01T12:00:00Z'
+'400':
+$ref: '#/components/responses/BadRequest'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'404':
+$ref: '#/components/responses/NotFound'
+'422':
+$ref: '#/components/responses/UnprocessableEntity'
+'500':
+$ref: '#/components/responses/InternalServerError'
+delete:
+operationId: deleteUser
+summary: Deactivate a user
+description: Soft-deletes (deactivates) a user account. Requires the admin role.
+tags: [Users]
+responses:
+'204':
+description: User deactivated.
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'404':
+$ref: '#/components/responses/NotFound'
+'409':
+$ref: '#/components/responses/Conflict'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/uploads:
+post:
+operationId: createUpload
+summary: Upload content for intake
+description: |
+Accepts a multipart file upload and begins the intake pipeline:
+validate → compute SHA-256 → duplicate-check against existing
+DigitalAsset records → persist to object storage → extract
+metadata. The response reflects the Upload's current pipeline
+status; if the computed hash matches an existing asset,
+isDuplicate is true and digitalAssetId immediately points
+to the pre-existing asset rather than creating a new one.
+tags: [Uploads]
+parameters:
+- $ref: '#/components/parameters/IdempotencyKeyParam'
+requestBody:
+$ref: '#/components/requestBodies/UploadFileRequestBody'
+responses:
+'201':
+description: Upload accepted and pipeline initiated.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Upload'
+example:
+id: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+originalFilename: invoice.pdf
+sizeBytes: 1048576
+mimeType: application/pdf
+sha256Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85
+status: processing
+isDuplicate: false
+digitalAssetId: null
+uploadedBy: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+createdAt: '2024-02-10T08:15:00Z'
+updatedAt: '2024-02-10T08:15:00Z'
+'400':
+$ref: '#/components/responses/BadRequest'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'413':
+$ref: '#/components/responses/PayloadTooLarge'
+'415':
+$ref: '#/components/responses/UnsupportedMediaType'
+'422':
+$ref: '#/components/responses/UnprocessableEntity'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+get:
+operationId: listUploads
+summary: List uploads
+tags: [Uploads]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- $ref: '#/components/parameters/SortParam'
+- name: status
+in: query
+required: false
+schema:
+ref: '#/components/schemas/UploadStatus' - name: sha256Hash in: query required: false description: Filter uploads by exact content hash. schema: type: string pattern: '^[a-f0-9]{64}'
+responses:
+'200':
+description: Paginated list of uploads.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/UploadListResponse'
+example:
+data:
+- id: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+originalFilename: invoice.pdf
+sizeBytes: 1048576
+mimeType: application/pdf
+sha256Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85
+status: completed
+isDuplicate: false
+digitalAssetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+uploadedBy: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+createdAt: '2024-02-10T08:15:00Z'
+updatedAt: '2024-02-10T08:16:30Z'
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/uploads/{uploadId}:
+parameters:
+- $ref: '#/components/parameters/UploadIdPathParam'
+get:
+operationId: getUploadById
+summary: Get an upload by ID
+description: Poll this endpoint to observe pipeline progress (status) until it reaches completed or failed.
+tags: [Uploads]
+responses:
+'200':
+description: Upload found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Upload'
+example:
+id: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+originalFilename: invoice.pdf
+sizeBytes: 1048576
+mimeType: application/pdf
+sha256Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85
+status: completed
+isDuplicate: false
+digitalAssetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+uploadedBy: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+createdAt: '2024-02-10T08:15:00Z'
+updatedAt: '2024-02-10T08:16:30Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+delete:
+operationId: deleteUpload
+summary: Delete an upload record
+description: Removes the Upload record only. The underlying DigitalAsset is unaffected (it may be referenced by other uploads).
+tags: [Uploads]
+responses:
+'204':
+description: Upload deleted.
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'409':
+$ref: '#/components/responses/Conflict'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/assets:
+get:
+operationId: listDigitalAssets
+summary: List digital assets
+description: Digital assets are immutable and identified by SHA-256 hash, never by filename.
+tags: [DigitalAssets]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- $ref: '#/components/parameters/SortParam'
+- name: assetType
+in: query
+required: false
+schema:
+ref: '#/components/schemas/AssetType' - name: sha256Hash in: query required: false description: Look up an asset by exact content hash (used for duplicate detection). schema: type: string pattern: '^[a-f0-9]{64}'
+responses:
+'200':
+description: Paginated list of digital assets.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/DigitalAssetListResponse'
+example:
+data:
+- id: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+sha256Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85
+assetType: document
+mimeType: application/pdf
+sizeBytes: 1048576
+firstSeenUploadId: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+metadata:
+pages: 12
+createdAt: '2024-02-10T08:16:30Z'
+updatedAt: '2024-02-10T08:16:30Z'
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/assets/{assetId}:
+parameters:
+- $ref: '#/components/parameters/AssetIdPathParam'
+get:
+operationId: getDigitalAssetById
+summary: Get a digital asset by ID
+tags: [DigitalAssets]
+responses:
+'200':
+description: Digital asset found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/DigitalAsset'
+example:
+id: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+sha256Hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85
+assetType: document
+mimeType: application/pdf
+sizeBytes: 1048576
+firstSeenUploadId: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+metadata:
+pages: 12
+createdAt: '2024-02-10T08:16:30Z'
+updatedAt: '2024-02-10T08:16:30Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+delete:
+operationId: deleteDigitalAsset
+summary: Purge a digital asset
+description: Administrative hard-delete of an asset and its stored content. Requires the admin role. Does not rewrite history of past analyses/reports metadata retained for audit purposes.
+tags: [DigitalAssets]
+responses:
+'204':
+description: Digital asset purged.
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'404':
+$ref: '#/components/responses/NotFound'
+'409':
+$ref: '#/components/responses/Conflict'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/assets/{assetId}/analyses:
+parameters:
+- $ref: '#/components/parameters/AssetIdPathParam'
+get:
+operationId: listAnalysesForAsset
+summary: List the full analysis history for a digital asset
+description: Returns every Analysis version ever produced for this asset, across all analyzers, in append-only order. Nothing is ever overwritten.
+tags: [Analyses]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- name: analyzerId
+in: query
+required: false
+schema:
+type: string
+format: uuid
+responses:
+'200':
+description: Paginated analysis history for the asset.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AnalysisListResponse'
+example:
+data:
+- id: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerId: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+version: 2
+status: completed
+verdict: suspicious
+confidenceScore: 0.72
+evidence:
+- type: heuristic
+description: Embedded JavaScript uses obfuscated variable names typical of exploit kits.
+weight: 0.4
+- type: reputation
+description: The extracted URL domain was registered 3 days ago.
+weight: 0.32
+reasoning: Combination of obfuscated scripting and a freshly registered outbound domain raises suspicion of a delayed-payload phishing document.
+recommendation: Do not open embedded links. Quarantine and forward to the security team for manual review.
+startedAt: '2024-03-01T10:00:05Z'
+completedAt: '2024-03-01T10:01:40Z'
+createdAt: '2024-03-01T10:00:00Z'
+updatedAt: '2024-03-01T10:01:40Z'
+- id: c4d5e6f7-8091-4a2b-9c3d-4e5f60718294
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerId: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+version: 1
+status: completed
+verdict: inconclusive
+confidenceScore: 0.41
+evidence: []
+reasoning: Initial signature-only pass found no known indicators; superseded by v2 after AI analyzer upgrade.
+recommendation: Re-run analysis with the updated analyzer.
+startedAt: '2024-02-10T08:20:05Z'
+completedAt: '2024-02-10T08:21:10Z'
+createdAt: '2024-02-10T08:20:00Z'
+updatedAt: '2024-02-10T08:21:10Z'
+pagination:
+page: 1
+pageSize: 20
+totalItems: 2
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/analyzers:
+get:
+operationId: listAnalyzers
+summary: List available analyzers
+tags: [Analyzers]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- name: category
+in: query
+required: false
+schema:
+$ref: '#/components/schemas/AnalyzerCategory'
+responses:
+'200':
+description: Paginated list of analyzers.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AnalyzerListResponse'
+example:
+data:
+- id: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+name: ai-document-analyzer
+version: 3.1.0
+description: LLM-assisted reasoning over document content, metadata, and embedded links to assess trustworthiness.
+category: ai_reasoning
+isEnabled: true
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/analyzers/{analyzerId}:
+parameters:
+- $ref: '#/components/parameters/AnalyzerIdPathParam'
+get:
+operationId: getAnalyzerById
+summary: Get an analyzer by ID
+tags: [Analyzers]
+responses:
+'200':
+description: Analyzer found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Analyzer'
+example:
+id: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+name: ai-document-analyzer
+version: 3.1.0
+description: LLM-assisted reasoning over document content, metadata, and embedded links to assess trustworthiness.
+category: ai_reasoning
+isEnabled: true
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/analyses:
+post:
+operationId: createAnalysis
+summary: Trigger analysis of a digital asset
+description: |
+Queues one new Analysis (version N+1 for that asset/analyzer pair)
+per requested analyzer. Existing analysis history for the asset is
+never modified or overwritten — this always appends new versions.
+tags: [Analyses]
+parameters:
+- $ref: '#/components/parameters/IdempotencyKeyParam'
+requestBody:
+$ref: '#/components/requestBodies/CreateAnalysisRequestBody'
+responses:
+'202':
+description: Analysis jobs queued.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AnalysisBatchResponse'
+example:
+data:
+- id: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerId: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+version: 1
+status: queued
+verdict: inconclusive
+confidenceScore: null
+evidence: []
+reasoning: null
+recommendation: null
+startedAt: null
+completedAt: null
+createdAt: '2024-02-10T08:20:00Z'
+updatedAt: '2024-02-10T08:20:00Z'
+'400':
+$ref: '#/components/responses/BadRequest'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'409':
+$ref: '#/components/responses/Conflict'
+'422':
+$ref: '#/components/responses/UnprocessableEntity'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+get:
+operationId: listAnalyses
+summary: List analyses
+tags: [Analyses]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- $ref: '#/components/parameters/SortParam'
+- name: status
+in: query
+required: false
+schema:
+$ref: '#/components/schemas/AnalysisStatus'
+- name: verdict
+in: query
+required: false
+schema:
+$ref: '#/components/schemas/AnalysisVerdict'
+- name: assetId
+in: query
+required: false
+schema:
+type: string
+format: uuid
+- name: analyzerId
+in: query
+required: false
+schema:
+type: string
+format: uuid
+responses:
+'200':
+description: Paginated list of analyses.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AnalysisListResponse'
+example:
+data:
+- id: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerId: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+version: 1
+status: completed
+verdict: trusted
+confidenceScore: 0.94
+evidence:
+- type: signature
+description: No known malicious signatures matched.
+weight: 0.5
+- type: reputation
+description: Sender domain has a 5-year clean sending history.
+weight: 0.44
+reasoning: No indicators of compromise were found across static, reputation, and heuristic checks.
+recommendation: Safe to proceed with normal handling.
+startedAt: '2024-02-10T08:20:05Z'
+completedAt: '2024-02-10T08:21:10Z'
+createdAt: '2024-02-10T08:20:00Z'
+updatedAt: '2024-02-10T08:21:10Z'
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/analyses/{analysisId}:
+parameters:
+- $ref: '#/components/parameters/AnalysisIdPathParam'
+get:
+operationId: getAnalysisById
+summary: Get a specific analysis version by ID
+description: Poll this endpoint to observe an analysis job (status) until it reaches completed, failed, or cancelled.
+tags: [Analyses]
+responses:
+'200':
+description: Analysis found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Analysis'
+example:
+id: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerId: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+version: 1
+status: completed
+verdict: trusted
+confidenceScore: 0.94
+evidence:
+- type: signature
+description: No known malicious signatures matched.
+weight: 0.5
+reasoning: No indicators of compromise were found.
+recommendation: Safe to proceed with normal handling.
+startedAt: '2024-02-10T08:20:05Z'
+completedAt: '2024-02-10T08:21:10Z'
+createdAt: '2024-02-10T08:20:00Z'
+updatedAt: '2024-02-10T08:21:10Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/analyses/{analysisId}/cancel:
+parameters:
+- $ref: '#/components/parameters/AnalysisIdPathParam'
+post:
+operationId: cancelAnalysis
+summary: Cancel a queued or running analysis
+description: Only permitted while status is queued or running. Does not delete history — the cancelled version remains visible.
+tags: [Analyses]
+responses:
+'200':
+description: Analysis cancelled.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Analysis'
+example:
+id: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerId: b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+version: 1
+status: cancelled
+verdict: inconclusive
+confidenceScore: null
+evidence: []
+reasoning: null
+recommendation: null
+startedAt: null
+completedAt: null
+createdAt: '2024-02-10T08:20:00Z'
+updatedAt: '2024-02-10T08:22:00Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'409':
+$ref: '#/components/responses/Conflict'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/analyses/{analysisId}/report:
+parameters:
+- $ref: '#/components/parameters/AnalysisIdPathParam'
+get:
+operationId: getReportForAnalysis
+summary: Get the report generated for this analysis version
+tags: [Reports]
+responses:
+'200':
+description: Report found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Report'
+example:
+id: d5e6f708-9182-4b3c-9d4e-5f6071829304
+analysisId: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+analysisVersion: 1
+format: json
+summary: This document shows no indicators of compromise and is likely trustworthy.
+verdict: trusted
+confidenceScore: 0.94
+evidence:
+- type: signature
+description: No known malicious signatures matched.
+weight: 0.5
+recommendation: Safe to proceed with normal handling.
+generatedAt: '2024-02-10T08:21:12Z'
+downloadUrl: https://api.sentinel.example.com/api/v1/reports/d5e6f708-9182-4b3c-9d4e-5f6071829304/download
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'409':
+$ref: '#/components/responses/Conflict'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/reports:
+get:
+operationId: listReports
+summary: List reports
+tags: [Reports]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- $ref: '#/components/parameters/SortParam'
+- name: format
+in: query
+required: false
+schema:
+$ref: '#/components/schemas/ReportFormat'
+- name: verdict
+in: query
+required: false
+schema:
+$ref: '#/components/schemas/AnalysisVerdict'
+responses:
+'200':
+description: Paginated list of reports.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/ReportListResponse'
+example:
+data:
+- id: d5e6f708-9182-4b3c-9d4e-5f6071829304
+analysisId: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+analysisVersion: 1
+format: json
+summary: This document shows no indicators of compromise and is likely trustworthy.
+verdict: trusted
+confidenceScore: 0.94
+evidence:
+- type: signature
+description: No known malicious signatures matched.
+weight: 0.5
+recommendation: Safe to proceed with normal handling.
+generatedAt: '2024-02-10T08:21:12Z'
+downloadUrl: https://api.sentinel.example.com/api/v1/reports/d5e6f708-9182-4b3c-9d4e-5f6071829304/download
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/reports/{reportId}:
+parameters:
+- $ref: '#/components/parameters/ReportIdPathParam'
+get:
+operationId: getReportById
+summary: Get a report by ID
+tags: [Reports]
+responses:
+'200':
+description: Report found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Report'
+example:
+id: d5e6f708-9182-4b3c-9d4e-5f6071829304
+analysisId: c4d5e6f7-8091-4a2b-9c3d-4e5f60718293
+analysisVersion: 1
+format: json
+summary: This document shows no indicators of compromise and is likely trustworthy.
+verdict: trusted
+confidenceScore: 0.94
+evidence:
+- type: signature
+description: No known malicious signatures matched.
+weight: 0.5
+recommendation: Safe to proceed with normal handling.
+generatedAt: '2024-02-10T08:21:12Z'
+downloadUrl: https://api.sentinel.example.com/api/v1/reports/d5e6f708-9182-4b3c-9d4e-5f6071829304/download
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/reports/{reportId}/download:
+parameters:
+- $ref: '#/components/parameters/ReportIdPathParam'
+get:
+operationId: downloadReport
+summary: Download the report file
+description: Streams the report content in the requested format. Defaults to the report's native format.
+tags: [Reports]
+parameters:
+- name: format
+in: query
+required: false
+schema:
+$ref: '#/components/schemas/ReportFormat'
+responses:
+'200':
+description: Report file stream.
+content:
+application/json:
+schema:
+type: object
+additionalProperties: true
+application/pdf:
+schema:
+type: string
+contentEncoding: base64
+contentMediaType: application/pdf
+text/html:
+schema:
+type: string
+'401':
+$ref: '#/components/responses/Unauthorized'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/audit-logs:
+get:
+operationId: listAuditLogs
+summary: List audit logs
+description: Returns a paginated, immutable list of audit log entries. Requires the admin role.
+tags: [AuditLogs]
+parameters:
+- $ref: '#/components/parameters/PageParam'
+- $ref: '#/components/parameters/PageSizeParam'
+- name: actorId
+in: query
+required: false
+schema:
+type: string
+format: uuid
+- name: action
+in: query
+required: false
+schema:
+type: string
+- name: resourceType
+in: query
+required: false
+schema:
+type: string
+- name: startDate
+in: query
+required: false
+schema:
+type: string
+format: date-time
+- name: endDate
+in: query
+required: false
+schema:
+type: string
+format: date-time
+responses:
+'200':
+description: Paginated list of audit log entries.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AuditLogListResponse'
+example:
+data:
+- id: e6f70819-2a3b-4c5d-8e9f-60718293a4b5
+actorId: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+action: upload.created
+resourceType: Upload
+resourceId: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+ipAddress: 203.0.113.10
+userAgent: Mozilla/5.0
+metadata:
+originalFilename: invoice.pdf
+createdAt: '2024-02-10T08:15:00Z'
+pagination:
+page: 1
+pageSize: 20
+totalItems: 1
+totalPages: 1
+hasNext: false
+hasPrevious: false
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'429':
+$ref: '#/components/responses/TooManyRequests'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/audit-logs/{auditLogId}:
+parameters:
+- $ref: '#/components/parameters/AuditLogIdPathParam'
+get:
+operationId: getAuditLogById
+summary: Get an audit log entry by ID
+tags: [AuditLogs]
+responses:
+'200':
+description: Audit log entry found.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/AuditLog'
+example:
+id: e6f70819-2a3b-4c5d-8e9f-60718293a4b5
+actorId: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+action: upload.created
+resourceType: Upload
+resourceId: 3f2c9a10-6b0a-4e1c-9a2e-2c4a5b6d7e8f
+ipAddress: 203.0.113.10
+userAgent: Mozilla/5.0
+metadata:
+originalFilename: invoice.pdf
+createdAt: '2024-02-10T08:15:00Z'
+'401':
+$ref: '#/components/responses/Unauthorized'
+'403':
+$ref: '#/components/responses/Forbidden'
+'404':
+$ref: '#/components/responses/NotFound'
+'500':
+$ref: '#/components/responses/InternalServerError'
+
+/health:
+get:
+operationId: getHealthStatus
+summary: Get service health
+tags: [Health]
+security: []
+responses:
+'200':
+description: Service is healthy.
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/HealthStatus'
+example:
+status: ok
+version: 1.0.0
+timestamp: '2024-02-10T08:00:00Z'
+dependencies:
+database: ok
+objectStorage: ok
+queue: ok
+'503':
+$ref: '#/components/responses/ServiceUnavailable'
+
+components:
+securitySchemes:
+bearerAuth:
+type: http
+scheme: bearer
+bearerFormat: JWT
+description: JWT access token authentication. Supply as Authorization: Bearer <accessToken>.
+refreshTokenAuth:
+type: http
+scheme: bearer
+bearerFormat: JWT
+description: JWT refresh token authentication, used exclusively on POST /auth/refresh. Supply as Authorization: Bearer <refreshToken>.
+
+parameters:
+PageParam:
+name: page
+in: query
+required: false
+description: Page number to retrieve, starting at 1.
+schema:
+type: integer
+minimum: 1
+default: 1
+PageSizeParam:
+name: pageSize
+in: query
+required: false
+description: Number of items to return per page.
+schema:
+type: integer
+minimum: 1
+maximum: 100
+default: 20
+SortParam:
+name: sort
+in: query
+required: false
+description: Field to sort by. Prefix with - for descending order (e.g. -createdAt).
+schema:
+type: string
+default: '-createdAt'
+IdempotencyKeyParam:
+name: Idempotency-Key
+in: header
+required: false
+description: Client-generated UUID guaranteeing a mutating request is processed at most once.
+schema:
+type: string
+format: uuid
+RequestIdParam:
+name: X-Request-ID
+in: header
+required: false
+description: Client-supplied UUID used to correlate this request across logs and traces. Echoed back in the response.
+schema:
+type: string
+format: uuid
+UserIdPathParam:
+name: userId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+UploadIdPathParam:
+name: uploadId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+AssetIdPathParam:
+name: assetId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+AnalyzerIdPathParam:
+name: analyzerId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+AnalysisIdPathParam:
+name: analysisId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+ReportIdPathParam:
+name: reportId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+AuditLogIdPathParam:
+name: auditLogId
+in: path
+required: true
+schema:
+type: string
+format: uuid
+
+headers:
+X-Request-ID:
+description: Unique identifier for this request, used for tracing and support correlation.
+schema:
+type: string
+format: uuid
+Retry-After:
+description: Number of seconds the client should wait before retrying the request.
+schema:
+type: integer
+minimum: 0
+Content-Type:
+description: Media type of the response body.
+schema:
+type: string
+Accept:
+description: Media types the client is willing to receive.
+schema:
+type: string
+
+requestBodies:
+RegisterRequestBody:
+required: true
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/RegisterRequest'
+example:
+email: jane.doe@example.com
+password: Str0ngP@ssword!
+fullName: Jane Doe
+LoginRequestBody:
+required: true
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/LoginRequest'
+example:
+email: jane.doe@example.com
+password: Str0ngP@ssword!
+UpdateUserRequestBody:
+required: true
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/UpdateUserRequest'
+example:
+fullName: Jane A. Doe
+role: analyst
+isActive: true
+UploadFileRequestBody:
+required: true
+content:
+multipart/form-data:
+schema:
+$ref: '#/components/schemas/UploadFileForm'
+encoding:
+file:
+contentType: application/pdf, image/png, image/jpeg, application/zip, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document, message/rfc822, application/octet-stream
+CreateAnalysisRequestBody:
+required: true
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/CreateAnalysisRequest'
+example:
+assetId: 7a1e2b3c-4d5e-6f70-8192-a3b4c5d6e7f8
+analyzerIds:
+- b2f4e6a8-1c3d-4e5f-9081-2a3b4c5d6e7f
+
+responses:
+BadRequest:
+description: The request was malformed or contains invalid parameters.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: bad_request
+message: The request payload could not be parsed.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+Unauthorized:
+description: Authentication is required or the supplied credentials/token are invalid or expired.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: unauthorized
+message: The access token is missing, invalid, or expired.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+Forbidden:
+description: The authenticated user does not have permission to perform this action.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: forbidden
+message: You do not have permission to perform this action.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+NotFound:
+description: The requested resource does not exist.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: not_found
+message: The requested resource could not be found.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+Conflict:
+description: The request conflicts with the current state of the resource (e.g. cancelling an already-completed analysis).
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: conflict
+message: The resource is in a state that does not allow this operation.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+PayloadTooLarge:
+description: The uploaded file exceeds the maximum allowed size (100 MB).
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: payload_too_large
+message: Uploaded file exceeds the 100 MB size limit.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+UnsupportedMediaType:
+description: The uploaded file's media type is not on the supported allow-list.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: unsupported_media_type
+message: The file type 'application/x-msdownload' is not permitted.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+UnprocessableEntity:
+description: The request was well-formed but contains semantic validation errors.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: validation_error
+message: One or more fields failed validation.
+details:
+- field: email
+issue: must be a valid email address
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+TooManyRequests:
+description: The client has exceeded the allowed request rate.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+Retry-After:
+$ref: '#/components/headers/Retry-After'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: rate_limited
+message: Too many requests. Please retry later.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+InternalServerError:
+description: An unexpected error occurred on the server.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: internal_server_error
+message: An unexpected error occurred. Please try again later.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+ServiceUnavailable:
+description: The service, or one of its critical dependencies (database, object storage, queue), is temporarily unavailable.
+headers:
+X-Request-ID:
+$ref: '#/components/headers/X-Request-ID'
+Retry-After:
+$ref: '#/components/headers/Retry-After'
+content:
+application/json:
+schema:
+$ref: '#/components/schemas/Error'
+example:
+error:
+code: service_unavailable
+message: The service is temporarily unavailable. Please retry later.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+
+examples:
+UserExample:
+summary: A standard user
+value:
+id: 9c858f9e-4b7e-4a6b-9e5b-6a1f8b1e2c11
+email: jane.doe@example.com
+fullName: Jane Doe
+role: viewer
+isActive: true
+createdAt: '2024-01-15T09:30:00Z'
+updatedAt: '2024-01-15T09:30:00Z'
+ErrorExample:
+summary: A standard error envelope
+value:
+error:
+code: bad_request
+message: The request payload could not be parsed.
+details: []
+requestId: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+timestamp: '2024-02-10T08:00:00Z'
+
+schemas:
+Metadata:
+type: object
+description: Arbitrary, resource-specific key/value metadata extracted during processing.
+additionalProperties: true
+
+text
+
+PaginationMeta:
+  type: object
+  description: Pagination details accompanying a collection response.
+  required: [page, pageSize, totalItems, totalPages, hasNext, hasPrevious]
+  properties:
+    page:
+      type: integer
+      minimum: 1
+      example: 1
+    pageSize:
+      type: integer
+      minimum: 1
+      maximum: 100
+      example: 20
+    totalItems:
+      type: integer
+      minimum: 0
+      example: 1
+    totalPages:
+      type: integer
+      minimum: 0
+      example: 1
+    hasNext:
+      type: boolean
+      example: false
+    hasPrevious:
+      type: boolean
+      example: false
+
+ErrorDetail:
+  type: object
+  properties:
+    field:
+      type: string
+      example: email
+    issue:
+      type: string
+      example: must be a valid email address
+
+Error:
+  type: object
+  required: [error, requestId, timestamp]
+  properties:
+    error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: validation_error
+        message:
+          type: string
+          example: One or more fields failed validation.
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    requestId:
+      type: string
+      format: uuid
+      description: Correlates this error with server-side logs.
+      example: 5b6c7d8e-9f01-4a2b-8c3d-4e5f60718293
+    timestamp:
+      type: string
+      format: date-time
+      example: '2024-02-10T08:00:00Z'
+
+UserRole:
+  type: string
+  enum: [admin, analyst, viewer]
+  description: Authorization role assigned to the user.
+
+User:
+  type: object
+  required: [id, email, fullName, role, isActive, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+      format: email
+    fullName:
+      type: string
+      minLength: 1
+      maxLength: 255
+    role:
+      $ref: '#/components/schemas/UserRole'
+    isActive:
+      type: boolean
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+UserListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/User'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+RegisterRequest:
+  type: object
+  required: [email, password, fullName]
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      minLength: 8
+      maxLength: 128
+      description: Must contain at least one uppercase letter, one lowercase letter, one digit, and one symbol.
+    fullName:
+      type: string
+      minLength: 1
+      maxLength: 255
+
+LoginRequest:
+  type: object
+  required: [email, password]
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      minLength: 8
+      maxLength: 128
+
+UpdateUserRequest:
+  type: object
+  minProperties: 1
+  properties:
+    fullName:
+      type: string
+      minLength: 1
+      maxLength: 255
+    role:
+      $ref: '#/components/schemas/UserRole'
+    isActive:
+      type: boolean
+
+AuthTokenResponse:
+  type: object
+  required: [accessToken, refreshToken, tokenType, expiresIn, user]
+  properties:
+    accessToken:
+      type: string
+      description: JWT access token.
+    refreshToken:
+      type: string
+      description: JWT refresh token.
+    tokenType:
+      type: string
+      enum: [bearer]
+    expiresIn:
+      type: integer
+      description: Access token lifetime in seconds.
+      example: 900
+    user:
+      $ref: '#/components/schemas/User'
+
+UploadStatus:
+  type: string
+  description: Position of the Upload within the intake pipeline.
+  enum: [received, validating, hashing, duplicate_detected, storing, completed, failed]
+
+Upload:
+  type: object
+  description: A raw content submission. An Upload produces (or resolves to an existing) `DigitalAsset` once the pipeline completes.
+  required: [id, originalFilename, sizeBytes, mimeType, sha256Hash, status, isDuplicate, uploadedBy, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    originalFilename:
+      type: string
+      minLength: 1
+      maxLength: 512
+    sizeBytes:
+      type: integer
+      minimum: 1
+      maximum: 104857600
+      description: Size in bytes. Maximum 100 MB.
+    mimeType:
+      type: string
+      example: application/pdf
+    sha256Hash:
+      type: string
+      description: SHA-256 checksum of the uploaded content; the basis of DigitalAsset identity.
+      pattern: '^[a-f0-9]{64}$'
+    status:
+      $ref: '#/components/schemas/UploadStatus'
+    isDuplicate:
+      type: boolean
+      description: True if this Upload's hash matched a pre-existing DigitalAsset.
+    digitalAssetId:
+      type:
+        - string
+        - 'null'
+      format: uuid
+      description: Set once the pipeline resolves to a DigitalAsset (new or pre-existing). Null while processing.
+    uploadedBy:
+      type: string
+      format: uuid
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+UploadListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/Upload'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+UploadFileForm:
+  type: object
+  required: [file]
+  properties:
+    file:
+      type: string
+      format: binary
+      description: The binary file content, max 100 MB.
+    description:
+      type: string
+      maxLength: 1000
+      description: Optional free-text description supplied by the uploader.
+
+AssetType:
+  type: string
+  description: High-level category of a digital asset's content.
+  enum: [document, image, archive, email, url, qr_code, other]
+
+DigitalAsset:
+  type: object
+  description: |
+    An immutable, content-addressed asset. Identity is `sha256Hash`, not
+    filename. If content changes, a new DigitalAsset (new hash) is
+    created — this record is never mutated in place.
+  required: [id, sha256Hash, assetType, mimeType, sizeBytes, firstSeenUploadId, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    sha256Hash:
+      type: string
+      pattern: '^[a-f0-9]{64}$'
+    assetType:
+      $ref: '#/components/schemas/AssetType'
+    mimeType:
+      type: string
+    sizeBytes:
+      type: integer
+      minimum: 0
+    firstSeenUploadId:
+      type: string
+      format: uuid
+      description: The Upload that first introduced this content to the platform.
+    metadata:
+      $ref: '#/components/schemas/Metadata'
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+DigitalAssetListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/DigitalAsset'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+AnalyzerCategory:
+  type: string
+  enum: [static, dynamic, reputation, heuristic, ocr, metadata, ai_reasoning, image, custom]
+
+Analyzer:
+  type: object
+  required: [id, name, version, description, category, isEnabled]
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+    version:
+      type: string
+      example: 3.1.0
+    description:
+      type: string
+      maxLength: 2000
+    category:
+      $ref: '#/components/schemas/AnalyzerCategory'
+    isEnabled:
+      type: boolean
+
+AnalyzerListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/Analyzer'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+AnalysisStatus:
+  type: string
+  enum: [queued, running, completed, failed, cancelled]
+
+AnalysisVerdict:
+  type: string
+  description: Sentinel never returns a bare "safe" verdict; the platform's job is trust assessment with evidence, not certification.
+  enum: [trusted, suspicious, malicious, phishing, inconclusive]
+
+EvidenceItem:
+  type: object
+  description: One discrete piece of evidence supporting an analysis verdict — the mechanism behind Sentinel's explainability principle.
+  required: [type, description]
+  properties:
+    type:
+      type: string
+      enum: [signature, heuristic, reputation, ai_reasoning, metadata, behavioral]
+    description:
+      type: string
+      maxLength: 2000
+    weight:
+      type: number
+      minimum: 0
+      maximum: 1
+      description: Relative contribution of this evidence item to the overall confidence score.
+
+Analysis:
+  type: object
+  description: |
+    A single, immutable, versioned execution of one Analyzer against one
+    DigitalAsset. Re-running the same analyzer against the same asset
+    creates a new Analysis with an incremented `version`; prior versions
+    are never overwritten.
+  required: [id, assetId, analyzerId, version, status, verdict, evidence, createdAt, updatedAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    assetId:
+      type: string
+      format: uuid
+    analyzerId:
+      type: string
+      format: uuid
+    version:
+      type: integer
+      minimum: 1
+      description: Monotonically increasing version number, scoped to (assetId, analyzerId).
+    status:
+      $ref: '#/components/schemas/AnalysisStatus'
+    verdict:
+      $ref: '#/components/schemas/AnalysisVerdict'
+    confidenceScore:
+      type:
+        - number
+        - 'null'
+      minimum: 0
+      maximum: 1
+      description: Overall confidence in the verdict, from 0 (no confidence) to 1 (full confidence). Null until the analysis completes.
+    evidence:
+      type: array
+      items:
+        $ref: '#/components/schemas/EvidenceItem'
+      description: Structured evidence supporting the verdict. Required for explainability; empty only while queued/running.
+    reasoning:
+      type:
+        - string
+        - 'null'
+      maxLength: 4000
+      description: Narrative explanation of how the evidence led to the verdict.
+    recommendation:
+      type:
+        - string
+        - 'null'
+      maxLength: 1000
+      description: Actionable guidance for the user. Never a bare "safe"/"unsafe" label.
+    startedAt:
+      type:
+        - string
+        - 'null'
+      format: date-time
+    completedAt:
+      type:
+        - string
+        - 'null'
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+AnalysisListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/Analysis'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+AnalysisBatchResponse:
+  type: object
+  required: [data]
+  description: Returned when one or more Analysis jobs are queued in a single request (one per requested analyzer).
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/Analysis'
+
+CreateAnalysisRequest:
+  type: object
+  required: [assetId, analyzerIds]
+  properties:
+    assetId:
+      type: string
+      format: uuid
+    analyzerIds:
+      type: array
+      minItems: 1
+      maxItems: 20
+      items:
+        type: string
+        format: uuid
+      description: One new Analysis version is queued per analyzer ID supplied.
+
+ReportFormat:
+  type: string
+  enum: [json, pdf, html]
+
+Report:
+  type: object
+  description: The human-facing, explainable presentation of one specific Analysis version. Never asserts a bare "safe" outcome.
+  required: [id, analysisId, analysisVersion, format, summary, verdict, evidence, recommendation, generatedAt, downloadUrl]
+  properties:
+    id:
+      type: string
+      format: uuid
+    analysisId:
+      type: string
+      format: uuid
+    analysisVersion:
+      type: integer
+      minimum: 1
+      description: The Analysis version this report presents.
+    format:
+      $ref: '#/components/schemas/ReportFormat'
+    summary:
+      type: string
+      maxLength: 2000
+      description: Plain-language narrative summary of the finding.
+    verdict:
+      $ref: '#/components/schemas/AnalysisVerdict'
+    confidenceScore:
+      type:
+        - number
+        - 'null'
+      minimum: 0
+      maximum: 1
+    evidence:
+      type: array
+      items:
+        $ref: '#/components/schemas/EvidenceItem'
+    recommendation:
+      type: string
+      maxLength: 1000
+    generatedAt:
+      type: string
+      format: date-time
+    downloadUrl:
+      type: string
+      format: uri
+
+ReportListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/Report'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+AuditLog:
+  type: object
+  required: [id, actorId, action, resourceType, resourceId, createdAt]
+  properties:
+    id:
+      type: string
+      format: uuid
+    actorId:
+      type: string
+      format: uuid
+    action:
+      type: string
+      example: upload.created
+    resourceType:
+      type: string
+      example: Upload
+    resourceId:
+      type: string
+      format: uuid
+    ipAddress:
+      type: string
+      format: ipv4
+    userAgent:
+      type: string
+    metadata:
+      $ref: '#/components/schemas/Metadata'
+    createdAt:
+      type: string
+      format: date-time
+
+AuditLogListResponse:
+  type: object
+  required: [data, pagination]
+  properties:
+    data:
+      type: array
+      items:
+        $ref: '#/components/schemas/AuditLog'
+    pagination:
+      $ref: '#/components/schemas/PaginationMeta'
+
+HealthStatus:
+  type: object
+  required: [status, version, timestamp]
+  properties:
+    status:
+      type: string
+      enum: [ok, degraded, unavailable]
+    version:
+      type: string
+      example: 1.0.0
+    timestamp:
+      type: string
+      format: date-time
+    dependencies:
+      type: object
+      description: Status of critical infrastructure dependencies (per the Modular Monolith architecture — database, object storage, queue).
+      additionalProperties:
+        type: string
+        enum: [ok, degraded, unavailable]
