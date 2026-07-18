@@ -20,7 +20,8 @@ from app.api.v1.exception_handlers.handlers import register_exception_handlers
 from app.api.v1.middleware.rate_limit import RateLimitMiddleware
 from app.api.v1.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import api_v1_router
-from app.core.dependencies import get_settings
+from app.core.dependencies import get_logger, get_settings
+from app.infrastructure.database.session import _engine
 from app.infrastructure.logging import configure_logging
 
 
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Configure logging system with settings
     settings = get_settings()
     configure_logging(settings)
+    logger = get_logger(__name__)
 
     # Future Epics will add:
     #   - Explicit database connection pool initialization
@@ -58,9 +60,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     #   - Provider registry setup hooks
     yield
     # --- Shutdown ---
+    # Dispose database connection pool
+    if _engine is not None:
+        try:
+            await _engine.dispose()
+            logger.info("Database connection pool disposed")
+        except Exception as e:
+            logger.error(f"Failed to dispose database pool: {e}")
+            # Error logged but does not prevent termination
+
     # Future Epics will add:
     #   - Provider registry teardown hooks (if implemented)
-    #   - Database pool disposal
     #   - Redis connection close
     #   - Graceful queue drain
     #   - Logging flush

@@ -48,7 +48,7 @@ class BaseSchema(BaseModel):
 
     model_config = ConfigDict(
         populate_by_name=True,  # Accept both snake_case and camelCase in input
-        from_attributes=True,   # Allow construction from ORM models (obj.field syntax)
+        from_attributes=True,  # Allow construction from ORM models (obj.field syntax)
     )
 
     @field_serializer("*", mode="wrap")
@@ -94,4 +94,3 @@ class BaseSchema(BaseModel):
 
         # Format as ISO 8601 with microseconds and Z suffix
         return value.isoformat(timespec="microseconds").replace("+00:00", "Z")
-

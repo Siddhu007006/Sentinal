@@ -65,12 +65,12 @@ def create_database_engine(settings: Settings) -> AsyncEngine:
         settings.database.url,
         # Connection Pool Configuration
         # ----------------------------
-        # pool_size: Number of connections maintained in the pool (default: 5).
+        # pool_size: Connections maintained in the pool (default: 5).
         pool_size=5,
-        # max_overflow: Additional connections beyond pool_size allowed under load (default: 10).
+        # max_overflow: Extra connections beyond pool_size under load (default: 10).
         # Total max connections = pool_size + max_overflow = 15.
         max_overflow=10,
-        # pool_timeout: Seconds to wait for an available connection before raising (default: 30).
+        # pool_timeout: Seconds to wait for available connection (default: 30).
         pool_timeout=30,
         # pool_pre_ping: Test connection validity before using it.
         # Detects stale/closed connections (e.g., after network interruption).

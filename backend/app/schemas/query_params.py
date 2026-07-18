@@ -151,4 +151,3 @@ class FilterParam(BaseSchema):
             Filter specification string (e.g., status:eq:active)
         """
         return f"{self.field}:{self.operator}:{self.value}"
-

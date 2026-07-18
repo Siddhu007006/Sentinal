@@ -13,10 +13,12 @@ Core Providers:
   - get_settings(): Singleton Settings instance (cached via @lru_cache)
   - get_logger(name): Named loggers with request context via contextvars
   - get_request_context(): Request-scoped context with request_id
+  - get_db_session(): Request-scoped database session (from infrastructure)
 
 See: 07-Backend-Development-Standards §3 (dependency injection).
 See: 06-Repository-Structure §3 (app/core/dependencies).
 See: 10-Observability-Architecture §2 (request context propagation).
+See: 22-Engineering-Backlog E3.T1 (database dependency export).
 """
 
 import logging
@@ -27,6 +29,18 @@ from typing import Any
 from fastapi import Request
 
 from app.core.settings import Settings
+from app.infrastructure.database.session import get_db_session
+
+
+# Re-exports for DI interface
+__all__ = [
+    "RequestContext",
+    "get_db_session",
+    "get_logger",
+    "get_request_context",
+    "get_request_context_dict",
+    "get_settings",
+]
 
 
 # ===========================================================================

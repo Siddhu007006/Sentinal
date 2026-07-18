@@ -180,6 +180,7 @@ module = [
     "boto3.*",
     "botocore.*",
     "factory.*",
+    "pytest_asyncio",
 ]
 ignore_missing_imports = true
 

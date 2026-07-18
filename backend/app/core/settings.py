@@ -55,10 +55,12 @@ from pydantic_settings.sources.providers.env import EnvSettingsSource
 # Python lists before Pydantic's default JSON decoding for complex types
 # can reject them.  Adding a field here opts it into this behaviour;
 # all other fields pass through to the standard source unchanged.
-_COMMA_SEPARATED_FIELDS: frozenset[str] = frozenset({
-    "allowed_origins",     # CORS_ORIGINS
-    "allowed_mime_types",  # UPLOAD_ALLOWED_MIME_TYPES
-})
+_COMMA_SEPARATED_FIELDS: frozenset[str] = frozenset(
+    {
+        "allowed_origins",  # CORS_ORIGINS
+        "allowed_mime_types",  # UPLOAD_ALLOWED_MIME_TYPES
+    }
+)
 
 
 def _parse_comma_separated(value: str) -> list[str]:

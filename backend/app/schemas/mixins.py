@@ -43,4 +43,3 @@ class TimestampMixin(BaseSchema):
         alias="updatedAt",
         description="Timestamp when the resource was last updated (UTC)",
     )
-

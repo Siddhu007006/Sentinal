@@ -82,4 +82,3 @@ class PaginatedResponse(BaseSchema, Generic[T]):  # noqa: UP046
         ge=0,
         description="Total number of pages",
     )
-
