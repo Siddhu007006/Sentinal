@@ -1,0 +1,42 @@
+{
+  "specType": "feature",
+  "specName": "epic-3-database-foundation-analyses-t6",
+  "featureName": "Analyses ORM Model and Migration",
+  "taskId": "E3.T6",
+  "workflowType": "requirements-first",
+  "description": "Implement the Analyses ORM model and Alembic migration for the central security analysis job record, with full lifecycle tracking, verdict storage, and idempotency constraints.",
+  "status": "requirements_draft",
+  "createdAt": "2025-01-17T00:00:00Z",
+  "lastUpdated": "2025-01-17T00:00:00Z",
+  "documentsStatus": {
+    "requirements": "draft",
+    "design": "pending",
+    "tasks": "pending"
+  },
+  "readinessChecklist": {
+    "requirementsReviewedAndApproved": false,
+    "designReviewedAndApproved": false,
+    "tasksReviewedAndApproved": false,
+    "allPrerequisitesComplete": true
+  },
+  "prerequisites": {
+    "E3T5": {
+      "status": "complete",
+      "note": "DigitalAsset ORM and migration complete; foreign key target is ready"
+    },
+    "DatabaseDesignE3T2": {
+      "status": "complete",
+      "note": "Database design for analyses table finalized in 04-Database-Design.md §5.6"
+    },
+    "DomainModelAnalysis": {
+      "status": "complete",
+      "note": "Analysis entity invariants defined in 02-Domain-Model §Analysis"
+    }
+  },
+  "dependentTasks": {
+    "E3T10": "Implement Domain Repository Interfaces — will define AnalysisRepository",
+    "E3T11": "Implement PostgreSQL Repository Implementations — will implement AnalysisRepository",
+    "E4": "Authentication & Authorization Epic — depends on Analysis job ownership (requested_by FK)",
+    "E5": "Async Analysis Pipeline — depends on Analysis ORM for job persistence"
+  }
+}
