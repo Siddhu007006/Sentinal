@@ -99,7 +99,7 @@ class SensitiveDataFilter(logging.Filter):
                 redacted[key] = self.REDACTED_VALUE
             elif isinstance(value, dict):
                 redacted[key] = self._redact_fields(value)
-            elif isinstance(value, (list, tuple)):
+            elif isinstance(value, list | tuple):
                 redacted[key] = self._redact_sequence(value)
             else:
                 redacted[key] = value
@@ -121,7 +121,7 @@ class SensitiveDataFilter(logging.Filter):
         for item in sequence:
             if isinstance(item, dict):
                 result.append(self._redact_fields(item))
-            elif isinstance(item, (list, tuple)):
+            elif isinstance(item, list | tuple):
                 result.append(self._redact_sequence(item))
             else:
                 result.append(item)

@@ -18,7 +18,7 @@ from app.schemas.base import BaseSchema
 T = TypeVar("T")
 
 
-class PaginatedResponse(BaseSchema, Generic[T]):  # noqa: UP046
+class PaginatedResponse(BaseSchema, Generic[T]):
     """Generic paginated response wrapper.
 
     Wraps a list of items with pagination metadata. Used by all list
