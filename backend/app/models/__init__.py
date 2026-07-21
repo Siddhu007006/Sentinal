@@ -11,10 +11,20 @@ Traces to: 06-Repository-Structure §6 (models directory structure)
 Traces to: 07-Backend-Development-Standards §8 (ORM model conventions)
 """
 
+from app.models.analysis import Analysis, AnalysisStatus
+from app.models.digital_asset import AssetType, DigitalAsset
+from app.models.upload import Upload, UploadStatus
 from app.models.user import User, UserRole
 
 
 __all__ = [
+    "Analysis",
+    "AnalysisStatus",
+    "AssetType",
+    "DigitalAsset",
+    "Upload",
+    "UploadStatus",
     "User",
     "UserRole",
 ]
+

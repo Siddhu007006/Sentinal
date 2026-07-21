@@ -26,7 +26,7 @@ from app.infrastructure.logging import configure_logging
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan context manager.
 
     Handles startup and shutdown lifecycle events. Resources acquired

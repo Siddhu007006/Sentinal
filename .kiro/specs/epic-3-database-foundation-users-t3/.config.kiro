@@ -1,0 +1,47 @@
+{
+  "specType": "feature",
+  "workflowType": "requirements-first",
+  "featureName": "users-orm-model-t3",
+  "displayName": "E3.T3 — User ORM Model and Migration",
+  "createdAt": "2025-01-17T00:00:00Z",
+  "lastModified": "2025-01-17T00:00:00Z",
+  "status": "ready-for-implementation",
+  "documents": {
+    "requirements": {
+      "path": "requirements.md",
+      "status": "complete",
+      "requirementCount": 5
+    },
+    "design": {
+      "path": "design.md",
+      "status": "complete",
+      "designDecisionCount": 8
+    },
+    "tasks": {
+      "path": "tasks.md",
+      "status": "ready",
+      "taskCount": 5
+    }
+  },
+  "metadata": {
+    "epicNumber": 3,
+    "taskNumber": 3,
+    "backlogReference": "22-Engineering-Backlog E3.T3",
+    "priority": "P0",
+    "estimatedEffort": "3-4 hours",
+    "dependencies": [
+      "epic-3-database-foundation (E3.T1)",
+      "epic-3-database-foundation-alembic-t2 (E3.T2)"
+    ],
+    "tracesTo": [
+      "docs/04-Database-Design.md §5.1",
+      "docs/02-Domain-Model.md",
+      "docs/06-Repository-Structure.md §6",
+      "docs/07-Backend-Development-Standards.md §8"
+    ],
+    "auditDate": "2025-01-17",
+    "auditStatus": "phase-1-complete",
+    "modelFrozen": true,
+    "lastLoginAtRemoved": true
+  }
+}

@@ -708,3 +708,53 @@ architectural commitments. Each may be changed through the ADR process
     emitted in API responses use UTC. No timezone conversion is performed
     by the backend.
 
+
+
+---
+
+## Developer Resources
+
+For engineers working on the Sentinel codebase:
+
+### Core Documentation (Reading Order)
+
+1. **01-Product-Requirements.md** — What Sentinel does and why
+2. **02-Domain-Model.md** — Core business entities and relationships
+3. **03-Architecture.md** — System layers, components, and structure
+4. **04-Database-Design.md** — PostgreSQL schema, tables, and constraints
+5. **05-API-Specification.md** — REST API contract and endpoints
+6. **backend/openapi.yaml** — Machine-readable API definition
+
+### Backend Development
+
+- **backend/ALEMBIC_SETUP.md** — Database migration workflow guide
+  - Creating ORM models and generating migrations with Alembic
+  - Testing migrations locally (upgrade/downgrade cycles)
+  - Troubleshooting common migration issues
+  - Reference: Alembic commands, environment variables, naming conventions
+
+- **07-Backend-Development-Standards.md** — Code style, patterns, and practices
+- **08-Security-Architecture.md** — Authentication, authorization, and secure coding
+- **04-Database-Design.md** §3+ — ORM model patterns and schema design
+
+### Infrastructure & Deployment
+
+- **09-Deployment-Architecture.md** — How Sentinel deploys and scales
+- **12-CI-CD-Architecture.md** — CI/CD pipeline and validation stages
+
+### Quality & Process
+
+- **11-Testing-Strategy.md** — Test types, coverage targets, and patterns
+- **17-Architecture-Decision-Records-Guide.md** — How to document architectural decisions
+- **19-Contributor-Guide.md** — Contribution process and code review
+
+### Getting Started
+
+1. Read **01-Product-Requirements.md** to understand what Sentinel does
+2. Read **02-Domain-Model.md** to learn the core entities
+3. Read **03-Architecture.md** to understand the system design
+4. Read **04-Database-Design.md** to see the data model
+5. For backend work: read **backend/ALEMBIC_SETUP.md** for migrations and **07-Backend-Development-Standards.md** for coding patterns
+6. For features: read **05-API-Specification.md** to understand the API contract
+7. For security work: read **08-Security-Architecture.md**
+8. For deployment/operations: read **09-Deployment-Architecture.md** and **12-CI-CD-Architecture.md**

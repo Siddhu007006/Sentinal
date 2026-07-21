@@ -40,7 +40,7 @@ class SortParam(BaseSchema):
     )
 
     @classmethod
-    def from_string(cls, sort_string: str) -> "SortParam":
+    def from_string(cls, sort_string: str) -> SortParam:
         """Parse sort parameter from query string format.
 
         Format: field:direction (e.g., createdAt:desc)
@@ -109,7 +109,7 @@ class FilterParam(BaseSchema):
     )
 
     @classmethod
-    def from_string(cls, filter_string: str) -> "FilterParam":
+    def from_string(cls, filter_string: str) -> FilterParam:
         """Parse filter parameter from query string format.
 
         Format: field:operator:value or field:value (defaults operator to eq)

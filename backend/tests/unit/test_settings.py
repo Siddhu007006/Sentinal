@@ -10,6 +10,7 @@ See: docs/22-Engineering-Backlog.md E2.T1 (Settings Management).
 
 
 import pytest
+from pathlib import Path
 from pydantic import ValidationError
 
 from app.core.settings import Settings
@@ -108,7 +109,7 @@ class TestSettingsMissingRequired:
     """
 
     def test_missing_database_url_raises_validation_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Settings raises ValidationError when DATABASE_URL missing."""
         # Change to temp directory with no .env file
@@ -133,7 +134,7 @@ class TestSettingsMissingRequired:
         assert "database_url" in error_str or "url" in error_str
 
     def test_missing_jwt_secret_key_raises_validation_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Settings raises ValidationError when JWT_SECRET_KEY missing."""
         # Change to temp directory with no .env file
@@ -163,7 +164,7 @@ class TestSettingsMissingRequired:
         assert "jwt_secret_key" in error_str or "secret" in error_str
 
     def test_missing_redis_url_raises_validation_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Settings raises ValidationError when REDIS_URL missing."""
         # Change to temp directory with no .env file

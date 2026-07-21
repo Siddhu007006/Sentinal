@@ -92,7 +92,7 @@ def _get_session_factory(settings: Settings) -> async_sessionmaker[AsyncSession]
 
 async def get_db_session(
     settings: Settings,
-) -> AsyncGenerator[AsyncSession, None]:
+) -> AsyncGenerator[AsyncSession]:
     """
     FastAPI dependency providing request-scoped database session.
 

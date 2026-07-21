@@ -5,7 +5,7 @@
 | Field | Value |
 |---|---|
 | Document | docs/22-Engineering-Backlog.md |
-| Version | 1.0.1 |
+| Version | 1.1.0 |
 | Status | Final |
 | Owner | Engineering Director |
 | Audience | Engineers, engineering managers, TPMs |
@@ -1195,6 +1195,8 @@ Before implementation begins, each task must have satisfied dependencies, a stab
 | **Acceptance Criteria** | On-call engineer receives alerts within 5 minutes. Escalation policy documented. At least one drill completed. |
 | **Definition of Done** | Rotation staffed. Drill report documented. Merged. |
 
+
+
 ---
 
 ## Task Summary
@@ -1225,3 +1227,269 @@ Before implementation begins, each task must have satisfied dependencies, a stab
 ## Backlog Traceability
 
 Every completed backlog task should be traceable to the originating architecture documents, OpenAPI contract, implementation commit(s), automated tests, and verification evidence. This maintains end-to-end auditability throughout the project lifecycle.
+
+---
+
+# Production Readiness Extension (v1.1)
+
+### Epic 13: Production Readiness Validation
+**Objective:** Validate that all production-critical operational procedures work before real users depend on them.
+**Dependencies:** Epics 10–12.
+**Deliverables:** Validated backup/restore, tested DR, verified secret rotation, migration rollback tested.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E13.T1 | Validate Backup and Restore End-to-End | P0 | E12.T4 | 4h | Restore from backup to clean infrastructure, verify data integrity |
+| E13.T2 | Execute Disaster Recovery Drill | P0 | E13.T1 | 6h | Full DR scenario: simulate region failure, restore from backups, verify RTO < 1h, RPO < 24h |
+| E13.T3 | Implement and Test Secret Rotation | P0 | E10.T4 | 4h | Rotate DB credentials, JWT signing key, S3 keys; verify zero-downtime rotation with grace period |
+| E13.T4 | Test Database Migration Rollback | P0 | E10.T5 | 3h | For every migration: test `downgrade`, verify application works against downgraded schema, document rollback time |
+| E13.T5 | Implement Data Export (User Right) | P1 | E3.T11 | 3h | `POST /users/{userId}/export` — export all user data as JSON/ZIP. Required for GDPR compliance |
+| E13.T6 | Implement Account Deactivation and Data Lifecycle Management | P1 | E5.T7 | 4h | `DELETE /users/{userId}` (soft delete by default, anonymization/retention policy, optional hard delete where required) — cascade delete all user's assets, analyses, reports, audit logs per retention policy |
+| E13.T7 | Configure S3 Lifecycle Policies | P1 | E5.T1 | 2h | Transition old objects to cold storage after 90 days; delete orphaned objects after 30 days |
+
+**Epic Total: 7 tasks, ~26h**
+
+---
+
+### Epic 14: Observability Maturity
+**Objective:** Full observability stack: metrics, traces, logs, SLOs, alerting, dashboards — everything needed to operate the system confidently.
+**Dependencies:** Epic 11.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E14.T1 | Define SLOs and SLIs | P0 | E11.T1 | 3h | Document: API p99 < 2s (SLO), upload success > 99.5% (SLO), analysis completion p95 < 30s (SLO). Define SLIs and error budgets |
+| E14.T2 | Implement SLO/SLI Dashboard | P0 | E14.T1, E11.T1 | 3h | Grafana dashboard: error budget burn rate, SLO compliance per service, 30-day trend |
+| E14.T3 | Implement Log Aggregation and Retention | P1 | E2.T3 | 4h | Ship structured logs to centralized store (Loki/ELF/CloudWatch). Configure retention: 30 days hot, 1 year cold. Implement log-based alerts for ERROR level |
+| E14.T4 | Implement Synthetic Monitoring | P1 | E2.T8 | 3h | External uptime checks: `GET /health` every 30s from multiple regions. Alert on 2 consecutive failures. Dashboard for uptime % |
+| E14.T5 | Implement Observability Cost Controls | P2 | E11.T2 | 2h | Configure trace sampling to cap at X GB/day. Configure log volume alerts. Document observability cost per environment |
+| E14.T6 | Implement AI Cost Tracking | P0 | E7.T1 | 4h | Track per-analysis token usage and estimated cost. Per-user cost aggregation. Budget cap alerts at 80% and 100% of monthly limit. Dashboard |
+
+**Epic Total: 6 tasks, ~19h**
+
+---
+
+### Epic 15: Security Hardening
+**Objective:** Systematic security hardening beyond the application-level security in E4 and E12.
+**Dependencies:** E12.T1, E12.T2.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E15.T1 | Generate and Publish SBOM | P0 | E1.T2 | 2h | Generate Software Bill of Materials (SPDX or CycloneDX format) on every build. Publish as CI artifact. Alert on new CVEs against SBOM |
+| E15.T2 | Conduct Threat Model (STRIDE) | P0 | None | 6h | Systematic STRIDE threat model for: upload pipeline, AI provider integration, authentication flow, data storage. Document threats, mitigations, and residual risk |
+| E15.T3 | Implement Content Security Policy | P1 | E9.T1 | 2h | Configure CSP headers for frontend: script-src, style-src, img-src, connect-src. Report-only mode first, then enforce |
+| E15.T4 | Implement Security Headers | P1 | E2.T2 | 2h | Add: Strict-Transport-Security, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy. Test with securityheaders.com |
+| E15.T5 | Implement Penetration Testing | P1 | E15.T2 | 8h | Automated scan (OWASP ZAP) + manual pentest of auth, upload, and AI injection surfaces. Document findings and remediation |
+| E15.T6 | Implement Account Lockout | P0 | E4.T5 | 2h | After 5 failed login attempts, lock account for 15 minutes. Unlock via email or admin. Log lockout events to audit log |
+| E15.T7 | Implement Token Revocation on Password Change | P0 | E4.T5 | 2h | On password change, revoke all refresh tokens for the user. Force re-login on all devices |
+| E15.T8 | Implement CSRF Protection | P0 | E9.T2 | 2h | If using cookie-based auth, implement CSRF tokens (Double Submit Cookie or Synchronizer Token). Skip if using header-based Bearer tokens only |
+
+**Epic Total: 8 tasks, ~26h**
+
+---
+
+### Epic 16: Performance Validation
+**Objective:** Establish and validate performance budgets before production launch.
+**Dependencies:** E12.T3.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E16.T1 | Define Performance Budget | P0 | None | 2h | Document: API p50 < 200ms, p95 < 1s, p99 < 2s. Upload throughput > 10MB/s. Analysis queue drain > 10/min. Max concurrent uploads: 50 |
+| E16.T2 | Implement Worker Concurrency Benchmarks | P1 | E6.T5 | 4h | Benchmark: single worker throughput (analyses/min), memory per worker, optimal concurrency vs. AI provider rate limits. Document scaling guidance |
+| E16.T3 | Implement Database Performance Testing | P1 | E3.T11 | 4h | Test with 10x expected data volume: query performance on paginated endpoints, index coverage validation, connection pool sizing under load. Add missing indexes |
+| E16.T4 | Implement Stress Testing | P1 | E16.T1 | 4h | Beyond load testing (E12.T3): test at breaking point. Identify system limits. Test graceful degradation behavior. Document capacity planning |
+| E16.T5 | Implement Frontend Performance Budget | P2 | E9.T1 | 2h | Define and enforce: LCP < 2.5s, FID < 100ms, CLS < 0.1. Lighthouse CI in pipeline. Bundle size limit |
+
+**Epic Total: 5 tasks, ~16h**
+
+---
+
+### Epic 17: Operational Readiness
+**Objective:** Everything needed to operate the system day-to-day: feature flags, maintenance mode, runbooks, incident response.
+**Dependencies:** E10.T6, E11.T3.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E17.T1 | Implement Feature Flags | P0 | E2.T1 | 4h | Integrate feature flag service (LaunchDarkly, Unleash, or simple Redis-backed). Flags for: new analyzers, AI provider changes, rate limit changes. Runtime toggle without deployment |
+| E17.T2 | Implement Maintenance Mode | P1 | E2.T2 | 2h | `MAINTENANCE_MODE` setting: returns 503 on all endpoints except `/health`. Display maintenance page on frontend. Toggle via feature flag or env var |
+| E17.T3 | Write Operational Runbooks | P0 | E10.T6 | 6h | Runbooks for: deployment, rollback, database restore, cache flush, scaling workers, incident response, secret rotation, on-call handoff. Tested against staging |
+| E17.T4 | Implement Incident Response Process | P0 | E12.T7 | 3h | Incident severity classification, communication templates (status page, Slack), post-mortem template, incident commander rotation |
+| E17.T5 | Implement Development Database Seeding | P2 | E3.T11 | 3h | Script to populate dev database with realistic test data: users, assets, analyses, reports. Use factory_boy. Run via `make seed-db` |
+| E17.T6 | Implement Cost Monitoring and Alerts | P1 | E10.T3 | 3h | Cloud cost dashboard: daily burn rate, cost by service, anomaly alerts at 20% over baseline. Monthly cost report automated |
+
+**Epic Total: 6 tasks, ~21h**
+
+---
+
+### Epic 18: Product Analytics Foundation
+**Objective:** Instrument the system to measure product usage and business metrics.
+**Dependencies:** E2.T2, E9.T1.
+**Note:** This epic is P2 — important for growth but not blocking launch.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E18.T1 | Implement Upload Funnel Tracking | P2 | E5.T6 | 3h | Track: upload started → upload completed → analysis requested → analysis completed → report generated. Conversion rate at each step. Funnel visualization |
+| E18.T2 | Implement Analysis Latency Metrics | P2 | E6.T5 | 2h | Track analysis wall-clock time by analyzer type. P50/P95/P99 latency. Alert if latency exceeds SLO |
+| E18.T3 | Implement Failure Metrics Dashboard | P2 | E2.T5 | 2h | Track: upload failure rate, analysis failure rate (by analyzer), report generation failure rate. Root cause categorization |
+| E18.T4 | Implement Storage Growth Tracking | P2 | E5.T1 | 2h | Daily S3 storage volume. Growth rate projection. Cost projection based on growth rate. Alert at 80% of storage budget |
+
+**Epic Total: 4 tasks, ~9h**
+
+---
+
+### Epic 19: Release Engineering
+**Objective:** Professional release process: versioning, changelogs, staging gates, canary deployments.
+**Dependencies:** E10.T2.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E19.T1 | Implement Semantic Versioning | P1 | E1.T2 | 2h | Version in `pyproject.toml` and `package.json`. `make version` command bumps and tags. Version exposed in `/health` and frontend footer |
+| E19.T2 | Implement Changelog Automation | P1 | E19.T1 | 2h | `conventional commits` enforced in pre-commit. Auto-generate `CHANGELOG.md` from commit messages on release. Include in release artifact |
+| E19.T3 | Implement Staging Gate | P0 | E10.T2 | 3h | Before production promotion: automated checks (all tests green, no critical vulnerabilities, coverage > threshold, performance within budget). Manual approval after gates pass |
+| E19.T4 | Implement Canary Deployment | P2 | E10.T2 | 4h | Deploy new version to 10% of traffic first. Monitor error rate and latency for 15 minutes. Auto-rollback if metrics degrade. Full rollout if stable |
+| E19.T5 | Implement Contract Testing | P0 | E2.T9 | 3h | Validate API responses against openapi.yaml schemas in CI. Break on contract violation. Prevent frontend-backend drift |
+
+**Epic Total: 5 tasks, ~14h**
+
+---
+
+## 6. Updated Task Summary
+
+| Epic | Task Count | Total Estimated Effort |
+|---|---|---|
+| E1: Repository Foundation | 7 | ~19h |
+| E2: Backend Core | 9 | ~25h |
+| E3: Database & Persistence | 11 | ~34h |
+| E4: Authentication & Authorization | 8 | ~26h |
+| E5: Asset Upload & Management | 8 | ~30h |
+| E6: Analysis Engine | 8 | ~30h |
+| E7: AI Providers & Analyzers | 6 | ~25h |
+| E8: Reporting | 4 | ~17h |
+| E9: Frontend | 8 | ~37h |
+| E10: Deployment & CI/CD | 6 | ~28h |
+| E11: Observability | 4 | ~16h |
+| E12: Production Hardening | 7 | ~26h |
+| **E13: Production Readiness Validation** | **7** | **~26h** |
+| **E14: Observability Maturity** | **6** | **~19h** |
+| **E15: Security Hardening** | **8** | **~26h** |
+| **E16: Performance Validation** | **5** | **~16h** |
+| **E17: Operational Readiness** | **6** | **~21h** |
+| **E18: Product Analytics Foundation** | **4** | **~9h** |
+| **E19: Release Engineering** | **5** | **~14h** |
+| **TOTAL** | **117** | **~448h** |
+
+**Original backlog: 86 tasks, ~313h**
+**Added: 41 tasks, ~157h (50% more tasks, but necessary for production readiness)**
+
+---
+
+## 7. Critical Path Analysis
+
+### Must-Complete Before Launch (P0 tasks across all epics):
+1. E1: T1, T2, T4, T6 (Foundation)
+2. E2: T1–T5, T8 (Core + Health)
+3. E3: T1–T6, T10, T11 (Database + Repos)
+4. E4: T1–T6 (Auth)
+5. E5: T1–T7 (Upload + Assets)
+6. E6: T1–T7 (Analysis pipeline)
+7. E7: T1–T3 (AI Provider + Document Analyzer)
+8. E8: T1–T4 (Reporting)
+9. E10: T1–T6 (Deployment)
+10. E11: T1 (Metrics)
+11. E12: T1–T4 (Hardening)
+12. **E13: T1–T4** (Production readiness validation)
+13. **E14: T1, T2, T6** (SLOs + AI cost tracking)
+14. **E15: T1, T2, T6, T7, T8** (SBOM + Threat Model + Account security)
+15. **E16: T1** (Performance budget)
+16. **E17: T1, T3, T4** (Feature flags + Runbooks + Incident response)
+17. **E19: T3, T5** (Staging gate + Contract testing)
+
+### Can Be Deferred to Post-Launch (P2/P3):
+- E2.T9 (Base Schemas — but don't really defer this)
+- E5.T8 (Upload Cleanup)
+- E7.T6 (Image Analyzer)
+- E9.T8 (Admin UI)
+- E14.T5 (Observability Cost Controls)
+- E16.T5 (Frontend Perf Budget)
+- E17.T5 (Dev DB Seeding)
+- E18 (Entire Product Analytics epic)
+- E19.T4 (Canary Deployment)
+
+---
+
+## 8. Top 10 Risks (Senior Perspective)
+
+1. **AI API cost overrun** — No budget caps exist. A single user could cost $1000s in AI calls. **E14.T6 is existential.**
+2. **Prompt injection** — E7.T3 mentions it but a determined attacker will find gaps. Continuous testing needed.
+3. **Migration failures in production** — E10.T5 designs for this but E13.T4 validates it. Both needed.
+4. **Observability gaps at launch** — If you can't see it, you can't fix it. E14 must be done before launch.
+5. **On-call burnout** — E17.T4 (Incident response) without proper alert tuning (E11.T3) = alert fatigue.
+6. **S3 cost growth** — No lifecycle policies, no cost monitoring. E13.T7 and E17.T6 address this.
+7. **Secrets in git history** — E12.T2 addresses this but should be done BEFORE any real secrets exist.
+8. **Single-region failure** — No multi-region DR. E13.T2 validates what you have, but plan for growth.
+9. **Frontend-backend contract drift** — E19.T5 (Contract testing) prevents this. Do it early.
+10. **313h estimate is optimistic** — For a startup team with 1–3 engineers, add 40–60% buffer for: context switching, PR reviews, debugging, meetings, production incidents during development.
+
+---
+
+## 9. Recommendations for Implementation Order
+
+Given the review, here's the optimal execution sequence:
+
+**Phase 1: Foundation (Weeks 1–2)**
+- E1 (all tasks)
+
+**Phase 2: Core Backend (Weeks 2–5)**
+- E2 (all tasks)
+- E3 (all tasks)
+- E19.T5 (Contract testing — do early, prevents drift)
+
+**Phase 3: Auth & Security (Weeks 5–7)**
+- E4 (all tasks)
+- E15.T6, E15.T7, E15.T8 (Account security — do with auth)
+- E12.T2 (Secret scanning — do now before real secrets exist)
+
+**Phase 4: Core Features (Weeks 7–12)**
+- E5 (Upload)
+- E6 (Analysis)
+- E7.T1–T3 (AI Provider + Document Analyzer)
+- E14.T6 (AI Cost Tracking — do with AI provider)
+
+**Phase 5: Reporting & Frontend (Weeks 12–16)**
+- E8 (Reporting)
+- E9 (Frontend)
+
+**Phase 6: Production Pipeline (Weeks 14–17)**
+- E10 (Deployment & CI/CD)
+- E11 (Observability baseline)
+- E12.T1 (Vulnerability scanning)
+- E15.T1 (SBOM)
+- E19.T1–T3 (Release engineering)
+
+**Phase 7: Production Readiness (Weeks 17–20)**
+- E12 (remaining tasks)
+- E13 (Production readiness validation)
+- E14 (Observability maturity)
+- E15 (remaining security hardening)
+- E16 (Performance validation)
+- E17 (Operational readiness)
+
+**Phase 8: Post-Launch (Weeks 20+)**
+- E18 (Product Analytics)
+- E19.T4 (Canary deployments)
+- Remaining P2/P3 tasks
+
+---
+
+## 10. Final Verdict
+
+**Keep the existing 12-epic backlog exactly as written.** It's well-crafted and internally consistent.
+
+**Append Epics 13–19 as defined above.** They fill the gaps that separate "a system that works" from "a system you can operate in production."
+
+**The total effort goes from ~313h to ~448h — a 43% increase.** This is the realistic cost of production readiness. Skipping it is technical debt you will pay with interest at 3 AM when the system is down.
+
+**The single most important addition is E14.T6 (AI Cost Tracking).** If you implement nothing else from the new epics, implement this. Uncontrolled AI API costs can kill a startup faster than any bug.
+
+---
+
+*"In theory, there is no difference between theory and practice. In practice, there is." — Yogi Berra (and every engineer who has been paged at 3 AM)*

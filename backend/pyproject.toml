@@ -15,7 +15,7 @@ version = "0.1.0"
 description = "Sentinel — Digital Asset Analysis Platform backend service"
 readme = "README.md"
 license = { text = "Proprietary" }
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12"
 authors = [
     { name = "Sentinel Engineering Team" },
 ]
@@ -23,6 +23,8 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Framework :: FastAPI",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 
@@ -95,7 +97,7 @@ dev = [
 # ===========================================================================
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 88
 src = ["app", "tests"]
 
@@ -126,6 +128,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "S101",    # assert is the test mechanism
+    "S106",    # hardcoded password fixture (tests use fixed test values)
     "ANN",     # test functions don't need full annotation
     "T20",     # print can be useful in test debugging
 ]
@@ -151,7 +154,7 @@ line-ending = "auto"
 # ===========================================================================
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
