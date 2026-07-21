@@ -97,7 +97,7 @@ dev = [
 # ===========================================================================
 
 [tool.ruff]
-target-version = "py314"
+target-version = "py312"
 line-length = 88
 src = ["app", "tests"]
 
@@ -154,7 +154,7 @@ line-ending = "auto"
 # ===========================================================================
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 strict = true
 warn_return_any = true
 warn_unused_configs = true
