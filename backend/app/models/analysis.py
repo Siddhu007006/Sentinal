@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class AnalysisStatus(str, enum.Enum):  # noqa: UP042
+class AnalysisStatus(str, enum.Enum):
     """
     Lifecycle states for an analysis job.
 
