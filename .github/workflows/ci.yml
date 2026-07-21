@@ -96,6 +96,7 @@ jobs:
           source .venv/bin/activate
           mypy app --strict
 
+
   test:
     name: Unit Tests
     runs-on: ubuntu-latest
@@ -124,21 +125,27 @@ jobs:
         ports:
           - 6379:6379
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        options: >-
-          --health-cmd "curl -fsS http://localhost:9000/minio/health/live || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
-        ports:
-          - 9000:9000
-
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Start MinIO
+        run: |
+          docker run -d \
+            --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:RELEASE.2025-02-28T09-55-16Z \
+            server /data
+
+      - name: Wait for MinIO
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://localhost:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          docker logs minio
+          exit 1
 
       - name: Setup Python
         uses: actions/setup-python@v4
