@@ -354,7 +354,7 @@ class DigitalAsset(BaseModel):
     # Enforced/documented at application layer via Pydantic schemas per type.
     metadata_json: Mapped[dict[str, object] | None] = mapped_column(
         "metadata",
-        JSONB(),
+        JSONB(),  # type: ignore[no-untyped-call]
         nullable=True,
         default=None,
         comment="Asset-type-specific metadata (JSONB, see Database Design §5.4.1)",
