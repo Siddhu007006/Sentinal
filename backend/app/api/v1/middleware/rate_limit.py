@@ -102,7 +102,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Initialize Redis connection
         try:
-            self.redis: Any = redis.from_url(self.redis_url, decode_responses=True)
+            self.redis: Any = redis.from_url(self.redis_url, decode_responses=True)  # type: ignore
             # Test connection
             self.redis.ping()
         except redis.ConnectionError as e:

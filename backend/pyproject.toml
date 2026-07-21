@@ -218,6 +218,8 @@ markers = [
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning:passlib.*",
+    "ignore::DeprecationWarning:asyncio.*",
+    "ignore::DeprecationWarning:pytest_asyncio.*",
 ]
 addopts = [
     "--strict-markers",
