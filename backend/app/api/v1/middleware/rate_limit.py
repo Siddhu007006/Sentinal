@@ -50,10 +50,10 @@ logger = logging.getLogger(__name__)
 
 # Paths excluded from rate limiting (health checks, docs, etc.)
 DEFAULT_EXCLUDE_PATHS = [
-    "/health",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
+    "/api/v1/health",
+    "/api/v1/docs",
+    "/api/v1/redoc",
+    "/api/v1/openapi.json",
 ]
 
 
