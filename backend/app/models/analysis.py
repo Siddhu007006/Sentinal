@@ -220,11 +220,9 @@ class Analysis(BaseModel):
 
     digital_asset_id: Mapped[uuid.UUID] = mapped_column(
         PG_UUID(as_uuid=True),
-        ForeignKey("digital_assets.id", ondelete="RESTRICT",
-                   onupdate="RESTRICT"),
+        ForeignKey("digital_assets.id", ondelete="RESTRICT", onupdate="RESTRICT"),
         nullable=False,
-        doc="FK to DigitalAsset. Asset being analyzed. Immutable after "
-            "creation.",
+        doc="FK to DigitalAsset. Asset being analyzed. Immutable after creation.",
     )
 
     requested_by: Mapped[uuid.UUID] = mapped_column(
@@ -242,14 +240,14 @@ class Analysis(BaseModel):
         String(255),
         nullable=False,
         doc="Analyzer module name (e.g., 'virustotal_analyzer'). "
-            "Immutable. Part of idempotency key.",
+        "Immutable. Part of idempotency key.",
     )
 
     analyzer_version: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
         doc="Analyzer version (e.g., 'v2.1.0'). Immutable. Paired with "
-            "analyzer_key for idempotency.",
+        "analyzer_key for idempotency.",
     )
 
     # ========================================================================
@@ -261,7 +259,7 @@ class Analysis(BaseModel):
         nullable=False,
         server_default="pending",
         doc="Current lifecycle state: pending, running, completed, "
-            "failed, cancelled. Mutable during job.",
+        "failed, cancelled. Mutable during job.",
     )
 
     analyzer_slugs: Mapped[list[str]] = mapped_column(
@@ -292,7 +290,7 @@ class Analysis(BaseModel):
         String(100),
         nullable=True,
         doc="Machine-readable error code (e.g., "
-            "ENRICHMENT_TIMEOUT). Populated on failed status.",
+        "ENRICHMENT_TIMEOUT). Populated on failed status.",
     )
 
     # ========================================================================
@@ -302,20 +300,20 @@ class Analysis(BaseModel):
     threat_score: Mapped[float | None] = mapped_column(
         nullable=True,
         doc="Threat probability [0.0-1.0] or NULL before completion. "
-            "Immutable once set.",
+        "Immutable once set.",
     )
 
     confidence: Mapped[float | None] = mapped_column(
         nullable=True,
         doc="Confidence in assessment [0.0-1.0] or NULL before "
-            "completion. Immutable once set.",
+        "completion. Immutable once set.",
     )
 
     severity: Mapped[str | None] = mapped_column(
         String(20),
         nullable=True,
         doc="Threat severity (LOW, MEDIUM, HIGH, CRITICAL) or NULL. "
-            "Derived from threat_score. Immutable once set.",
+        "Derived from threat_score. Immutable once set.",
     )
 
     # ========================================================================
@@ -326,14 +324,14 @@ class Analysis(BaseModel):
         JSONB,
         nullable=True,
         doc="Full AI model output including reasoning steps, IOCs, "
-            "data gaps, model metadata. Immutable after completion.",
+        "data gaps, model metadata. Immutable after completion.",
     )
 
     enrichment_data: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
         doc="Extracted threat intelligence from external sources "
-            "(VirusTotal, Shodan, etc.). Immutable after completion.",
+        "(VirusTotal, Shodan, etc.). Immutable after completion.",
     )
 
     # ========================================================================
@@ -350,7 +348,7 @@ class Analysis(BaseModel):
         TIMESTAMP(timezone=True),
         nullable=True,
         doc="When job reached terminal state (completed, failed, "
-            "cancelled). Immutable once set.",
+        "cancelled). Immutable once set.",
     )
 
     # ========================================================================
