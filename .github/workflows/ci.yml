@@ -42,7 +42,7 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install -e .[dev]
+          uv sync --all-extras
 
       - name: Ruff lint
         working-directory: backend
@@ -88,7 +88,7 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install -e .[dev]
+          uv sync --all-extras
 
       - name: Type check with mypy
         working-directory: backend
@@ -166,7 +166,7 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install -e .[dev]
+          uv sync --all-extras
 
       - name: Setup test environment
         working-directory: backend
@@ -255,7 +255,7 @@ jobs:
         run: |
           uv venv
           source .venv/bin/activate
-          uv pip install -e .[dev]
+          uv sync --all-extras
 
       - name: Verify project structure
         working-directory: backend
