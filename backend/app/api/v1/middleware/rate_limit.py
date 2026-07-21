@@ -124,6 +124,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             Response (429 if rate limited, or next handler's response)
         """
         # Skip rate limiting for excluded paths
+        logger.warning(f"RATE LIMIT PATH: {request.url.path}")
         if self._should_exclude_path(request.url.path):
             response = await call_next(request)
             return response
