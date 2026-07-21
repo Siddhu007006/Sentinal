@@ -35,6 +35,10 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
 
+      - name: Create virtual environment
+        working-directory: backend
+        run: uv venv
+
       - name: Install backend dependencies
         working-directory: backend
         run: uv pip install -e .[dev]
@@ -69,6 +73,10 @@ jobs:
             ${{ env.UV_CACHE_DIR }}
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
+
+      - name: Create virtual environment
+        working-directory: backend
+        run: uv venv
 
       - name: Install backend dependencies
         working-directory: backend
@@ -139,6 +147,10 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
 
+      - name: Create virtual environment
+        working-directory: backend
+        run: uv venv
+
       - name: Install backend dependencies
         working-directory: backend
         run: uv pip install -e .[dev]
@@ -148,10 +160,20 @@ jobs:
         run: |
           cp ../.env.example .env
           sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
+          sed -i 's|^DATABASE_MIGRATION_URL=.*|DATABASE_MIGRATION_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
           sed -i 's|^REDIS_URL=.*|REDIS_URL=redis://localhost:6379/0|' .env
           sed -i 's|^S3_ENDPOINT_URL=.*|S3_ENDPOINT_URL=http://localhost:9000|' .env
           sed -i 's|^S3_ACCESS_KEY=.*|S3_ACCESS_KEY=minioadmin|' .env
           sed -i 's|^S3_SECRET_KEY=.*|S3_SECRET_KEY=minioadmin|' .env
+
+      - name: Migrate database (upgrade)
+        working-directory: backend
+        env:
+          DATABASE_MIGRATION_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        run: |
+          echo "=== Running migrations (upgrade head) ==="
+          python -m alembic upgrade head
+          echo "✓ Database migration successful"
 
       - name: Run pytest with coverage
         working-directory: backend
@@ -162,6 +184,16 @@ jobs:
             --cov-report=html \
             --cov-report=term-missing \
             -v
+
+      - name: Downgrade database
+        working-directory: backend
+        if: always()
+        env:
+          DATABASE_MIGRATION_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        run: |
+          echo "=== Downgrading database (downgrade base) ==="
+          python -m alembic downgrade base
+          echo "✓ Database downgrade successful"
 
       - name: Archive coverage report
         if: always()
@@ -194,6 +226,10 @@ jobs:
             ${{ env.UV_CACHE_DIR }}
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
+
+      - name: Create virtual environment
+        working-directory: backend
+        run: uv venv
 
       - name: Install backend dependencies
         working-directory: backend
