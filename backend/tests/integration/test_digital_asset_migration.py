@@ -10,9 +10,10 @@ verify that the generated migration correctly creates the schema.
 Traces to: 22-Engineering-Backlog E3.T5 (DigitalAsset ORM model task)
 Traces to: 07-Backend-Development-Standards §8 (migration standards)
 Traces to: 11-Testing-Strategy §6 (integration test patterns)
-"""  # noqa: D400
+"""
 
 import os
+from datetime import UTC
 from uuid import uuid4
 
 import pytest
@@ -20,7 +21,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.digital_asset import DigitalAsset, AssetType
+from app.models.digital_asset import AssetType, DigitalAsset
 from app.models.upload import Upload, UploadStatus
 from app.models.user import User, UserRole
 
@@ -122,7 +123,6 @@ async def test_all_digital_asset_columns_present_in_schema(
     assert expected_columns.issubset(
         actual_columns
     ), f"Missing columns: {expected_columns - actual_columns}"
-
 
 
 # ===========================================================================
@@ -319,7 +319,6 @@ async def test_fk_constraint_accepts_valid_upload_id(
     assert asset.upload_id == upload.id
 
 
-
 # ===========================================================================
 # Test 5: UNIQUE Constraint (normalized_value, asset_type)
 # ===========================================================================
@@ -432,7 +431,6 @@ async def test_unique_constraint_allows_same_value_different_type(
 
     assert asset1.id is not None
     assert asset2.id is not None
-
 
 
 # ===========================================================================
@@ -570,7 +568,6 @@ async def test_check_constraint_accepts_valid_asset_types(
         assert asset.id is not None
 
 
-
 # ===========================================================================
 # Test 7: CHECK Constraint (file type requires upload_id)
 # ===========================================================================
@@ -678,7 +675,6 @@ async def test_check_constraint_non_file_type_no_upload_id(
 
     # Rollback to clean up
     await db_session.rollback()
-
 
 
 # ===========================================================================
@@ -833,7 +829,7 @@ async def test_soft_delete_sets_deleted_at(
     if db_session is None:
         pytest.skip("Database not available")
 
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Create valid user and asset
     user = User(
@@ -857,14 +853,13 @@ async def test_soft_delete_sets_deleted_at(
     asset_id = asset.id
 
     # Soft delete by setting deleted_at
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     asset.deleted_at = now
     await db_session.commit()
 
     # Verify asset still exists in database but is marked as deleted
     assert asset.deleted_at is not None
     assert asset.deleted_at == now
-
 
 
 # ===========================================================================
@@ -1039,7 +1034,6 @@ async def test_multiple_users_can_have_same_asset_value(
     assert asset1.id is not None
     assert asset2.id is not None
     assert asset1.user_id != asset2.user_id
-
 
 
 # ===========================================================================

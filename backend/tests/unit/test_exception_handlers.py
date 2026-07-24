@@ -170,7 +170,8 @@ class TestValidationExceptionHandler:
 
         # Send invalid JSON
         response = client_instance.post(
-            "/test-validate", json={"not": "valid"}  # Missing required fields
+            "/test-validate",
+            json={"not": "valid"},  # Missing required fields
         )
 
         # May be 422 or 200 depending on route definition
@@ -309,9 +310,7 @@ class TestUnhandledExceptionHandler:
         client = TestClient(app, raise_server_exceptions=False)
 
         custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/test-error-id", headers={"X-Request-ID": custom_id}
-        )
+        response = client.get("/test-error-id", headers={"X-Request-ID": custom_id})
 
         assert response.status_code == 500
         data: dict[str, Any] = response.json()
@@ -355,9 +354,7 @@ class TestErrorResponseIntegration:
         # Should be ISO-8601 format with UTC indicator
         assert "T" in timestamp  # ISO-8601 separator
         assert ":" in timestamp  # Time component
-        assert (
-            "Z" in timestamp or "+00:00" in timestamp
-        )  # UTC indicator
+        assert "Z" in timestamp or "+00:00" in timestamp  # UTC indicator
 
     def test_all_error_responses_have_envelope(self) -> None:
         """Verify all error responses follow envelope schema."""
@@ -548,5 +545,3 @@ class TestExceptionHandlerErrorCases:
             for error in errors:
                 assert "loc" in error
                 assert "msg" in error
-
-

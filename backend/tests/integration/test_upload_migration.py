@@ -10,7 +10,7 @@ verify that the generated migration correctly creates the schema.
 Traces to: 22-Engineering-Backlog E3.T4 (Upload ORM model task)
 Traces to: 07-Backend-Development-Standards §8 (migration standards)
 Traces to: 11-Testing-Strategy §6 (integration test patterns)
-"""  # noqa: D400
+"""
 
 import os
 from uuid import uuid4
@@ -1112,6 +1112,7 @@ async def test_created_at_and_updated_at_set_by_database(
     assert upload.created_at is not None
     assert upload.updated_at is not None
     from datetime import datetime
+
     assert isinstance(upload.created_at, datetime)
     assert isinstance(upload.updated_at, datetime)
 
@@ -1159,22 +1160,12 @@ async def test_upload_table_structure_is_correct(
 
     # Verify NOT NULL constraints
     assert columns["user_id"][1] == "NO", "user_id should NOT be nullable"
-    assert (
-        columns["storage_key"][1] == "NO"
-    ), "storage_key should NOT be nullable"
+    assert columns["storage_key"][1] == "NO", "storage_key should NOT be nullable"
     assert (
         columns["file_size_bytes"][1] == "NO"
     ), "file_size_bytes should NOT be nullable"
-    assert (
-        columns["upload_status"][1] == "NO"
-    ), "upload_status should NOT be nullable"
+    assert columns["upload_status"][1] == "NO", "upload_status should NOT be nullable"
 
     # Verify nullable columns
-    assert columns["checksum_sha256"][1] == "YES", (
-        "checksum_sha256 should be nullable"
-    )
-    assert columns["completed_at"][1] == "YES", (
-        "completed_at should be nullable"
-    )
-
-
+    assert columns["checksum_sha256"][1] == "YES", "checksum_sha256 should be nullable"
+    assert columns["completed_at"][1] == "YES", "completed_at should be nullable"

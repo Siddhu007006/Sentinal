@@ -11,10 +11,8 @@ Traces to: 07-Backend-Development-Standards §7 (ORM testing patterns)
 Traces to: 11-Testing-Strategy §6 (unit test patterns)
 """
 
-from datetime import datetime
-from uuid import UUID
+from datetime import UTC, datetime
 
-import pytest
 from app.models.user import User, UserRole
 
 
@@ -401,9 +399,8 @@ def test_deleted_at_can_be_set() -> None:
     Verifies that deleted_at can be set to a datetime value for soft-deleted
     users (without actually deleting from database).
     """
-    from datetime import datetime, timezone
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     user = User(
         email="deleted@example.com",
         password_hash="$2b$12$hash",

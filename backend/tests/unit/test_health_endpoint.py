@@ -21,7 +21,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from app.main import create_app
+from app.main import app, create_app
 
 
 class TestHealthEndpointBasic:
@@ -29,30 +29,29 @@ class TestHealthEndpointBasic:
 
     def test_health_endpoint_returns_200(self) -> None:
         """Health endpoint returns HTTP 200 status code."""
+
         app = create_app()
-        client = TestClient(app)
 
-        response = client.get("/api/v1/health")
-
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
         assert response.status_code == 200
-
+    
     def test_health_endpoint_returns_json(self) -> None:
         """Health endpoint returns JSON content type."""
         app = create_app()
-        client = TestClient(app)
 
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
         assert response.headers["content-type"] == "application/json"
 
     def test_health_endpoint_response_is_valid_json(self) -> None:
         """Health endpoint response is valid JSON (parseable)."""
         app = create_app()
-        client = TestClient(app)
 
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
-        # Should not raise JSONDecodeError
         data = response.json()
         assert isinstance(data, dict)
 
@@ -63,12 +62,11 @@ class TestHealthEndpointSchema:
     def test_health_response_has_required_fields(self) -> None:
         """Health response includes all required fields: status, version, timestamp."""
         app = create_app()
-        client = TestClient(app)
 
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
-        # Required fields per OpenAPI HealthStatus schema
         assert "status" in data
         assert "version" in data
         assert "timestamp" in data
@@ -76,9 +74,9 @@ class TestHealthEndpointSchema:
     def test_health_response_status_is_string(self) -> None:
         """Status field is a string."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         assert isinstance(data["status"], str)
@@ -86,9 +84,9 @@ class TestHealthEndpointSchema:
     def test_health_response_version_is_string(self) -> None:
         """Version field is a string."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         assert isinstance(data["version"], str)
@@ -96,9 +94,9 @@ class TestHealthEndpointSchema:
     def test_health_response_timestamp_is_iso8601(self) -> None:
         """Timestamp field is ISO 8601 formatted datetime string."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         # Should be parseable as ISO 8601
@@ -119,17 +117,16 @@ class TestHealthEndpointSchema:
     def test_health_response_dependencies_is_optional(self) -> None:
         """Dependencies field is optional (may be null or dict)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         # Dependencies field is optional per spec
         if "dependencies" in data:
             # If present, should be dict or None
-            is_valid = (
-                data["dependencies"] is None
-                or isinstance(data["dependencies"], dict)
+            is_valid = data["dependencies"] is None or isinstance(
+                data["dependencies"], dict
             )
             assert is_valid
 
@@ -140,9 +137,9 @@ class TestHealthEndpointValues:
     def test_health_response_status_is_ok(self) -> None:
         """Status field returns 'ok' (per current implementation scope)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         assert data["status"] == "ok"
@@ -150,9 +147,9 @@ class TestHealthEndpointValues:
     def test_health_response_version_present(self) -> None:
         """Version field has a value (not empty string)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         version: str = data["version"]
@@ -161,9 +158,9 @@ class TestHealthEndpointValues:
     def test_health_response_timestamp_recent(self) -> None:
         """Timestamp is recent (within last minute to account for slow execution)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
 
         # Timestamp should be valid and recent
         # This is a loose check to account for any server-side timing
@@ -176,18 +173,18 @@ class TestHealthEndpointRequestID:
     def test_health_response_includes_request_id_header(self) -> None:
         """X-Request-ID header is present in response."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
 
         assert "x-request-id" in response.headers
 
     def test_health_request_id_is_uuid_format(self) -> None:
         """X-Request-ID value is a valid UUID format (36 chars with dashes)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         request_id = response.headers["x-request-id"]
 
         # UUID4 format: 8-4-4-4-12 = 36 characters
@@ -198,9 +195,9 @@ class TestHealthEndpointRequestID:
     def test_health_request_id_is_valid_uuid(self) -> None:
         """X-Request-ID value is a parseable UUID."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         request_id = response.headers["x-request-id"]
 
         # Should not raise ValueError
@@ -210,9 +207,9 @@ class TestHealthEndpointRequestID:
     def test_health_request_id_unique_per_request(self) -> None:
         """Each request gets a unique X-Request-ID."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response1 = client.get("/api/v1/health")
+            response1 = client.get("/api/v1/health")
         response2 = client.get("/api/v1/health")
 
         request_id1 = response1.headers["x-request-id"]
@@ -227,10 +224,10 @@ class TestHealthEndpointAuthentication:
     def test_health_endpoint_no_authentication_required(self) -> None:
         """Health endpoint is accessible without authentication."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
         # Request without any Authorization header
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
 
         # Should succeed with 200, not 401
         assert response.status_code == 200
@@ -238,10 +235,10 @@ class TestHealthEndpointAuthentication:
     def test_health_endpoint_accepts_any_request(self) -> None:
         """Health endpoint responds to any HTTP verb (typically GET)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
         # GET should work
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         assert response.status_code == 200
 
 
@@ -251,10 +248,10 @@ class TestHealthEndpointOpenAPI:
     def test_health_endpoint_in_openapi_docs(self) -> None:
         """Health endpoint appears in OpenAPI schema."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
         # Fetch OpenAPI schema
-        response = client.get("/api/v1/openapi.json")
+            response = client.get("/api/v1/openapi.json")
         assert response.status_code == 200
 
         schema = response.json()
@@ -273,9 +270,9 @@ class TestHealthEndpointOpenAPI:
     def test_health_endpoint_operation_id_correct(self) -> None:
         """Health endpoint has correct operationId in OpenAPI."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/openapi.json")
+            response = client.get("/api/v1/openapi.json")
         schema = response.json()
 
         # Find the health path (may be /health or /api/v1/health depending on config)
@@ -294,9 +291,9 @@ class TestHealthEndpointOpenAPI:
     def test_health_endpoint_documented_in_openapi(self) -> None:
         """Health endpoint has description and tags in OpenAPI."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/openapi.json")
+            response = client.get("/api/v1/openapi.json")
         schema = response.json()
 
         # Find the health path
@@ -322,10 +319,10 @@ class TestHealthEndpointIntegration:
     def test_health_endpoint_with_request_id_middleware(self) -> None:
         """Health endpoint works with RequestIdMiddleware."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
         # Should generate request ID even without X-Request-ID header
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
 
         assert response.status_code == 200
         assert "x-request-id" in response.headers
@@ -333,13 +330,13 @@ class TestHealthEndpointIntegration:
     def test_health_endpoint_with_custom_request_id(self) -> None:
         """Health endpoint echoes back custom X-Request-ID if provided."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/api/v1/health",
-            headers={"X-Request-ID": custom_id},
-        )
+            custom_id = str(uuid.uuid4())
+            response = client.get(
+                "/api/v1/health",
+                headers={"X-Request-ID": custom_id},
+            )
 
         assert response.status_code == 200
         assert response.headers["x-request-id"] == custom_id
@@ -347,9 +344,8 @@ class TestHealthEndpointIntegration:
     def test_health_endpoint_response_format_matches_schema(self) -> None:
         """Full response matches OpenAPI HealthStatus schema."""
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
         # Schema validation:
@@ -368,9 +364,8 @@ class TestHealthEndpointIntegration:
         assert "T" in data["timestamp"]  # ISO-8601 includes date-time separator
 
         if "dependencies" in data:
-            is_deps_valid = (
-                data["dependencies"] is None
-                or isinstance(data["dependencies"], dict)
+            is_deps_valid = data["dependencies"] is None or isinstance(
+                data["dependencies"], dict
             )
             assert is_deps_valid
             if isinstance(data["dependencies"], dict):
@@ -387,9 +382,9 @@ class TestHealthEndpointContentNegotiation:
     def test_health_endpoint_response_has_content_length(self) -> None:
         """Response includes Content-Length header."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
 
         # Content-Length should be present
         assert "content-length" in response.headers
@@ -399,9 +394,9 @@ class TestHealthEndpointContentNegotiation:
     def test_health_endpoint_response_body_is_valid_json_object(self) -> None:
         """Response body is a JSON object (not array, string, etc.)."""
         app = create_app()
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/api/v1/health")
+            response = client.get("/api/v1/health")
         data = response.json()
 
         # Must be a dict, not a list or scalar

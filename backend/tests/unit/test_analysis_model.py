@@ -183,7 +183,6 @@ def test_field_types_are_correct() -> None:
     assert isinstance(analysis.enrichment_data, dict)
 
 
-
 # ===========================================================================
 # Test 4: AnalysisStatus Enum Values
 # ===========================================================================
@@ -412,16 +411,30 @@ def test_mapper_includes_all_core_columns() -> None:
 
     # Verify core columns exist
     expected_columns = {
-        "id", "digital_asset_id", "requested_by", "analyzer_key",
-        "analyzer_version", "analyzer_slugs", "status", "retry_count",
-        "celery_task_id", "error_message", "error_code", "threat_score",
-        "confidence", "severity", "reasoning_payload", "enrichment_data",
-        "started_at", "completed_at", "created_at", "updated_at"
+        "id",
+        "digital_asset_id",
+        "requested_by",
+        "analyzer_key",
+        "analyzer_version",
+        "analyzer_slugs",
+        "status",
+        "retry_count",
+        "celery_task_id",
+        "error_message",
+        "error_code",
+        "threat_score",
+        "confidence",
+        "severity",
+        "reasoning_payload",
+        "enrichment_data",
+        "started_at",
+        "completed_at",
+        "created_at",
+        "updated_at",
     }
 
     for col in expected_columns:
         assert col in column_names, f"Column {col} not found in mapper"
-
 
 
 # ===========================================================================
@@ -702,7 +715,6 @@ def test_severity_can_be_none() -> None:
     )
 
     assert analysis.severity is None
-
 
 
 # ===========================================================================
@@ -1107,15 +1119,9 @@ def test_analyzer_key_is_immutable_concept() -> None:
     )
 
     # Same triple → same analysis (idempotency key)
-    assert (
-        analysis1.digital_asset_id == analysis2.digital_asset_id
-    )
-    assert (
-        analysis1.analyzer_key == analysis2.analyzer_key
-    )
-    assert (
-        analysis1.analyzer_version == analysis2.analyzer_version
-    )
+    assert analysis1.digital_asset_id == analysis2.digital_asset_id
+    assert analysis1.analyzer_key == analysis2.analyzer_key
+    assert analysis1.analyzer_version == analysis2.analyzer_version
 
 
 def test_different_analyzer_version_creates_different_analysis() -> None:
@@ -1195,16 +1201,12 @@ def test_digital_asset_relationship_has_selectin_lazy_loading() -> None:
     Verifies that lazy loading strategy is selectin (separate query) for scale.
     """
     # Get the relationship property
-    relationship_property = (
-        Analysis.__mapper__.relationships.get("digital_asset")
-    )
+    relationship_property = Analysis.__mapper__.relationships.get("digital_asset")
 
-    assert relationship_property is not None, (
-        "digital_asset relationship not found"
-    )
-    assert relationship_property.lazy == "selectin", (
-        f"Expected lazy='selectin', got '{relationship_property.lazy}'"
-    )
+    assert relationship_property is not None, "digital_asset relationship not found"
+    assert (
+        relationship_property.lazy == "selectin"
+    ), f"Expected lazy='selectin', got '{relationship_property.lazy}'"
 
 
 def test_digital_asset_relationship_has_back_populates() -> None:
@@ -1214,9 +1216,7 @@ def test_digital_asset_relationship_has_back_populates() -> None:
 
     Verifies that bidirectional relationship is properly configured.
     """
-    relationship_property = (
-        Analysis.__mapper__.relationships.get("digital_asset")
-    )
+    relationship_property = Analysis.__mapper__.relationships.get("digital_asset")
 
     assert relationship_property is not None
     assert relationship_property.back_populates == "analyses", (
@@ -1242,16 +1242,12 @@ def test_user_relationship_has_selectin_lazy_loading() -> None:
 
     Verifies that lazy loading strategy is selectin (separate query) for scale.
     """
-    relationship_property = (
-        Analysis.__mapper__.relationships.get("user")
-    )
+    relationship_property = Analysis.__mapper__.relationships.get("user")
 
-    assert relationship_property is not None, (
-        "user relationship not found"
-    )
-    assert relationship_property.lazy == "selectin", (
-        f"Expected lazy='selectin', got '{relationship_property.lazy}'"
-    )
+    assert relationship_property is not None, "user relationship not found"
+    assert (
+        relationship_property.lazy == "selectin"
+    ), f"Expected lazy='selectin', got '{relationship_property.lazy}'"
 
 
 def test_user_relationship_has_back_populates() -> None:
@@ -1261,9 +1257,7 @@ def test_user_relationship_has_back_populates() -> None:
 
     Verifies that bidirectional relationship is properly configured.
     """
-    relationship_property = (
-        Analysis.__mapper__.relationships.get("user")
-    )
+    relationship_property = Analysis.__mapper__.relationships.get("user")
 
     assert relationship_property is not None
     assert relationship_property.back_populates == "analyses_requested", (
@@ -1341,8 +1335,9 @@ def test_index_ix_analyses_asset_latest_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert "ix_analyses_asset_latest" in indexes, \
-        f"Index 'ix_analyses_asset_latest' not found. Available: {list(indexes.keys())}"
+    assert (
+        "ix_analyses_asset_latest" in indexes
+    ), f"Index 'ix_analyses_asset_latest' not found. Available: {list(indexes.keys())}"
 
 
 def test_index_ix_analyses_pending_exists() -> None:
@@ -1351,8 +1346,9 @@ def test_index_ix_analyses_pending_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert "ix_analyses_pending" in indexes, \
-        f"Index 'ix_analyses_pending' not found. Available: {list(indexes.keys())}"
+    assert (
+        "ix_analyses_pending" in indexes
+    ), f"Index 'ix_analyses_pending' not found. Available: {list(indexes.keys())}"
 
 
 def test_index_ix_analyses_pending_is_partial() -> None:
@@ -1365,9 +1361,10 @@ def test_index_ix_analyses_pending_is_partial() -> None:
 
     assert idx is not None
     # Partial indexes have postgresql_where in dialect_options['postgresql']
-    postgresql_opts = idx.dialect_options.get('postgresql', {})
-    assert postgresql_opts.get('where'), \
-        "Index ix_analyses_pending should have a WHERE clause (partial index)"
+    postgresql_opts = idx.dialect_options.get("postgresql", {})
+    assert postgresql_opts.get(
+        "where"
+    ), "Index ix_analyses_pending should have a WHERE clause (partial index)"
 
 
 def test_index_ix_analyses_user_history_exists() -> None:
@@ -1376,8 +1373,9 @@ def test_index_ix_analyses_user_history_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert "ix_analyses_user_history" in indexes, \
-        f"Index 'ix_analyses_user_history' not found. Available: {list(indexes.keys())}"
+    assert (
+        "ix_analyses_user_history" in indexes
+    ), f"Index 'ix_analyses_user_history' not found. Available: {list(indexes.keys())}"
 
 
 def test_index_ix_analyses_user_history_columns() -> None:
@@ -1400,8 +1398,9 @@ def test_index_ix_analyses_celery_task_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert "ix_analyses_celery_task" in indexes, \
-        f"Index 'ix_analyses_celery_task' not found. Available: {list(indexes.keys())}"
+    assert (
+        "ix_analyses_celery_task" in indexes
+    ), f"Index 'ix_analyses_celery_task' not found. Available: {list(indexes.keys())}"
 
 
 def test_index_ix_analyses_celery_task_is_partial() -> None:
@@ -1414,9 +1413,10 @@ def test_index_ix_analyses_celery_task_is_partial() -> None:
 
     assert idx is not None
     # Partial indexes should have WHERE clause in dialect_options['postgresql']
-    postgresql_opts = idx.dialect_options.get('postgresql', {})
-    assert postgresql_opts.get('where'), \
-        "Index ix_analyses_celery_task should have a WHERE clause (partial index)"
+    postgresql_opts = idx.dialect_options.get("postgresql", {})
+    assert postgresql_opts.get(
+        "where"
+    ), "Index ix_analyses_celery_task should have a WHERE clause (partial index)"
 
 
 def test_index_ix_analyses_severity_completed_exists() -> None:
@@ -1490,15 +1490,13 @@ def test_unique_index_columns() -> None:
 
     assert idx is not None
     column_names = [col.name for col in idx.columns]
-    assert "digital_asset_id" in column_names, (
-        f"Expected digital_asset_id in {column_names}"
-    )
-    assert "analyzer_key" in column_names, (
-        f"Expected analyzer_key in {column_names}"
-    )
-    assert "analyzer_version" in column_names, (
-        f"Expected analyzer_version in {column_names}"
-    )
+    assert (
+        "digital_asset_id" in column_names
+    ), f"Expected digital_asset_id in {column_names}"
+    assert "analyzer_key" in column_names, f"Expected analyzer_key in {column_names}"
+    assert (
+        "analyzer_version" in column_names
+    ), f"Expected analyzer_version in {column_names}"
 
 
 def test_unique_index_is_partial() -> None:
@@ -1514,9 +1512,9 @@ def test_unique_index_is_partial() -> None:
     assert idx is not None
     # Should have WHERE clause for partial uniqueness in dialect_options
     postgresql_opts = idx.dialect_options.get("postgresql", {})
-    assert postgresql_opts.get("where"), (
-        "Unique index should have a WHERE clause (partial unique)"
-    )
+    assert postgresql_opts.get(
+        "where"
+    ), "Unique index should have a WHERE clause (partial unique)"
 
 
 # ===========================================================================
@@ -1532,9 +1530,7 @@ def test_analysis_table_has_five_check_constraints() -> None:
     Verifies that all 5 CHECK constraints are present.
     """
     constraints = list(Analysis.__table__.constraints)  # type: ignore[attr-defined]
-    check_constraints = [
-        c for c in constraints if isinstance(c, CheckConstraint)
-    ]
+    check_constraints = [c for c in constraints if isinstance(c, CheckConstraint)]
 
     assert len(check_constraints) == 5, (
         f"Expected 5 CHECK constraints, got {len(check_constraints)}. "
@@ -1548,12 +1544,12 @@ def test_check_constraint_status_exists() -> None:
     **Validates: R10 AC #1, Design §7.1**
     """
     constraints = {
-        c.name: c for c in Analysis.__table__.constraints if c.name  # type: ignore[attr-defined]
+        c.name: c
+        for c in Analysis.__table__.constraints
+        if c.name  # type: ignore[attr-defined]
     }
     # Constraint names may have prefix added by SQLAlchemy
-    found = any(
-        "status" in name for name in constraints if "ck_analyses" in name
-    )
+    found = any("status" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'status' not found. "
         f"Available: {list(constraints.keys())}"
@@ -1566,13 +1562,11 @@ def test_check_constraint_threat_score_exists() -> None:
     **Validates: R10 AC #2, Design §7.1**
     """
     constraints = {
-        c.name: c for c in Analysis.__table__.constraints if c.name  # type: ignore[attr-defined]
+        c.name: c
+        for c in Analysis.__table__.constraints
+        if c.name  # type: ignore[attr-defined]
     }
-    found = any(
-        "threat_score" in name
-        for name in constraints
-        if "ck_analyses" in name
-    )
+    found = any("threat_score" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'threat_score' not found. "
         f"Available: {list(constraints.keys())}"
@@ -1585,13 +1579,11 @@ def test_check_constraint_confidence_exists() -> None:
     **Validates: R10 AC #3, Design §7.1**
     """
     constraints = {
-        c.name: c for c in Analysis.__table__.constraints if c.name  # type: ignore[attr-defined]
+        c.name: c
+        for c in Analysis.__table__.constraints
+        if c.name  # type: ignore[attr-defined]
     }
-    found = any(
-        "confidence" in name
-        for name in constraints
-        if "ck_analyses" in name
-    )
+    found = any("confidence" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'confidence' not found. "
         f"Available: {list(constraints.keys())}"
@@ -1604,13 +1596,11 @@ def test_check_constraint_severity_exists() -> None:
     **Validates: R10 AC #4, Design §7.1**
     """
     constraints = {
-        c.name: c for c in Analysis.__table__.constraints if c.name  # type: ignore[attr-defined]
+        c.name: c
+        for c in Analysis.__table__.constraints
+        if c.name  # type: ignore[attr-defined]
     }
-    found = any(
-        "severity" in name
-        for name in constraints
-        if "ck_analyses" in name
-    )
+    found = any("severity" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'severity' not found. "
         f"Available: {list(constraints.keys())}"
@@ -1623,13 +1613,11 @@ def test_check_constraint_retry_count_exists() -> None:
     **Validates: R10 AC #5, Design §7.1**
     """
     constraints = {
-        c.name: c for c in Analysis.__table__.constraints if c.name  # type: ignore[attr-defined]
+        c.name: c
+        for c in Analysis.__table__.constraints
+        if c.name  # type: ignore[attr-defined]
     }
-    found = any(
-        "retry_count" in name
-        for name in constraints
-        if "ck_analyses" in name
-    )
+    found = any("retry_count" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'retry_count' not found. "
         f"Available: {list(constraints.keys())}"
@@ -1644,9 +1632,7 @@ def test_analysis_table_has_two_foreign_key_constraints() -> None:
     Verifies that FK constraints for digital_asset_id and requested_by exist.
     """
     constraints = list(Analysis.__table__.constraints)  # type: ignore[attr-defined]
-    fk_constraints = [
-        c for c in constraints if isinstance(c, ForeignKeyConstraint)
-    ]
+    fk_constraints = [c for c in constraints if isinstance(c, ForeignKeyConstraint)]
 
     assert len(fk_constraints) == 2, (
         f"Expected 2 FK constraints, got {len(fk_constraints)}. "
@@ -1660,13 +1646,12 @@ def test_foreign_key_digital_asset_exists() -> None:
     **Validates: R5 AC #1, Design §7.3**
     """
     fk_constraints = [
-        c for c in Analysis.__table__.constraints  # type: ignore[attr-defined]
+        c
+        for c in Analysis.__table__.constraints  # type: ignore[attr-defined]
         if isinstance(c, ForeignKeyConstraint)
     ]
 
-    column_sets = [
-        {col.name for col in fk.columns} for fk in fk_constraints
-    ]
+    column_sets = [{col.name for col in fk.columns} for fk in fk_constraints]
 
     found_asset_fk = any("digital_asset_id" in cols for cols in column_sets)
     assert found_asset_fk, "FK for digital_asset_id not found"
@@ -1678,13 +1663,12 @@ def test_foreign_key_requested_by_exists() -> None:
     **Validates: R5 AC #1, Design §7.3**
     """
     fk_constraints = [
-        c for c in Analysis.__table__.constraints  # type: ignore[attr-defined]
+        c
+        for c in Analysis.__table__.constraints  # type: ignore[attr-defined]
         if isinstance(c, ForeignKeyConstraint)
     ]
 
-    column_sets = [
-        {col.name for col in fk.columns} for fk in fk_constraints
-    ]
+    column_sets = [{col.name for col in fk.columns} for fk in fk_constraints]
 
     found_user_fk = any("requested_by" in cols for cols in column_sets)
     assert found_user_fk, "FK for requested_by not found"
@@ -1700,5 +1684,6 @@ def test_analysis_table_has_primary_key_constraint() -> None:
     constraints = list(Analysis.__table__.constraints)  # type: ignore[attr-defined]
     pk_constraints = [c for c in constraints if isinstance(c, PrimaryKeyConstraint)]
 
-    assert len(pk_constraints) == 1, \
-        f"Expected 1 PK constraint, got {len(pk_constraints)}"
+    assert (
+        len(pk_constraints) == 1
+    ), f"Expected 1 PK constraint, got {len(pk_constraints)}"

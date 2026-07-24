@@ -1,8 +1,7 @@
 """Check how unique index is actually defined."""
 
 from app.models.analysis import Analysis
-import sqlalchemy
-from sqlalchemy import inspect
+
 
 print("=" * 70)
 print("UNIQUE INDEX/CONSTRAINT INSPECTION")
@@ -16,7 +15,7 @@ print(f"   table.constraints: {list(table.constraints)}")
 
 # Method 2: Check for UniqueConstraint in __table_args__
 print("\n2. Checking __table_args__:")
-if hasattr(Analysis, '__table_args__'):
+if hasattr(Analysis, "__table_args__"):
     print(f"   Type: {type(Analysis.__table_args__)}")
     print(f"   Length: {len(Analysis.__table_args__)}")
     for i, arg in enumerate(Analysis.__table_args__):
@@ -31,17 +30,19 @@ for idx in unique_indexes:
     print(f"     Columns: {[c.name for c in idx.columns]}")
     print(f"     Unique: {idx.unique}")
     print(f"     Dialect options: {idx.dialect_options}")
-    print(f"     WHERE clause (postgresql_where): {idx.dialect_options.get('postgresql_where')}")
+    print(
+        f"     WHERE clause (postgresql_where): {idx.dialect_options.get('postgresql_where')}"
+    )
 
 # Method 4: Check the actual migration SQL that would be generated
 print("\n4. Checking what migration would generate:")
-print(f"   The partial unique index is defined as:")
-print(f"   Index(")
-print(f"     'ix_analyses_asset_analyzer_completed',")
-print(f"     'digital_asset_id', 'analyzer_key', 'analyzer_version',")
-print(f"     postgresql_where=\"status = 'completed'\",")
-print(f"     unique=True,")
-print(f"   )")
+print("   The partial unique index is defined as:")
+print("   Index(")
+print("     'ix_analyses_asset_analyzer_completed',")
+print("     'digital_asset_id', 'analyzer_key', 'analyzer_version',")
+print("     postgresql_where=\"status = 'completed'\",")
+print("     unique=True,")
+print("   )")
 
 # This will be picked up by Alembic autogenerate as an Index with unique=True
 

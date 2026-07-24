@@ -479,4 +479,3 @@ class TestOpenAPISchemaGeneration:
         # Should have createdAt and updatedAt in the schema
         # The exact representation may vary based on Pydantic schema generation
         assert len(props) > 0
-

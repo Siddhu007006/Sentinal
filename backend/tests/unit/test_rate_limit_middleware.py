@@ -340,14 +340,10 @@ class TestRateLimitMiddlewareEndpointExclusion:
         # Setup: Set counter very high to exceed limit
         mock_redis.incr.return_value = 100
 
-        client = TestClient(app_with_rate_limit)
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get("/health")
 
-        # Act: Make request to health endpoint
-        response = client.get("/health")
-
-        # Assert: Request succeeds despite high counter
         assert response.status_code == 200
-        # Redis should not have been called
         mock_redis.incr.assert_not_called()
 
     def test_docs_endpoint_not_rate_limited(

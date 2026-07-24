@@ -46,9 +46,7 @@ class TestCreateApp:
 
         # Check that routes are registered
         # Use getattr to get path safely (some routes may not have path attr)
-        route_paths = [
-            getattr(route, "path", "") for route in app.routes
-        ]
+        route_paths = [getattr(route, "path", "") for route in app.routes]
 
         # Should have /api/v1/health from api_v1_router
         assert any("/api/v1" in path for path in route_paths)
@@ -246,4 +244,3 @@ class TestLifespanManagement:
 
         # After exiting, shutdown hooks have executed
         # (Currently no-op, but validates the pattern)
-

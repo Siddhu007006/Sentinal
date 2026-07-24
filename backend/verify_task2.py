@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """Task 2 Verification: Generate Initial Alembic Migration"""
+
 import os
 import py_compile
 
-migration_file = 'migrations/versions/20260719_2056_85764e04d85a_add_uploads_table.py'
+
+migration_file = "migrations/versions/20260719_2056_85764e04d85a_add_uploads_table.py"
 
 print("=" * 70)
 print("TASK 2: GENERATE INITIAL ALEMBIC MIGRATION - VERIFICATION REPORT")
@@ -12,7 +14,7 @@ print()
 
 # AC 1: Migration file created in correct directory
 exists = os.path.exists(migration_file)
-print(f"AC 1 - Migration file created in backend/migrations/versions/")
+print("AC 1 - Migration file created in backend/migrations/versions/")
 print(f"  ✓ File exists: {exists}")
 if exists:
     print(f"  ✓ Path: {migration_file}")
@@ -20,8 +22,10 @@ print()
 
 # AC 2: Filename matches pattern
 filename = os.path.basename(migration_file)
-pattern_match = filename.startswith("20260719_2056_") and filename.endswith("_add_uploads_table.py")
-print(f"AC 2 - Filename matches pattern YYYYMMDD_HHMM_<rev>_add_uploads_table.py")
+pattern_match = filename.startswith("20260719_2056_") and filename.endswith(
+    "_add_uploads_table.py"
+)
+print("AC 2 - Filename matches pattern YYYYMMDD_HHMM_<rev>_add_uploads_table.py")
 print(f"  ✓ Filename: {filename}")
 print(f"  ✓ Pattern match: {pattern_match}")
 print()
@@ -29,18 +33,18 @@ print()
 # AC 3: Syntax valid
 try:
     py_compile.compile(migration_file, doraise=True)
-    print(f"AC 3 - File is syntactically valid Python")
-    print(f"  ✓ py_compile: PASS")
+    print("AC 3 - File is syntactically valid Python")
+    print("  ✓ py_compile: PASS")
 except Exception as e:
-    print(f"AC 3 - File is syntactically valid Python")
+    print("AC 3 - File is syntactically valid Python")
     print(f"  ✗ py_compile: FAIL - {e}")
 print()
 
 # AC 4-8: File can be imported and contains required functions/metadata
 with open(migration_file) as f:
     content = f.read()
-    
-print(f"AC 4-8 - Migration metadata and functions")
+
+print("AC 4-8 - Migration metadata and functions")
 checks = {
     "revision: str = '85764e04d85a'": "✓ revision ID present (85764e04d85a)",
     "down_revision: str | Sequence[str] | None = 'de771966819d'": "✓ down_revision = de771966819d (E3.T3)",
@@ -68,9 +72,20 @@ else:
     print("  ✗ Missing table creation")
 
 # Check columns
-columns_to_check = ['user_id', 'original_filename', 'storage_key', 'content_type', 
-                     'file_size_bytes', 'checksum_sha256', 'upload_status', 'completed_at', 'id']
-cols_found = [col for col in columns_to_check if f"'{col}'" in content or f'"{col}"' in content]
+columns_to_check = [
+    "user_id",
+    "original_filename",
+    "storage_key",
+    "content_type",
+    "file_size_bytes",
+    "checksum_sha256",
+    "upload_status",
+    "completed_at",
+    "id",
+]
+cols_found = [
+    col for col in columns_to_check if f"'{col}'" in content or f'"{col}"' in content
+]
 print(f"  ✓ Contains {len(cols_found)}/{len(columns_to_check)} required columns")
 for col in cols_found:
     print(f"    - {col}")

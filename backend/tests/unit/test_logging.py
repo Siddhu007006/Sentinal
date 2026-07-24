@@ -450,9 +450,7 @@ class TestRequestLifecycleLogging:
 
             # Find the request_started log
             started_logs = [
-                json.loads(line)
-                for line in log_lines
-                if "request_started" in line
+                json.loads(line) for line in log_lines if "request_started" in line
             ]
             assert len(started_logs) > 0
 
@@ -492,9 +490,7 @@ class TestRequestLifecycleLogging:
 
             # Find the request_completed log
             completed_logs = [
-                json.loads(line)
-                for line in log_lines
-                if "request_completed" in line
+                json.loads(line) for line in log_lines if "request_completed" in line
             ]
             assert len(completed_logs) > 0
 

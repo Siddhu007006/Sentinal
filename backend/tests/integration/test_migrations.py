@@ -40,7 +40,7 @@ def database_url() -> str:
     # Convert async driver to sync for migration testing
     if "postgresql+asyncpg://" in url:
         url = url.replace("postgresql+asyncpg://", "postgresql://")
-    
+
     # Test if connection is possible
     try:
         engine = create_engine(url)
@@ -49,7 +49,7 @@ def database_url() -> str:
         engine.dispose()
     except Exception:
         pytest.skip("Database connection failed - PostgreSQL not running")
-    
+
     return url
 
 
@@ -305,9 +305,7 @@ def test_alembic_version_table_exists_after_upgrade(
             )
         )
         table_exists = result.scalar()
-        assert (
-            table_exists
-        ), "alembic_version table does not exist after upgrade head"
+        assert table_exists, "alembic_version table does not exist after upgrade head"
 
 
 # ===========================================================================

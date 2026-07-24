@@ -676,8 +676,9 @@ async def test_created_at_and_updated_at_set_by_database(
     if db_session is None:
         pytest.skip("Database not available")
 
-    from app.models.user import User
     from datetime import datetime
+
+    from app.models.user import User
 
     user = User(
         email="timestamps@example.com",

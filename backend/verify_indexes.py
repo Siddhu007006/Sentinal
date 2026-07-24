@@ -2,19 +2,20 @@
 
 from app.models.analysis import Analysis
 
+
 print("=" * 70)
 print("INDEX VERIFICATION AGAINST DESIGN §6")
 print("=" * 70)
 
 indexes = list(Analysis.__table__.indexes)
 print(f"\n✓ Total indexes exposed by SQLAlchemy: {len(indexes)}")
-print(f"✓ Design specifies: 8 indexes\n")
+print("✓ Design specifies: 8 indexes\n")
 
 print("Indexes found in implementation:")
 print("-" * 70)
 for i, idx in enumerate(indexes, 1):
     is_unique = idx.unique
-    is_partial = idx.dialect_options.get('postgresql_where') is not None
+    is_partial = idx.dialect_options.get("postgresql_where") is not None
     flags = []
     if is_unique:
         flags.append("UNIQUE")
@@ -64,7 +65,9 @@ elif extra:
     print("   CLASSIFICATION: Category 2 (Specification Inconsistency)")
     print("   ACTION: Clarify Design §6 or remove extra indexes")
 else:
-    print(f"\n✅ PERFECT MATCH: All {len(impl_names)} indexes match Design specification")
+    print(
+        f"\n✅ PERFECT MATCH: All {len(impl_names)} indexes match Design specification"
+    )
     print("   CLASSIFICATION: No issue detected")
     print("   STATUS: Ready for T5 migration generation")
 
@@ -80,16 +83,16 @@ if unique_idx:
         print(f"  - {idx.name}")
         cols = [c.name for c in idx.columns]
         print(f"    Columns: {cols}")
-        where = idx.dialect_options.get('postgresql_where')
+        where = idx.dialect_options.get("postgresql_where")
         print(f"    WHERE clause: {where}")
 
 # Verify partial indexes
-partial_idx = [idx for idx in indexes if idx.dialect_options.get('postgresql_where')]
+partial_idx = [idx for idx in indexes if idx.dialect_options.get("postgresql_where")]
 print(f"\nPartial indexes found: {len(partial_idx)}")
 if partial_idx:
     for idx in partial_idx:
         print(f"  - {idx.name}")
-        where = idx.dialect_options.get('postgresql_where')
+        where = idx.dialect_options.get("postgresql_where")
         print(f"    WHERE clause: {where}")
 
 print("\n" + "=" * 70)

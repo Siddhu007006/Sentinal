@@ -10,11 +10,10 @@ Requirement: R1 (Export Database Dependency)
 import inspect
 from typing import get_type_hints
 
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.core.dependencies import get_db_session
-from app.infrastructure.database.session import get_db_session as get_db_session_original
+from app.infrastructure.database.session import (
+    get_db_session as get_db_session_original,
+)
 
 
 class TestGetDbSessionExport:
@@ -23,7 +22,7 @@ class TestGetDbSessionExport:
     def test_get_db_session_is_exported(self) -> None:
         """Verify get_db_session is exported from app.core.dependencies."""
         from app.core.dependencies import get_db_session as exported_func
-        
+
         assert exported_func is not None
         assert callable(exported_func)
 
@@ -39,11 +38,11 @@ class TestGetDbSessionExport:
     def test_get_db_session_type_hints_preserved(self) -> None:
         """Verify type hints are preserved in the export."""
         hints = get_type_hints(get_db_session)
-        
+
         # Should have 'settings' parameter and 'return' type
         assert "settings" in hints
         assert "return" in hints
-        
+
         # Return type should be an AsyncGenerator of AsyncSession
         return_type_str = str(hints["return"])
         assert "AsyncGenerator" in return_type_str
@@ -52,17 +51,17 @@ class TestGetDbSessionExport:
     def test_get_db_session_signature(self) -> None:
         """Verify the function signature is as expected."""
         sig = inspect.signature(get_db_session)
-        
+
         # Should have 'settings' parameter
         assert "settings" in sig.parameters
-        
+
         # Should have return annotation
         assert sig.return_annotation is not None
 
     def test_get_db_session_in_all_exports(self) -> None:
         """Verify get_db_session is in __all__ list."""
         from app.core import dependencies
-        
+
         assert hasattr(dependencies, "__all__")
         assert "get_db_session" in dependencies.__all__
 
@@ -75,7 +74,7 @@ class TestGetDbSessionExport:
         """Test that the import from dependencies module works."""
         # This is the recommended way for route handlers
         from app.core.dependencies import get_db_session as db_dep
-        
+
         assert db_dep is not None
         assert callable(db_dep)
 
@@ -88,7 +87,7 @@ class TestGetDbSessionExport:
             get_request_context,
             get_settings,
         )
-        
+
         assert get_db_session is not None
         assert get_logger is not None
         assert get_request_context is not None
@@ -98,5 +97,5 @@ class TestGetDbSessionExport:
         """Verify the application can start with the export."""
         # This would catch any import-time errors
         from app.main import app
-        
+
         assert app is not None

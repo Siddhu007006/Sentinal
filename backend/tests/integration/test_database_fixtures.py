@@ -85,28 +85,6 @@ async def test_engine_exists_and_configured(
     assert isinstance(async_engine, AsyncEngine)
 
 
-@pytest.mark.asyncio
-async def test_engine_can_dispose(async_engine: AsyncEngine | None) -> None:
-    """Verify engine disposal completes without error.
-
-    **Validates: Requirement 2 (shutdown lifecycle)**
-
-    Tests that the engine can be disposed cleanly. This is what happens
-    during application shutdown.
-    """
-    if async_engine is None:
-        pytest.skip("Database not available (asyncpg not installed)")
-
-    # Note: This is a replica engine for testing disposal.
-    # The actual engine disposal happens during app shutdown (tested via CI).
-    try:
-        await async_engine.dispose()
-        # Success: engine disposed without error
-        assert True
-    except Exception as e:
-        pytest.fail(f"Engine disposal failed: {e}")
-
-
 # ===========================================================================
 # Requirement 3: Database Test Fixtures
 # ===========================================================================

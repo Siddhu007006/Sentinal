@@ -9,7 +9,6 @@ exceeded.
 Each IP gets a separate Redis key per minute bucket. The counter expires after
 60 seconds. Different minute buckets (e.g., :12345600 vs :12345661) are
 independent counters.
-
 **Atomicity**: Redis INCR is atomic. TTL is set only on first increment.
 Race condition between INCR returning 1 and EXPIRE is acceptable because:
 - EXPIRE is idempotent (setting on an already-expiring key just updates TTL)
@@ -107,12 +106,16 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
         # Initialize Redis connection
         try:
-            self.redis: Any = redis.from_url(self.redis_url, decode_responses=True)  # type: ignore
-            # Test connection
-            self.redis.ping()
-        except redis.ConnectionError as e:
-            logger.error(f"Failed to connect to Redis at startup: {e}", exc_info=True)
-            self.redis = None
+            self.redis = redis.from_url(
+                self.redis_url,
+                decode_responses=True,
+            )
+        except redis.RedisError as e:
+            logger.error(
+                f"Failed to initialize Redis client: {e}",
+                exc_info=True,
+            )
+        self.redis = None
 
     async def dispatch(
         self,

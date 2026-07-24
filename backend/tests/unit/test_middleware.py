@@ -289,9 +289,7 @@ class TestCORSMiddleware:
         assert response.status_code == 200
         # Response should allow the requested headers
         if "access-control-allow-headers" in response.headers:
-            allowed_headers = response.headers[
-                "access-control-allow-headers"
-            ].lower()
+            allowed_headers = response.headers["access-control-allow-headers"].lower()
             assert "authorization" in allowed_headers
             assert "x-request-id" in allowed_headers
 
@@ -371,4 +369,3 @@ class TestMiddlewareIntegration:
         assert "x-request-id" in response.headers
         # Response should still have CORS headers if needed
         # (CORS middleware runs regardless of response status)
-

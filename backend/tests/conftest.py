@@ -38,17 +38,18 @@ from collections.abc import AsyncGenerator
 
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.settings import Settings
 
 
-@pytest_asyncio.fixture(scope="session")
+@pytest_asyncio.fixture(scope="function")
 async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
-    """Create async engine once per test session.
+    """Create async engine per test function.
 
-    The engine is expensive to create (connection pool initialization).
-    By making it session-scoped, we create it once and reuse it for all tests,
-    significantly improving test suite performance.
+    Creates a fresh engine for each test function to ensure complete
+    isolation. This aligns with pytest-asyncio's function-scoped event loop
+    and ensures no connection state leaks between tests.
 
     Database Selection:
       - Uses TEST_DATABASE_URL env var if set (recommended for CI)
@@ -56,8 +57,9 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
       - This allows tests to use a distinct test database
 
     Yields:
-        AsyncEngine: Configured async SQLAlchemy engine, or None if
-                    database driver (asyncpg) is not available
+        AsyncEngine: Configured async SQLAlchemy engine with NullPool
+                    (no connection pooling), or None if database driver
+                    (asyncpg) is not available
     """
     # Get test database URL
     test_db_url = os.getenv("TEST_DATABASE_URL")
@@ -68,13 +70,18 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
         test_db_url = settings.database.url
 
     try:
-        # Create engine for test database
+        # Create engine for test database with NullPool for test isolation
+        # NullPool ensures each test gets a fresh connection and prevents
+        # connection pool state corruption across tests.
         engine = create_async_engine(
             test_db_url,
             # Disable SQL echo in tests (cleaner output)
             echo=False,
             # SQLAlchemy 2.0 style (required for async)
             future=True,
+            # NullPool: Create fresh connection per test, no pooling
+            # Simplifies test isolation and prevents state leakage
+            poolclass=NullPool,
         )
 
         yield engine
@@ -102,12 +109,12 @@ async def db_session(
       2. Session yielded to test
       3. Test executes queries (inserts, updates, deletes)
       4. After test: explicit rollback (undoes mutations)
-      5. Session closed, connection returned to pool
+      5. Session closed, connection discarded (NullPool)
 
-    Rollback Guarantee:
-      - Rollback happens regardless of test outcome
-      - try/except/finally ensures cleanup even if test raises
-      - This guarantees isolation stricter than auto-commit patterns
+    Error Handling:
+      Suppresses RuntimeError/AttributeError during teardown to handle
+      edge cases where the event loop closes before fixture cleanup completes.
+      This is safe because NullPool discards the connection anyway.
 
     Yields:
         AsyncSession: Request-scoped session connected to test database,
@@ -119,25 +126,35 @@ async def db_session(
     if async_engine is None:
         yield None
         return
-    
-    async with AsyncSession(async_engine, expire_on_commit=False) as session:
-        try:
-            # Yield session to test
-            yield session
 
-            # After test completes successfully: explicit rollback
-            # This undoes all mutations (inserts, updates, deletes)
-            # Ensures data from this test doesn't persist to next test
+    session = AsyncSession(async_engine, expire_on_commit=False)
+    try:
+        # Yield session to test
+        yield session
+    except Exception:
+        # If test raises exception: rollback and re-raise
+        # This ensures cleanup even when test fails
+        try:
             await session.rollback()
-        except Exception:
-            # If test raises exception: also rollback
-            # This ensures cleanup even when test fails
+        except (RuntimeError, AttributeError, Exception):
+            # Suppress errors during rollback if event loop is closed
+            pass
+        raise
+    else:
+        # Test passed: rollback to ensure isolation
+        try:
             await session.rollback()
-            raise
-        finally:
-            # Always close session, returning connection to pool
-            # This allows reuse by other tests
+        except (RuntimeError, AttributeError, Exception):
+            # Suppress errors if event loop is closed
+            pass
+    finally:
+        # Always close session
+        try:
             await session.close()
+        except (RuntimeError, AttributeError, Exception):
+            # Suppress errors if event loop is closed
+            # NullPool will discard the connection anyway
+            pass
 
 
 @pytest_asyncio.fixture

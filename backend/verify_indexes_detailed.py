@@ -1,7 +1,9 @@
 """Detailed index verification including unique constraints."""
 
-from app.models.analysis import Analysis
 from sqlalchemy.schema import UniqueConstraint
+
+from app.models.analysis import Analysis
+
 
 print("=" * 70)
 print("COMPREHENSIVE INDEX & CONSTRAINT VERIFICATION")
@@ -11,7 +13,9 @@ print("=" * 70)
 indexes = list(Analysis.__table__.indexes)
 print(f"\n✓ Indexes via __table__.indexes: {len(indexes)}")
 for idx in indexes:
-    print(f"  - {idx.name}: unique={idx.unique}, partial={bool(idx.dialect_options.get('postgresql_where'))}")
+    print(
+        f"  - {idx.name}: unique={idx.unique}, partial={bool(idx.dialect_options.get('postgresql_where'))}"
+    )
 
 # Get all constraints
 constraints = list(Analysis.__table__.constraints)
@@ -24,7 +28,7 @@ unique_constraints = [c for c in constraints if isinstance(c, UniqueConstraint)]
 print(f"\n✓ Unique constraints: {len(unique_constraints)}")
 for uc in unique_constraints:
     cols = [col.name for col in uc.columns]
-    where = uc.dialect_options.get('postgresql_where')
+    where = uc.dialect_options.get("postgresql_where")
     print(f"  - {uc.name}: columns={cols}, WHERE={where}")
 
 # SQLAlchemy note

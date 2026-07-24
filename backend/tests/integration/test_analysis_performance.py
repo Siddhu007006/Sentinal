@@ -506,9 +506,7 @@ async def test_insert_1000_analyses_performance(
     elapsed = end_time - start_time
 
     # Should complete in < 1 second (5 seconds is generous for test environment)
-    assert (
-        elapsed < 5.0
-    ), f"Insert 1000 analyses took {elapsed:.2f}s, expected < 5s"
+    assert elapsed < 5.0, f"Insert 1000 analyses took {elapsed:.2f}s, expected < 5s"
 
 
 # ===========================================================================

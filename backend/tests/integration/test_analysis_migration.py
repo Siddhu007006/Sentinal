@@ -258,12 +258,10 @@ async def test_schema_matches_orm_model(
 
     # Verify NOT NULL constraints
     assert not schema["id"]["nullable"], "id should be NOT NULL"
-    assert (
-        not schema["digital_asset_id"]["nullable"]
-    ), "digital_asset_id should be NOT NULL"
-    assert (
-        not schema["requested_by"]["nullable"]
-    ), "requested_by should be NOT NULL"
+    assert not schema["digital_asset_id"][
+        "nullable"
+    ], "digital_asset_id should be NOT NULL"
+    assert not schema["requested_by"]["nullable"], "requested_by should be NOT NULL"
     assert not schema["status"]["nullable"], "status should be NOT NULL"
 
     # Verify nullable fields
@@ -424,9 +422,9 @@ async def test_foreign_key_constraints_created_after_migration(
     fk_constraints = [row[0] for row in result.fetchall()]
 
     # Should have 2 FK constraints
-    assert len(fk_constraints) >= 2, (
-        f"Expected at least 2 FK constraints, got {len(fk_constraints)}"
-    )
+    assert (
+        len(fk_constraints) >= 2
+    ), f"Expected at least 2 FK constraints, got {len(fk_constraints)}"
 
     # Verify FK names (alembic-generated names vary, but contain key references)
     constraint_names = " ".join(fk_constraints)

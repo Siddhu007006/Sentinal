@@ -11,11 +11,9 @@ Traces to: 07-Backend-Development-Standards §8 (ORM testing patterns)
 Traces to: 11-Testing-Strategy §6 (unit test patterns)
 """
 
-from datetime import datetime
 from uuid import UUID, uuid4
 
-import pytest
-from app.models.digital_asset import DigitalAsset, AssetType
+from app.models.digital_asset import AssetType, DigitalAsset
 
 
 # ===========================================================================
@@ -338,13 +336,19 @@ def test_mapper_includes_all_core_columns() -> None:
     """
     mapper = DigitalAsset.__mapper__
     column_names = [col.name for col in mapper.columns]
-    
+
     # Verify core columns exist
     expected_columns = {
-        "user_id", "asset_type", "raw_value", "normalized_value",
-        "is_active", "id", "created_at", "updated_at"
+        "user_id",
+        "asset_type",
+        "raw_value",
+        "normalized_value",
+        "is_active",
+        "id",
+        "created_at",
+        "updated_at",
     }
-    
+
     for col in expected_columns:
         assert col in column_names, f"Column {col} not found in mapper"
 
@@ -707,8 +711,6 @@ def test_digital_asset_inactive_state() -> None:
     )
 
     assert asset.is_active is False
-
-
 
 
 # ===========================================================================
