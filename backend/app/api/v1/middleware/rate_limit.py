@@ -49,7 +49,12 @@ from app.core.settings import RateLimitSettings
 logger = logging.getLogger(__name__)
 
 # Paths excluded from rate limiting (health checks, docs, etc.)
+# Supports both test environment (unversioned) and production (versioned paths)
 DEFAULT_EXCLUDE_PATHS = [
+    "/health",
+    "/docs",
+    "/redoc",
+    "/openapi.json",
     "/api/v1/health",
     "/api/v1/docs",
     "/api/v1/redoc",
@@ -124,8 +129,6 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             Response (429 if rate limited, or next handler's response)
         """
         # Skip rate limiting for excluded paths
-        print(f"EXCLUDE={self.exclude_paths}")
-        print(f"PATH={request.url.path}")
         if self._should_exclude_path(request.url.path):
             response = await call_next(request)
             return response

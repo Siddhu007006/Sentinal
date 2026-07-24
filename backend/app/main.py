@@ -124,28 +124,34 @@ def create_app() -> FastAPI:
     )
 
     # --- Middleware ---
-    # Registration order matters: middleware executes in reverse order
+    # Registration order matters: middleware executes in REVERSE order
     # of registration (last registered = outermost = executes first).
     #
     # Execution order for an inbound request:
-    #   1. CORS (outermost — must run before anything else)
+    #   1. CORS (outermost — must run first for CORS headers)
     #   2. RequestIdMiddleware (sets request ID for all downstream)
     #   3. RateLimitMiddleware (uses request ID for correlation)
     #
-    # RequestIdMiddleware is registered first, so it executes LAST (innermost)
-    # RateLimitMiddleware is registered second, so it executes in the middle
-    # CORS is registered last, so it wraps everything (executes first, outermost)
+    # To achieve this execution order, register in REVERSE:
+    #   - Register RateLimitMiddleware first → executes last (innermost)
+    #   - Register RequestIdMiddleware second → executes middle
+    #   - Register CORS last → executes first (outermost)
+    #
+    # This ensures:
+    # - CORS runs first (allows preflight requests through)
+    # - RequestIdMiddleware sets request.state.request_id
+    # - RateLimitMiddleware can access request.state.request_id
     #
     # See: 07-Backend-Development-Standards §4 (middleware).
     # See: 08-Security-Architecture §7 (CORS and rate limiting).
-
-    application.add_middleware(RequestIdMiddleware)
 
     application.add_middleware(
         RateLimitMiddleware,
         settings=settings.rate_limit,
         redis_url=settings.queue.broker_url,
     )
+
+    application.add_middleware(RequestIdMiddleware)
 
     application.add_middleware(
         CORSMiddleware,
