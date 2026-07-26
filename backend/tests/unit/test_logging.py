@@ -196,7 +196,7 @@ class TestSensitiveDataFilter:
             args=(),
             exc_info=None,
         )
-        record.fields = {"email": "user@example.com", "password": "secret123"}  # type: ignore[attr-defined]
+        record.fields = {"email": "user@example.com", "password": "secret123"}
 
         log_filter.filter(record)
 
@@ -215,7 +215,7 @@ class TestSensitiveDataFilter:
             args=(),
             exc_info=None,
         )
-        record.fields = {"api_key": "secret-key", "access_token": "bearer-token"}  # type: ignore[attr-defined]
+        record.fields = {"api_key": "secret-key", "access_token": "bearer-token"}
 
         log_filter.filter(record)
 
@@ -234,7 +234,7 @@ class TestSensitiveDataFilter:
             args=(),
             exc_info=None,
         )
-        record.fields = {  # type: ignore[attr-defined]
+        record.fields = {
             "database": {"host": "localhost", "password": "db-secret"},
             "api": {"url": "https://api.example.com", "secret_key": "api-secret"},
         }

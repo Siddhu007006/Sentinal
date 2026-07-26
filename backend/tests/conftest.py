@@ -43,6 +43,14 @@ from sqlalchemy.pool import NullPool
 from app.core.settings import Settings
 
 
+# Set ENVIRONMENT=test for all test runs
+# This ensures middleware that requires external services (e.g., Redis for rate limiting)
+# is not registered during unit tests
+os.environ.setdefault("ENVIRONMENT", "test")
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+
+
 @pytest_asyncio.fixture(scope="function")
 async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
     """Create async engine per test function.
@@ -83,6 +91,13 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
             # Simplifies test isolation and prevents state leakage
             poolclass=NullPool,
         )
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except (ConnectionRefusedError, OSError, OperationalError):
+            await engine.dispose()
+            yield None
+            return
 
         yield engine
 

@@ -21,6 +21,7 @@ from app.api.v1.middleware.rate_limit import RateLimitMiddleware
 from app.api.v1.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.dependencies import get_logger, get_settings
+from app.core.settings import EnvironmentType
 from app.infrastructure.database.session import _engine
 from app.infrastructure.logging import configure_logging
 
@@ -130,7 +131,7 @@ def create_app() -> FastAPI:
     # Execution order for an inbound request:
     #   1. CORS (outermost — must run first for CORS headers)
     #   2. RequestIdMiddleware (sets request ID for all downstream)
-    #   3. RateLimitMiddleware (uses request ID for correlation)
+    #   3. RateLimitMiddleware (uses request ID for correlation) — SKIP IN TEST
     #
     # To achieve this execution order, register in REVERSE:
     #   - Register RateLimitMiddleware first → executes last (innermost)
@@ -145,11 +146,14 @@ def create_app() -> FastAPI:
     # See: 07-Backend-Development-Standards §4 (middleware).
     # See: 08-Security-Architecture §7 (CORS and rate limiting).
 
-    application.add_middleware(
-        RateLimitMiddleware,
-        settings=settings.rate_limit,
-        redis_url=settings.queue.broker_url,
-    )
+    # Skip rate limiting during tests (no Redis required for unit tests)
+    # Tests that explicitly need rate limiting can use integration tests with Redis
+    if settings.environment != EnvironmentType.TEST:
+        application.add_middleware(
+            RateLimitMiddleware,
+            settings=settings.rate_limit,
+            redis_url=settings.queue.broker_url,
+        )
 
     application.add_middleware(RequestIdMiddleware)
 

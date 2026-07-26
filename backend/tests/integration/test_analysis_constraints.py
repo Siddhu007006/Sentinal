@@ -373,7 +373,7 @@ async def test_check_constraint_rejects_invalid_status(
         analyzer_version="v1.0.0",
         analyzer_slugs=["analyzer"],
     )
-    analysis.status = "invalid_status"  # type: ignore[assignment]
+    analysis.status = "invalid_status"
 
     db_session.add(analysis)
 
@@ -624,7 +624,7 @@ async def test_check_constraint_rejects_invalid_severity(
         threat_score=0.8,
         confidence=0.9,
     )
-    analysis.severity = "UNKNOWN"  # type: ignore[assignment]
+    analysis.severity = "UNKNOWN"
 
     db_session.add(analysis)
 
@@ -685,7 +685,7 @@ async def test_check_constraint_rejects_negative_retry_count(
         analyzer_version="v1.0.0",
         analyzer_slugs=["analyzer"],
     )
-    analysis.retry_count = -1  # type: ignore[assignment]
+    analysis.retry_count = -1
 
     db_session.add(analysis)
 

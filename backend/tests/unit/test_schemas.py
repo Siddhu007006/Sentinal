@@ -14,7 +14,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.base import BaseSchema
-from app.schemas.error import ErrorDetail, ErrorResponse
+from app.schemas.error import ErrorBody, ErrorDetail, ErrorResponse
 from app.schemas.health import HealthResponse
 from app.schemas.mixins import TimestampMixin
 from app.schemas.pagination import PaginatedResponse
@@ -109,7 +109,10 @@ class TestErrorResponse:
     def test_error_response_structure(self) -> None:
         """Verify ErrorResponse includes all required fields."""
         resp = ErrorResponse(
-            error={"code": "test_error", "message": "Test message"},
+            error=ErrorBody(
+                code="test_error",
+                message="Test message",
+                ),
             request_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
             timestamp=datetime(2025, 1, 28, 10, 15, 30, tzinfo=UTC),
         )
@@ -121,7 +124,7 @@ class TestErrorResponse:
     def test_error_response_request_id_alias(self) -> None:
         """Verify request_id serializes with requestId alias."""
         resp = ErrorResponse(
-            error={"code": "test", "message": "Test"},
+            error=ErrorBody(code="test", message="Test") ,
             request_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
             timestamp=datetime(2025, 1, 28, 10, 15, 30, tzinfo=UTC),
         )

@@ -14,6 +14,7 @@ Traces to: 11-Testing-Strategy §6 (integration test patterns)
 
 import os
 from datetime import UTC
+from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -706,7 +707,7 @@ async def test_not_null_constraint_on_asset_type(
 
     asset = DigitalAsset(
         user_id=user.id,
-        asset_type=None,  # type: ignore
+        asset_type=None,
         raw_value="test",
         normalized_value="test",
     )
@@ -745,7 +746,7 @@ async def test_not_null_constraint_on_normalized_value(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
         raw_value="example.com",
-        normalized_value=None,  # type: ignore
+        normalized_value=None,
     )
 
     db_session.add(asset)
@@ -1091,7 +1092,8 @@ async def test_asset_can_store_metadata_json(
     # Verify metadata was stored
     assert asset.metadata_json is not None
     assert asset.metadata_json["tld"] == "com"
-    assert "suspicious" in asset.metadata_json["tags"]
+    tags = cast("list[str]", asset.metadata_json["tags"])
+    assert "suspicious" in tags
 
 
 # ===========================================================================

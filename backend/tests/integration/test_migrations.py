@@ -54,7 +54,7 @@ def database_url() -> str:
 
 
 @pytest.fixture
-def alembic_env(database_url: str) -> dict:
+def alembic_env(database_url: str) -> dict[str,str]:
     """Set up environment variables for Alembic commands."""
     env = os.environ.copy()
     env["DATABASE_MIGRATION_URL"] = database_url
@@ -63,7 +63,7 @@ def alembic_env(database_url: str) -> dict:
 
 def run_alembic_command(
     command: list[str],
-    env: dict,
+    env: dict[str,str],
 ) -> tuple[int, str, str]:
     """Execute an Alembic command and return exit code and output.
 
@@ -135,7 +135,7 @@ def get_alembic_version_count(database_url: str) -> int:
 )
 def test_upgrade_head_on_clean_database(
     database_url: str,
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test R2 AC #1: upgrade head succeeds on clean database.
 
@@ -163,7 +163,7 @@ def test_upgrade_head_on_clean_database(
 )
 def test_upgrade_head_idempotent(
     database_url: str,
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test R2 AC #4: re-running upgrade head is a no-op.
 
@@ -211,7 +211,7 @@ def test_upgrade_head_idempotent(
 )
 def test_downgrade_base_on_clean_database(
     database_url: str,
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test R3 AC #3: downgrade base succeeds on clean database.
 
@@ -236,7 +236,7 @@ def test_downgrade_base_on_clean_database(
 )
 def test_downgrade_base_idempotent(
     database_url: str,
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test R3 AC #4: re-running downgrade base is a no-op.
 
@@ -272,7 +272,7 @@ def test_downgrade_base_idempotent(
 )
 def test_alembic_version_table_exists_after_upgrade(
     database_url: str,
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test R2 AC #5: alembic_version table state is consistent.
 
@@ -318,7 +318,7 @@ def test_alembic_version_table_exists_after_upgrade(
     reason="DATABASE_MIGRATION_URL not configured",
 )
 def test_alembic_can_parse_environment_url(
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test that Alembic can parse DATABASE_MIGRATION_URL from environment.
 
@@ -343,7 +343,7 @@ def test_alembic_can_parse_environment_url(
 )
 def test_env_py_imports_base_metadata(
     database_url: str,
-    alembic_env: dict,
+    alembic_env: dict[str,str],
 ) -> None:
     """Test that env.py can import Base metadata without errors.
 

@@ -69,7 +69,8 @@ class TestSettingsValidConfiguration:
         settings = Settings()
 
         # Check defaults
-        assert settings.environment == "development"
+        # Note: ENVIRONMENT=test is set by conftest.py for all tests
+        assert settings.environment == "test"
         assert settings.security.jwt_algorithm == "HS256"
         assert settings.security.jwt_access_token_expire_minutes == 15
         assert settings.security.jwt_refresh_token_expire_days == 7
@@ -317,7 +318,7 @@ class TestSettingsImmutability:
 
         # Attempt to modify environment field
         with pytest.raises(ValidationError) as exc_info:
-            settings.environment = "hacked"  # type: ignore[misc]
+            settings.environment = "hacked"  # type: ignore[misc,assignment]
 
         assert (
             "frozen" in str(exc_info.value).lower()
@@ -351,7 +352,7 @@ class TestSettingsImmutability:
         # Note: Pydantic v2 doesn't automatically freeze nested models
         # This test documents current behavior
         try:
-            settings.database.url = "hacked"  # type: ignore[misc]
+            settings.database.url = "hacked"
             # If this doesn't raise, nested settings are not frozen
             # This is acceptable since root Settings is frozen
         except (ValidationError, AttributeError):

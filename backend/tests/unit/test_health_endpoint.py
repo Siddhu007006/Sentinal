@@ -21,7 +21,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from app.main import app, create_app
+from app.main import create_app
 
 
 class TestHealthEndpointBasic:
@@ -35,7 +35,7 @@ class TestHealthEndpointBasic:
         with TestClient(app) as client:
             response = client.get("/api/v1/health")
         assert response.status_code == 200
-    
+
     def test_health_endpoint_returns_json(self) -> None:
         """Health endpoint returns JSON content type."""
         app = create_app()

@@ -109,13 +109,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             self.redis = redis.from_url(
                 self.redis_url,
                 decode_responses=True,
-            )
+            ) # type: ignore[no-untyped-call]
         except redis.RedisError as e:
             logger.error(
                 f"Failed to initialize Redis client: {e}",
                 exc_info=True,
             )
-        self.redis = None
+            self.redis = None
 
     async def dispatch(
         self,

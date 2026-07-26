@@ -93,13 +93,12 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 3
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Act: Make request
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Assert: Request succeeds
         assert response.status_code == 200
@@ -115,13 +114,12 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Act: Make request
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Assert: Request is rate limited
         assert response.status_code == 429
@@ -138,12 +136,11 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         assert response.status_code == 429
         data = response.json()
@@ -164,12 +161,11 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         assert response.status_code == 429
         data = response.json()
@@ -186,12 +182,11 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         assert response.status_code == 429
         data = response.json()
@@ -211,12 +206,11 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         assert response.status_code == 429
         assert "retry-after" in response.headers
@@ -231,12 +225,11 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         assert response.status_code == 429
         # Value should be numeric (seconds) not a date
@@ -257,11 +250,11 @@ class TestRateLimitMiddlewareRedisInteraction:
         mock_redis.incr.return_value = 1
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-        client_ip = "192.168.1.1"
+        with TestClient(app_with_rate_limit) as client:
+            client_ip = "192.168.1.1"
 
         # Make request
-        client.get("/api/test", headers={"X-Forwarded-For": client_ip})
+            client.get("/api/test", headers={"X-Forwarded-For": client_ip})
 
         # Assert: incr was called
         mock_redis.incr.assert_called()
@@ -279,10 +272,9 @@ class TestRateLimitMiddlewareRedisInteraction:
         mock_redis.incr.return_value = 1
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Act: Make request
-        client.get("/api/test", headers={"X-Forwarded-For": "192.168.1.1"})
+            client.get("/api/test", headers={"X-Forwarded-For": "192.168.1.1"})
 
         # Assert: expire was called with 60 seconds
         mock_redis.expire.assert_called()
@@ -299,10 +291,9 @@ class TestRateLimitMiddlewareRedisInteraction:
         mock_redis.incr.return_value = 3
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Act: Make request
-        client.get("/api/test", headers={"X-Forwarded-For": "192.168.1.1"})
+            client.get("/api/test", headers={"X-Forwarded-For": "192.168.1.1"})
 
         # Assert: expire was NOT called
         mock_redis.expire.assert_not_called()
@@ -316,13 +307,12 @@ class TestRateLimitMiddlewareRedisInteraction:
         # Setup: Redis connection error
         mock_redis.incr.side_effect = redis.ConnectionError("Connection refused")
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Act: Make request despite Redis error
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Assert: Request succeeds (fail-open)
         assert response.status_code == 200
@@ -354,9 +344,8 @@ class TestRateLimitMiddlewareEndpointExclusion:
         """/docs endpoint is excluded from rate limiting."""
         mock_redis.incr.return_value = 100
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get("/docs")
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get("/docs")
 
         assert response.status_code == 200
         mock_redis.incr.assert_not_called()
@@ -375,9 +364,9 @@ class TestRateLimitMiddlewareEndpointExclusion:
             return {"openapi": "3.0.0"}
 
         mock_redis.incr.return_value = 100
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/openapi.json")
+            response = client.get("/openapi.json")
 
         assert response.status_code == 200
         mock_redis.incr.assert_not_called()
@@ -395,9 +384,9 @@ class TestRateLimitMiddlewareEndpointExclusion:
             return {"redoc": "docs"}
 
         mock_redis.incr.return_value = 100
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get("/redoc")
+            response = client.get("/redoc")
 
         assert response.status_code == 200
         mock_redis.incr.assert_not_called()
@@ -424,12 +413,12 @@ class TestRateLimitMiddlewareConfiguration:
             request.state.user = {"id": "user123"}
             return {"auth": "ok"}
 
-        client = TestClient(app)
+        with TestClient(app) as client:
 
-        response = client.get(
-            "/api/test-auth",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            response = client.get(
+                "/api/test-auth",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Authenticated limit exceeded
         assert response.status_code == 429
@@ -444,12 +433,11 @@ class TestRateLimitMiddlewareConfiguration:
         mock_redis.incr.return_value = 6
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        response = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            response = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Unauthenticated limit exceeded
         assert response.status_code == 429
@@ -474,19 +462,18 @@ class TestRateLimitMiddlewareClientIdentification:
         mock_redis.incr.side_effect = incr_side_effect
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Request from IP 1
-        response1 = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            response1 = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Request from IP 2
-        response2 = client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.2"},
-        )
+            response2 = client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.2"},
+            )
 
         # Both should succeed (independent counters)
         assert response1.status_code == 200
@@ -509,13 +496,12 @@ class TestRateLimitMiddlewareClientIdentification:
         mock_redis.incr.return_value = 1
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        forwarded_ip = "203.0.113.42"
-        client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": forwarded_ip},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            forwarded_ip = "203.0.113.42"
+            client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": forwarded_ip},
+            )
 
         # Verify the forwarded IP was used in the key
         call_args = mock_redis.incr.call_args[0][0]
@@ -530,14 +516,13 @@ class TestRateLimitMiddlewareClientIdentification:
         mock_redis.incr.return_value = 1
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # X-Forwarded-For can have multiple IPs (client, proxy1, proxy2)
-        forwarded_chain = "203.0.113.42, 198.51.100.1, 192.0.2.1"
-        client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": forwarded_chain},
-        )
+            forwarded_chain = "203.0.113.42, 198.51.100.1, 192.0.2.1"
+            client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": forwarded_chain},
+            )
 
         # Verify the FIRST IP (client) was used
         call_args = mock_redis.incr.call_args[0][0]
@@ -556,12 +541,11 @@ class TestRateLimitMiddlewareTimeWindow:
         mock_redis.incr.return_value = 1
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
-        client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+        with TestClient(app_with_rate_limit) as client:
+            client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         call_args = mock_redis.incr.call_args[0][0]
         # Key format should be: rate_limit:{ip}:{minute_bucket}
@@ -585,31 +569,30 @@ class TestRateLimitMiddlewareTimeWindow:
         # In real test with time travel, different minute buckets
         # would create different keys and reset counters
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Make a request
-        client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
         # Get the minute bucket from the key
-        call_args = mock_redis.incr.call_args[0][0]
-        parts = call_args.split(":")
-        minute_bucket_1 = parts[2]
+            call_args = mock_redis.incr.call_args[0][0]
+            parts = call_args.split(":")
+            minute_bucket_1 = parts[2]
 
         # Reset mock
-        mock_redis.reset_mock()
+            mock_redis.reset_mock()
 
         # Make another request (same minute, should use same bucket)
-        client.get(
-            "/api/test",
-            headers={"X-Forwarded-For": "192.168.1.1"},
-        )
+            client.get(
+                "/api/test",
+                headers={"X-Forwarded-For": "192.168.1.1"},
+            )
 
-        call_args = mock_redis.incr.call_args[0][0]
-        parts = call_args.split(":")
-        minute_bucket_2 = parts[2]
+            call_args = mock_redis.incr.call_args[0][0]
+            parts = call_args.split(":")
+            minute_bucket_2 = parts[2]
 
         # Same minute, same bucket
         assert minute_bucket_1 == minute_bucket_2
@@ -628,14 +611,13 @@ class TestRateLimitMiddlewareConcurrency:
         mock_redis.incr.return_value = 1
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Make multiple requests
-        for _ in range(3):
-            client.get(
-                "/api/test",
-                headers={"X-Forwarded-For": "192.168.1.1"},
-            )
+            for _ in range(3):
+                client.get(
+                    "/api/test",
+                    headers={"X-Forwarded-For": "192.168.1.1"},
+                )
 
         # All should have called incr (atomic increments)
         assert mock_redis.incr.call_count == 3
@@ -651,14 +633,13 @@ class TestRateLimitMiddlewareConcurrency:
         mock_redis.incr.side_effect = counter_values
         mock_redis.expire.return_value = True
 
-        client = TestClient(app_with_rate_limit)
-
+        with TestClient(app_with_rate_limit) as client:
         # Make requests
-        for _ in range(5):
-            client.get(
-                "/api/test",
-                headers={"X-Forwarded-For": "192.168.1.1"},
-            )
+            for _ in range(5):
+                client.get(
+                    "/api/test",
+                    headers={"X-Forwarded-For": "192.168.1.1"},
+                )
 
         # Verify counter never decreased
         calls = mock_redis.incr.call_count

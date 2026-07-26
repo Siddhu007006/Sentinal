@@ -1,13 +1,17 @@
 """Verify index count against Design specification."""
 
 from app.models.analysis import Analysis
+from sqlalchemy import Table
+from typing import cast
+
+
+table = cast(Table, Analysis.__table__)
 
 
 print("=" * 70)
 print("INDEX VERIFICATION AGAINST DESIGN §6")
 print("=" * 70)
-
-indexes = list(Analysis.__table__.indexes)
+indexes = list(table.indexes)
 print(f"\n✓ Total indexes exposed by SQLAlchemy: {len(indexes)}")
 print("✓ Design specifies: 8 indexes\n")
 
@@ -50,7 +54,11 @@ print("\n" + "=" * 70)
 print("COMPARISON")
 print("=" * 70)
 
-impl_names = {idx.name for idx in indexes}
+impl_names = {
+    str(idx.name)
+    for idx in indexes
+    if idx.name is not None
+}
 design_names = {name for name, _, _ in design_indexes}
 
 missing = design_names - impl_names

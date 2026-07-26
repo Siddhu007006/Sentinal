@@ -27,7 +27,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # ===========================================================================
 
 
-def run_alembic_command(command: list[str], cwd: str = None) -> tuple[int, str, str]:
+def run_alembic_command(
+    command: list[str], cwd: str | None = None
+) -> tuple[int, str, str]:
     """Execute an Alembic command and return exit code and output.
 
     Args:
@@ -55,7 +57,7 @@ def run_alembic_command(command: list[str], cwd: str = None) -> tuple[int, str, 
         return 1, "", str(e)
 
 
-def get_migration_env() -> dict:
+def get_migration_env() -> dict[str,str]:
     """Get environment variables for running migrations."""
     env = os.environ.copy()
     # Ensure DATABASE_MIGRATION_URL is set
@@ -328,7 +330,7 @@ async def test_not_null_constraint_on_email(
 
     # Create user with null email
     user = User(
-        email=None,  # type: ignore
+        email=None,
         password_hash="$2b$12$hash",
         full_name="No Email User",
     )
@@ -359,7 +361,7 @@ async def test_not_null_constraint_on_password_hash(
 
     user = User(
         email="nohash@example.com",
-        password_hash=None,  # type: ignore
+        password_hash=None,
         full_name="No Hash User",
     )
 

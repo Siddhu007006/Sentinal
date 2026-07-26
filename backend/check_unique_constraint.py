@@ -1,7 +1,10 @@
 """Check how unique index is actually defined."""
 
 from app.models.analysis import Analysis
+from typing import cast
+from sqlalchemy import Table
 
+table = cast(Table, Analysis.__table__)
 
 print("=" * 70)
 print("UNIQUE INDEX/CONSTRAINT INSPECTION")
@@ -9,7 +12,7 @@ print("=" * 70)
 
 # Method 1: Direct attribute inspection
 print("\n1. Checking table attributes:")
-table = Analysis.__table__
+table = cast(Table, Analysis.__table__)
 print(f"   table.indexes: {list(table.indexes)}")
 print(f"   table.constraints: {list(table.constraints)}")
 

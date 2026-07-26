@@ -3,14 +3,17 @@
 from sqlalchemy.schema import UniqueConstraint
 
 from app.models.analysis import Analysis
+from typing import cast
+from sqlalchemy import Table
 
+table = cast(Table, Analysis.__table__)
 
 print("=" * 70)
 print("COMPREHENSIVE INDEX & CONSTRAINT VERIFICATION")
 print("=" * 70)
 
 # Get all indexes
-indexes = list(Analysis.__table__.indexes)
+indexes = list(table.indexes)
 print(f"\n✓ Indexes via __table__.indexes: {len(indexes)}")
 for idx in indexes:
     print(
@@ -18,7 +21,7 @@ for idx in indexes:
     )
 
 # Get all constraints
-constraints = list(Analysis.__table__.constraints)
+constraints = list(table.constraints)
 print(f"\n✓ All constraints via __table__.constraints: {len(constraints)}")
 for c in constraints:
     print(f"  - {c.name}: {type(c).__name__}")
