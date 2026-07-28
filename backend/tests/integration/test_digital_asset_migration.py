@@ -851,8 +851,6 @@ async def test_soft_delete_sets_deleted_at(
     db_session.add(asset)
     await db_session.commit()
 
-
-
     # Soft delete by setting deleted_at
     now = datetime.now(UTC)
     asset.deleted_at = now

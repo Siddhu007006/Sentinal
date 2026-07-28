@@ -187,6 +187,7 @@ class BaseModel(Base):
         nullable=True,
         default=None,
     )
+
     def __repr__(self) -> str:
         """
         String representation for debugging.
@@ -199,4 +200,3 @@ class BaseModel(Base):
             '<User id=550e8400-e29b-41d4-a716-446655440000>'
         """
         return f"<{self.__class__.__name__} id={self.id}>"
-

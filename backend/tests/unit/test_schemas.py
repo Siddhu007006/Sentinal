@@ -7,7 +7,6 @@ including serialization, deserialization, alias generation, and validation.
 Traces to: E2.T9 acceptance criteria
 """
 
-
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -87,16 +86,7 @@ class TestBaseSchema:
 
         # Create datetime in +05:00 timezone
         eastern = tz(timedelta(hours=5))
-        dt = datetime(
-            2025,
-            1,
-            28,
-            15,
-            15,
-            30,
-            0,
-            tzinfo=eastern
-        )
+        dt = datetime(2025, 1, 28, 15, 15, 30, 0, tzinfo=eastern)
         schema = TestSchema(timestamp=dt)
 
         # Serialize (should convert to UTC)
@@ -112,7 +102,7 @@ class TestBaseSchema:
             timestamp: datetime
 
         # Naive datetime (no timezone)
-        dt = datetime(# noqa: DTZ001 - intentionally testing naive datetime handling
+        dt = datetime(  # noqa: DTZ001 - intentionally testing naive datetime handling
             2025,
             1,
             28,
@@ -139,7 +129,7 @@ class TestErrorResponse:
             error=ErrorBody(
                 code="test_error",
                 message="Test message",
-                ),
+            ),
             request_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
             timestamp=datetime(2025, 1, 28, 10, 15, 30, tzinfo=UTC),
         )
@@ -151,7 +141,7 @@ class TestErrorResponse:
     def test_error_response_request_id_alias(self) -> None:
         """Verify request_id serializes with requestId alias."""
         resp = ErrorResponse(
-            error=ErrorBody(code="test", message="Test") ,
+            error=ErrorBody(code="test", message="Test"),
             request_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
             timestamp=datetime(2025, 1, 28, 10, 15, 30, tzinfo=UTC),
         )

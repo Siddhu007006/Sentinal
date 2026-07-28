@@ -72,8 +72,7 @@ def upgrade() -> None:
             sa.UUID(as_uuid=True),
             nullable=False,
             comment=(
-                "Foreign key to users table; every upload belongs to"
-                "exactly one user"
+                "Foreign key to users table; every upload belongs to" "exactly one user"
             ),
         ),
         sa.Column(
@@ -110,8 +109,7 @@ def upgrade() -> None:
             sa.String(64),
             nullable=True,
             comment=(
-                "SHA-256 hash of file (64-char hex); null until validation"
-                "completes"
+                "SHA-256 hash of file (64-char hex); null until validation" "completes"
             ),
         ),
         sa.Column(

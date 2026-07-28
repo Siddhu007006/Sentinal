@@ -94,7 +94,7 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Act: Make request
+            # Act: Make request
             response = client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.1"},
@@ -115,7 +115,7 @@ class TestRateLimitMiddlewareBasic:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Act: Make request
+            # Act: Make request
             response = client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.1"},
@@ -253,7 +253,7 @@ class TestRateLimitMiddlewareRedisInteraction:
         with TestClient(app_with_rate_limit) as client:
             client_ip = "192.168.1.1"
 
-        # Make request
+            # Make request
             client.get("/api/test", headers={"X-Forwarded-For": client_ip})
 
         # Assert: incr was called
@@ -273,7 +273,7 @@ class TestRateLimitMiddlewareRedisInteraction:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Act: Make request
+            # Act: Make request
             client.get("/api/test", headers={"X-Forwarded-For": "192.168.1.1"})
 
         # Assert: expire was called with 60 seconds
@@ -292,7 +292,7 @@ class TestRateLimitMiddlewareRedisInteraction:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Act: Make request
+            # Act: Make request
             client.get("/api/test", headers={"X-Forwarded-For": "192.168.1.1"})
 
         # Assert: expire was NOT called
@@ -308,7 +308,7 @@ class TestRateLimitMiddlewareRedisInteraction:
         mock_redis.incr.side_effect = redis.ConnectionError("Connection refused")
 
         with TestClient(app_with_rate_limit) as client:
-        # Act: Make request despite Redis error
+            # Act: Make request despite Redis error
             response = client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.1"},
@@ -365,7 +365,6 @@ class TestRateLimitMiddlewareEndpointExclusion:
 
         mock_redis.incr.return_value = 100
         with TestClient(app) as client:
-
             response = client.get("/openapi.json")
 
         assert response.status_code == 200
@@ -385,7 +384,6 @@ class TestRateLimitMiddlewareEndpointExclusion:
 
         mock_redis.incr.return_value = 100
         with TestClient(app) as client:
-
             response = client.get("/redoc")
 
         assert response.status_code == 200
@@ -414,7 +412,6 @@ class TestRateLimitMiddlewareConfiguration:
             return {"auth": "ok"}
 
         with TestClient(app) as client:
-
             response = client.get(
                 "/api/test-auth",
                 headers={"X-Forwarded-For": "192.168.1.1"},
@@ -463,13 +460,13 @@ class TestRateLimitMiddlewareClientIdentification:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Request from IP 1
+            # Request from IP 1
             response1 = client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.1"},
             )
 
-        # Request from IP 2
+            # Request from IP 2
             response2 = client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.2"},
@@ -517,7 +514,7 @@ class TestRateLimitMiddlewareClientIdentification:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # X-Forwarded-For can have multiple IPs (client, proxy1, proxy2)
+            # X-Forwarded-For can have multiple IPs (client, proxy1, proxy2)
             forwarded_chain = "203.0.113.42, 198.51.100.1, 192.0.2.1"
             client.get(
                 "/api/test",
@@ -570,21 +567,21 @@ class TestRateLimitMiddlewareTimeWindow:
         # would create different keys and reset counters
 
         with TestClient(app_with_rate_limit) as client:
-        # Make a request
+            # Make a request
             client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.1"},
             )
 
-        # Get the minute bucket from the key
+            # Get the minute bucket from the key
             call_args = mock_redis.incr.call_args[0][0]
             parts = call_args.split(":")
             minute_bucket_1 = parts[2]
 
-        # Reset mock
+            # Reset mock
             mock_redis.reset_mock()
 
-        # Make another request (same minute, should use same bucket)
+            # Make another request (same minute, should use same bucket)
             client.get(
                 "/api/test",
                 headers={"X-Forwarded-For": "192.168.1.1"},
@@ -612,7 +609,7 @@ class TestRateLimitMiddlewareConcurrency:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Make multiple requests
+            # Make multiple requests
             for _ in range(3):
                 client.get(
                     "/api/test",
@@ -634,7 +631,7 @@ class TestRateLimitMiddlewareConcurrency:
         mock_redis.expire.return_value = True
 
         with TestClient(app_with_rate_limit) as client:
-        # Make requests
+            # Make requests
             for _ in range(5):
                 client.get(
                     "/api/test",

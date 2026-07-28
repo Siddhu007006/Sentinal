@@ -33,8 +33,7 @@ class TestHTTPExceptionHandler:
         """Verify 404 returns error envelope with correct code."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
-        # Request non-existent route
+            # Request non-existent route
             response = client.get("/api/v1/nonexistent")
 
         assert response.status_code == 404
@@ -91,8 +90,7 @@ class TestHTTPExceptionHandler:
         """Verify request_id included in 404 response."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
-        # Make request with custom X-Request-ID
+            # Make request with custom X-Request-ID
             custom_id = str(uuid.uuid4())
             response = client.get(
                 "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
@@ -115,7 +113,6 @@ class TestHTTPExceptionHandler:
             raise HTTPException(status_code=code, detail="Test error")
 
         with TestClient(app, raise_server_exceptions=False) as client:
-
             status_code_map: dict[int, str] = {
                 400: "bad_request",
                 401: "unauthorized",
@@ -167,8 +164,7 @@ class TestValidationExceptionHandler:
             return data
 
         with TestClient(app, raise_server_exceptions=False) as client:
-
-        # Send invalid JSON
+            # Send invalid JSON
             response = client.post(
                 "/test-validate",
                 json={"not": "valid"},  # Missing required fields
@@ -208,8 +204,7 @@ class TestValidationExceptionHandler:
             return data
 
         with TestClient(app, raise_server_exceptions=False) as client:
-
-        # Send invalid JSON using content parameter instead of data
+            # Send invalid JSON using content parameter instead of data
             response = client.post("/test-json", content="not json")
 
         # Should get 422 (validation error) or 400 (bad request)
@@ -308,7 +303,6 @@ class TestUnhandledExceptionHandler:
             raise RuntimeError("Test error")
 
         with TestClient(app, raise_server_exceptions=False) as client:
-
             custom_id = str(uuid.uuid4())
             response = client.get("/test-error-id", headers={"X-Request-ID": custom_id})
 
@@ -326,7 +320,6 @@ class TestErrorResponseIntegration:
         """Verify response request_id matches X-Request-ID header."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
             custom_id = str(uuid.uuid4())
             response = client.get(
                 "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
@@ -369,8 +362,7 @@ class TestErrorResponseIntegration:
             raise RuntimeError("Error")
 
         with TestClient(app, raise_server_exceptions=False) as client:
-
-        # Test 404
+            # Test 404
             response = client.get("/test-envelope-404")
         data: dict[str, Any] = response.json()
         assert "error" in data
@@ -411,7 +403,6 @@ class TestExceptionHandlersIntegration:
         """Verify health endpoint returns expected schema (not error)."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
             response = client.get("/api/v1/health")
 
         assert response.status_code == 200
@@ -427,7 +418,6 @@ class TestExceptionHandlersIntegration:
         """Verify unknown routes return proper error envelope."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
             response = client.get("/api/v1/unknown/path")
 
         assert response.status_code == 404
@@ -462,7 +452,6 @@ class TestExceptionHandlersIntegration:
         """Verify request_id available in error responses for log correlation."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
             custom_id = str(uuid.uuid4())
             response = client.get(
                 "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
@@ -484,7 +473,6 @@ class TestErrorResponseCamelCaseAliasing:
         """Verify request_id appears as requestId in JSON."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
             response = client.get("/api/v1/nonexistent")
         data = response.json()
 
@@ -496,7 +484,6 @@ class TestErrorResponseCamelCaseAliasing:
         """Verify error body is present (not error_body)."""
         app = create_app()
         with TestClient(app, raise_server_exceptions=False) as client:
-
             response = client.get("/api/v1/nonexistent")
         data = response.json()
 

@@ -260,7 +260,6 @@ def test_analysis_status_enum_comparison_works() -> None:
     assert analysis2.status == AnalysisStatus.COMPLETED
 
 
-
 # ===========================================================================
 # Test 5: Default Values
 # ===========================================================================
@@ -1547,11 +1546,7 @@ def test_check_constraint_status_exists() -> None:
 
     **Validates: R10 AC #1, Design §7.1**
     """
-    constraints = {
-        str(c.name): c
-        for c in table.constraints
-        if c.name is not None
-    }
+    constraints = {str(c.name): c for c in table.constraints if c.name is not None}
     # Constraint names may have prefix added by SQLAlchemy
     found = any("status" in name for name in constraints if "ck_analyses" in name)
     assert found, (
@@ -1565,11 +1560,7 @@ def test_check_constraint_threat_score_exists() -> None:
 
     **Validates: R10 AC #2, Design §7.1**
     """
-    constraints = {
-        str(c.name): c
-        for c in table.constraints
-        if c.name is not None
-    }
+    constraints = {str(c.name): c for c in table.constraints if c.name is not None}
     found = any("threat_score" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'threat_score' not found. "
@@ -1582,11 +1573,7 @@ def test_check_constraint_confidence_exists() -> None:
 
     **Validates: R10 AC #3, Design §7.1**
     """
-    constraints = {
-        str(c.name): c
-        for c in table.constraints
-        if c.name is not None
-    }
+    constraints = {str(c.name): c for c in table.constraints if c.name is not None}
     found = any("confidence" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'confidence' not found. "
@@ -1599,11 +1586,7 @@ def test_check_constraint_severity_exists() -> None:
 
     **Validates: R10 AC #4, Design §7.1**
     """
-    constraints = {
-        str(c.name): c
-        for c in table.constraints
-        if c.name is not None
-   }
+    constraints = {str(c.name): c for c in table.constraints if c.name is not None}
     found = any("severity" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'severity' not found. "
@@ -1616,11 +1599,7 @@ def test_check_constraint_retry_count_exists() -> None:
 
     **Validates: R10 AC #5, Design §7.1**
     """
-    constraints = {
-        str(c.name): c
-        for c in table.constraints
-        if c.name is not None
-    }
+    constraints = {str(c.name): c for c in table.constraints if c.name is not None}
     found = any("retry_count" in name for name in constraints if "ck_analyses" in name)
     assert found, (
         f"CHECK constraint with 'retry_count' not found. "

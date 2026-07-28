@@ -124,7 +124,7 @@ def upgrade() -> None:
         ),
         sa.Column(
             "metadata",
-            JSONB(), # type: ignore[no-untyped-call]
+            JSONB(),  # type: ignore[no-untyped-call]
             nullable=True,
             server_default="null",
             comment="Asset-type-specific metadata (JSONB, see Database Design §5.4.1)",

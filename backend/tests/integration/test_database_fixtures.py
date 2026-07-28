@@ -221,7 +221,6 @@ async def test_alembic_config_exists() -> None:
     This is verified during CI/CD pipeline tests.
     """
 
-
     # Note: This path is relative to test file location
     # Actual verification happens in CI pipeline
     assert True  # Alembic configuration verified in CI

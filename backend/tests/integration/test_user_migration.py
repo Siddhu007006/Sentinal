@@ -43,7 +43,7 @@ def run_alembic_command(
         cwd = str(Path(__file__).parent.parent.parent)  # backend directory
 
     try:
-        result = subprocess.run( # noqa: S603 - test helper executes trusted command lists only
+        result = subprocess.run(  # noqa: S603 - test helper executes trusted command lists only
             command,
             cwd=cwd,
             capture_output=True,
@@ -57,7 +57,7 @@ def run_alembic_command(
         return 1, "", str(e)
 
 
-def get_migration_env() -> dict[str,str]:
+def get_migration_env() -> dict[str, str]:
     """Get environment variables for running migrations."""
     env = os.environ.copy()
     # Ensure DATABASE_MIGRATION_URL is set

@@ -75,7 +75,6 @@ class TestHealthEndpointSchema:
         """Status field is a string."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
@@ -85,7 +84,6 @@ class TestHealthEndpointSchema:
         """Version field is a string."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
@@ -95,7 +93,6 @@ class TestHealthEndpointSchema:
         """Timestamp field is ISO 8601 formatted datetime string."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
@@ -118,7 +115,6 @@ class TestHealthEndpointSchema:
         """Dependencies field is optional (may be null or dict)."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
@@ -138,7 +134,6 @@ class TestHealthEndpointValues:
         """Status field returns 'ok' (per current implementation scope)."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
@@ -148,7 +143,6 @@ class TestHealthEndpointValues:
         """Version field has a value (not empty string)."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data: dict[str, Any] = response.json()
 
@@ -159,7 +153,6 @@ class TestHealthEndpointValues:
         """Timestamp is recent (within last minute to account for slow execution)."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
 
         # Timestamp should be valid and recent
@@ -174,7 +167,6 @@ class TestHealthEndpointRequestID:
         """X-Request-ID header is present in response."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
 
         assert "x-request-id" in response.headers
@@ -183,7 +175,6 @@ class TestHealthEndpointRequestID:
         """X-Request-ID value is a valid UUID format (36 chars with dashes)."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         request_id = response.headers["x-request-id"]
 
@@ -196,7 +187,6 @@ class TestHealthEndpointRequestID:
         """X-Request-ID value is a parseable UUID."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         request_id = response.headers["x-request-id"]
 
@@ -208,7 +198,6 @@ class TestHealthEndpointRequestID:
         """Each request gets a unique X-Request-ID."""
         app = create_app()
         with TestClient(app) as client:
-
             response1 = client.get("/api/v1/health")
         response2 = client.get("/api/v1/health")
 
@@ -225,8 +214,7 @@ class TestHealthEndpointAuthentication:
         """Health endpoint is accessible without authentication."""
         app = create_app()
         with TestClient(app) as client:
-
-        # Request without any Authorization header
+            # Request without any Authorization header
             response = client.get("/api/v1/health")
 
         # Should succeed with 200, not 401
@@ -236,8 +224,7 @@ class TestHealthEndpointAuthentication:
         """Health endpoint responds to any HTTP verb (typically GET)."""
         app = create_app()
         with TestClient(app) as client:
-
-        # GET should work
+            # GET should work
             response = client.get("/api/v1/health")
         assert response.status_code == 200
 
@@ -249,8 +236,7 @@ class TestHealthEndpointOpenAPI:
         """Health endpoint appears in OpenAPI schema."""
         app = create_app()
         with TestClient(app) as client:
-
-        # Fetch OpenAPI schema
+            # Fetch OpenAPI schema
             response = client.get("/api/v1/openapi.json")
         assert response.status_code == 200
 
@@ -271,7 +257,6 @@ class TestHealthEndpointOpenAPI:
         """Health endpoint has correct operationId in OpenAPI."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/openapi.json")
         schema = response.json()
 
@@ -292,7 +277,6 @@ class TestHealthEndpointOpenAPI:
         """Health endpoint has description and tags in OpenAPI."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/openapi.json")
         schema = response.json()
 
@@ -320,8 +304,7 @@ class TestHealthEndpointIntegration:
         """Health endpoint works with RequestIdMiddleware."""
         app = create_app()
         with TestClient(app) as client:
-
-        # Should generate request ID even without X-Request-ID header
+            # Should generate request ID even without X-Request-ID header
             response = client.get("/api/v1/health")
 
         assert response.status_code == 200
@@ -331,7 +314,6 @@ class TestHealthEndpointIntegration:
         """Health endpoint echoes back custom X-Request-ID if provided."""
         app = create_app()
         with TestClient(app) as client:
-
             custom_id = str(uuid.uuid4())
             response = client.get(
                 "/api/v1/health",
@@ -383,7 +365,6 @@ class TestHealthEndpointContentNegotiation:
         """Response includes Content-Length header."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
 
         # Content-Length should be present
@@ -395,7 +376,6 @@ class TestHealthEndpointContentNegotiation:
         """Response body is a JSON object (not array, string, etc.)."""
         app = create_app()
         with TestClient(app) as client:
-
             response = client.get("/api/v1/health")
         data = response.json()
 
