@@ -50,13 +50,13 @@ def upgrade() -> None:
         sa.Column("confidence", sa.Float(), nullable=True),
         sa.Column("severity", sa.String(length=20), nullable=True),
         sa.Column(
-            "reasoning_payload", 
-            postgresql.JSONB(astext_type=sa.Text()) , # type: ignore[no-untyped-call] 
+            "reasoning_payload",
+            postgresql.JSONB(astext_type=sa.Text()) , # type: ignore[no-untyped-call]
             nullable=True
         ),
         sa.Column(
-            "enrichment_data", 
-            postgresql.JSONB(astext_type=sa.Text()) , # type: ignore[no-untyped-call] 
+            "enrichment_data",
+            postgresql.JSONB(astext_type=sa.Text()) , # type: ignore[no-untyped-call]
             nullable=True
         ),
         sa.Column("started_at", postgresql.TIMESTAMP(timezone=True), nullable=True),

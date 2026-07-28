@@ -71,13 +71,19 @@ def upgrade() -> None:
             "user_id",
             sa.UUID(as_uuid=True),
             nullable=False,
-            comment="Foreign key to users table; every upload belongs to exactly one user",
+            comment=(
+                "Foreign key to users table; every upload belongs to"
+                "exactly one user"
+            ),
         ),
         sa.Column(
             "original_filename",
             sa.String(255),
             nullable=False,
-            comment="Original filename as provided by user (normalized, may contain special chars)",
+            comment=(
+                "Original filename as provided by user (normalized, may"
+                "contain special chars)"
+            ),
         ),
         sa.Column(
             "storage_key",
@@ -103,7 +109,10 @@ def upgrade() -> None:
             "checksum_sha256",
             sa.String(64),
             nullable=True,
-            comment="SHA-256 hash of file (64-char hex); null until validation completes",
+            comment=(
+                "SHA-256 hash of file (64-char hex); null until validation"
+                "completes"
+            ),
         ),
         sa.Column(
             "upload_status",
@@ -116,7 +125,10 @@ def upgrade() -> None:
             "completed_at",
             sa.TIMESTAMP(timezone=True),
             nullable=True,
-            comment="When upload reached terminal state (completed/failed); null if pending/processing",
+            comment=(
+                "When upload reached terminal state (completed/failed);"
+                "null if pending/processing"
+            ),
         ),
         sa.Column(
             "id",

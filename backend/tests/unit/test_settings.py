@@ -8,6 +8,7 @@ See: 07-Backend-Development-Standards §11 (Configuration).
 See: docs/22-Engineering-Backlog.md E2.T1 (Settings Management).
 """
 
+from contextlib import suppress
 from pathlib import Path
 
 import pytest
@@ -202,7 +203,10 @@ class TestSettingsInvalidType:
     def test_invalid_jwt_expire_minutes_raises_validation_error(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Settings raises ValidationError when JWT_ACCESS_TOKEN_EXPIRE_MINUTES is not int."""
+        """
+        Settings raises ValidationError when
+        JWT_ACCESS_TOKEN_EXPIRE_MINUTES is not int.
+        """
         # Set all required vars
         monkeypatch.setenv(
             "DATABASE_URL",
@@ -351,13 +355,10 @@ class TestSettingsImmutability:
         # Nested settings groups should also be immutable
         # Note: Pydantic v2 doesn't automatically freeze nested models
         # This test documents current behavior
-        try:
+        with suppress(ValidationError, AttributeError):
             settings.database.url = "hacked"
             # If this doesn't raise, nested settings are not frozen
             # This is acceptable since root Settings is frozen
-        except (ValidationError, AttributeError):
-            # If it raises, nested settings are also immutable (ideal)
-            pass
 
 
 class TestSettingsCORSParsing:

@@ -26,7 +26,8 @@ Constraints:
 - Foreign key: upload_id -> uploads.id (SET NULL on delete, only for file type)
 - UNIQUE on (normalized_value, asset_type) composite key for deduplication
 - NOT NULL on: user_id, asset_type, raw_value, normalized_value, is_active, created_at
-- CHECK on asset_type (must be one of five values: url, domain, ip_address, file_hash, file)
+- CHECK on asset_type (must be one of five values:
+  url, domain, ip_address, file_hash, file)
 - CHECK on (asset_type = 'file') = (upload_id IS NOT NULL) - structural invariant
 - Nullable: upload_id, display_label, metadata, deleted_at
 
@@ -110,7 +111,10 @@ def upgrade() -> None:
             "normalized_value",
             sa.String(2048),
             nullable=False,
-            comment="Canonicalized form for deduplication (lowercased domain, defanged URL, etc.)",
+            comment=(
+                "Canonicalized form for deduplication (lowercased domain,"
+                "defanged URL, etc.)"
+            ),
         ),
         sa.Column(
             "display_label",
@@ -181,7 +185,10 @@ def upgrade() -> None:
             "normalized_value",
             "asset_type",
             name="uq_digital_assets_normalized_value_type",
-            comment="Deduplication constraint: user cannot have duplicate (normalized_value, asset_type)",
+            comment=(
+                "Deduplication constraint: user cannot have duplicate"
+                "(normalized_value, asset_type)"
+            ),
         ),
     )
 

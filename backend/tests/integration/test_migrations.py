@@ -9,7 +9,7 @@ Tests verify:
 5. Version tracking: alembic_version table state is consistent
 6. Error handling: migration failures are properly reported
 
-**Validates: Requirements 2–3 (Upgrade/Downgrade Workflow)**
+**Validates: Requirements 2-3 (Upgrade/Downgrade Workflow)**
 
 Traces to: 22-Engineering-Backlog E3.T2 (migration testing)
 Traces to: 07-Backend-Development-Standards §8 (migration standards)
@@ -77,7 +77,7 @@ def run_alembic_command(
     try:
         # Get the backend directory path relative to current working directory
         backend_dir = Path(__file__).parent.parent.parent
-        result = subprocess.run(
+        result = subprocess.run(# noqa: S603 - test helper executes trusted command lists only
             command,
             cwd=str(backend_dir),
             env=env,

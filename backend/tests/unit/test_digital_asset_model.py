@@ -4,7 +4,9 @@ Unit tests for DigitalAsset ORM model.
 Tests model instantiation, defaults, field types, and __repr__() without
 requiring a database connection. These tests validate ORM behavior in memory.
 
-**Validates: Requirement R6 (ORM Model and Migration Test Coverage) — Part 1 (Unit Tests)**
+**Validates: Requirement R6 (ORM Model and Migration Test Coverage)
+- Part 1 (Unit Tests)
+**
 
 Traces to: 22-Engineering-Backlog E3.T5 (DigitalAsset ORM model task)
 Traces to: 07-Backend-Development-Standards §8 (ORM testing patterns)

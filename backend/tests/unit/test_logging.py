@@ -501,7 +501,7 @@ class TestRequestLifecycleLogging:
             assert completed_log["path"] == "/api/v1/health"
             assert completed_log["status_code"] == 200
             assert "duration_ms" in completed_log
-            assert isinstance(completed_log["duration_ms"], (int, float))
+            assert isinstance(completed_log["duration_ms"], int | float)
             assert completed_log["duration_ms"] >= 0
 
         finally:

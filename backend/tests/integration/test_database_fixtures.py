@@ -10,7 +10,7 @@ Tests verify:
 6. Fixture scoping: async_engine is session-scoped, db_session is function-scoped
 7. Transaction lifecycle: session can execute queries and is cleaned up
 
-**Validates: Requirements 1–4 (DI export, lifecycle, fixtures, Alembic)**
+**Validates: Requirements 1-4 (DI export, lifecycle, fixtures, Alembic)**
 
 Traces to: 22-Engineering-Backlog E3.T1 (fixture isolation)
 Traces to: 11-Testing-Strategy §6 (fixture validation)
@@ -220,9 +220,8 @@ async def test_alembic_config_exists() -> None:
 
     This is verified during CI/CD pipeline tests.
     """
-    import os
 
-    alembic_path = os.path.join(os.path.dirname(__file__), "../../alembic.ini")
+
     # Note: This path is relative to test file location
     # Actual verification happens in CI pipeline
     assert True  # Alembic configuration verified in CI

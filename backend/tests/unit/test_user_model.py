@@ -37,7 +37,10 @@ def test_instantiate_user_with_all_fields() -> None:
     )
 
     assert user.email == "jane@example.com"
-    assert user.password_hash == "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ"
+    assert(
+        user.password_hash
+        == "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ" # noqa: S105 - test password hash
+    )
     assert user.full_name == "Jane Doe"
     assert user.role == UserRole.ANALYST.value
 
@@ -62,7 +65,10 @@ def test_instantiate_user_with_minimal_fields() -> None:
     )
 
     assert user.email == "bob@example.com"
-    assert user.password_hash == "$2b$12$xyz123xyz123xyz123xyz123xyz123xyz123xyz123"
+    assert(
+        user.password_hash
+        == "$2b$12$xyz123xyz123xyz123xyz123xyz123xyz123xyz123" # noqa: S105 - test password hash
+    )
     assert user.full_name == "Bob Smith"
 
 
@@ -275,7 +281,9 @@ def test_repr_does_not_expose_password_hash() -> None:
     Verifies that the password hash is never included in string representation
     to prevent accidental log exposure.
     """
-    password_hash = "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ"
+    password_hash = (
+        "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ" # noqa: S105 - test password hash
+    )
     user = User(
         email="security@example.com",
         password_hash=password_hash,
@@ -546,7 +554,10 @@ def test_user_active_but_not_verified() -> None:
 
 
 def test_user_inactive_but_verified() -> None:
-    """Test: User can be inactive but verified (deactivation separate from verification)."""
+    """
+    Test: User can be inactive but verified
+    (deactivation separate from verification).
+    """
     user = User(
         email="inactive-verified@example.com",
         password_hash="$2b$12$hash",

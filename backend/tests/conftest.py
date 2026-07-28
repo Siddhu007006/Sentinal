@@ -35,6 +35,7 @@ Traces to: 22-Engineering-Backlog E3.T1 (database fixtures)
 
 import os
 from collections.abc import AsyncGenerator
+from contextlib import suppress
 
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
@@ -44,8 +45,8 @@ from app.core.settings import Settings
 
 
 # Set ENVIRONMENT=test for all test runs
-# This ensures middleware that requires external services (e.g., Redis for rate limiting)
-# is not registered during unit tests
+# This ensures middleware requiring external services
+# (for example Redis rate limiting) is not registered during unit tests.
 os.environ.setdefault("ENVIRONMENT", "test")
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
@@ -149,27 +150,17 @@ async def db_session(
     except Exception:
         # If test raises exception: rollback and re-raise
         # This ensures cleanup even when test fails
-        try:
+        with suppress(RuntimeError, AttributeError, Exception):
             await session.rollback()
-        except (RuntimeError, AttributeError, Exception):
-            # Suppress errors during rollback if event loop is closed
-            pass
         raise
     else:
         # Test passed: rollback to ensure isolation
-        try:
+        with suppress(RuntimeError, AttributeError, Exception):
             await session.rollback()
-        except (RuntimeError, AttributeError, Exception):
-            # Suppress errors if event loop is closed
-            pass
     finally:
         # Always close session
-        try:
+        with suppress(RuntimeError, AttributeError, Exception):
             await session.close()
-        except (RuntimeError, AttributeError, Exception):
-            # Suppress errors if event loop is closed
-            # NullPool will discard the connection anyway
-            pass
 
 
 @pytest_asyncio.fixture

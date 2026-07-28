@@ -43,7 +43,7 @@ def run_alembic_command(
         cwd = str(Path(__file__).parent.parent.parent)  # backend directory
 
     try:
-        result = subprocess.run(
+        result = subprocess.run( # noqa: S603 - test helper executes trusted command lists only
             command,
             cwd=cwd,
             capture_output=True,
@@ -95,7 +95,7 @@ def test_migration_upgrade_creates_users_table(db_session: AsyncSession | None) 
 
     # Run upgrade
     backend_dir = Path(__file__).parent.parent.parent
-    env = get_migration_env()
+
     exit_code, stdout, stderr = run_alembic_command(
         ["python", "-m", "alembic", "upgrade", "head"],
         cwd=str(backend_dir),
@@ -152,7 +152,7 @@ async def test_users_table_exists_after_migration_upgrade(
 
     # Note: Table may or may not exist depending on test order
     # This test just verifies the query works
-    assert isinstance(table_exists, (bool, int))
+    assert isinstance(table_exists, bool | int)
 
 
 @pytest.mark.skipif(

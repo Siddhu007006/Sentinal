@@ -7,6 +7,7 @@ including serialization, deserialization, alias generation, and validation.
 Traces to: E2.T9 acceptance criteria
 """
 
+
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -58,7 +59,16 @@ class TestBaseSchema:
             timestamp: datetime
 
         # Create schema with UTC datetime
-        dt = datetime(2025, 1, 28, 10, 15, 30, 123456, tzinfo=UTC)
+        dt = datetime(
+            2025,
+            1,
+            28,
+            10,
+            15,
+            30,
+            123456,
+            tzinfo=UTC,
+        )
         schema = TestSchema(timestamp=dt)
 
         # Serialize
@@ -77,7 +87,16 @@ class TestBaseSchema:
 
         # Create datetime in +05:00 timezone
         eastern = tz(timedelta(hours=5))
-        dt = datetime(2025, 1, 28, 15, 15, 30, 0, tzinfo=eastern)
+        dt = datetime(
+            2025,
+            1,
+            28,
+            15,
+            15,
+            30,
+            0,
+            tzinfo=eastern
+        )
         schema = TestSchema(timestamp=dt)
 
         # Serialize (should convert to UTC)
@@ -93,7 +112,15 @@ class TestBaseSchema:
             timestamp: datetime
 
         # Naive datetime (no timezone)
-        dt = datetime(2025, 1, 28, 10, 15, 30, 123456)
+        dt = datetime(# noqa: DTZ001 - intentionally testing naive datetime handling
+            2025,
+            1,
+            28,
+            10,
+            15,
+            30,
+            123456,
+        )
         schema = TestSchema(timestamp=dt)
 
         # Serialize
@@ -189,7 +216,16 @@ class TestHealthResponse:
 
     def test_health_response_datetime_serialization(self) -> None:
         """Verify HealthResponse datetime is serialized to ISO 8601 UTC."""
-        dt = datetime(2025, 1, 28, 10, 15, 30, 123456, tzinfo=UTC)
+        dt = datetime(
+            2025,
+            1,
+            28,
+            10,
+            15,
+            30,
+            123456,
+            tzinfo=UTC,
+        )
         resp = HealthResponse(
             status="ok",
             version="1.0.0",
@@ -467,8 +503,8 @@ class TestOpenAPISchemaGeneration:
         props = schema["properties"]
         # The field might be keyed by the actual field name or alias
         assert any(
-            "request" in key.lower() for key in props.keys()
-        ), f"Properties: {list(props.keys())}"
+            "request" in key.lower() for key in props
+        ), f"Properties: {list(props)}"
 
     def test_timestamp_mixin_schema_has_camel_case_fields(self) -> None:
         """Verify TimestampMixin schema includes camelCase field names."""
