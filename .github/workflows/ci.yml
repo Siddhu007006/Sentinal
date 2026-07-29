@@ -199,28 +199,33 @@ jobs:
 
       - name: Show installed versions
         working-directory: backend
-        run: |
-          source .venv/bin/activate
-          python - <<'PY'
-          import fastapi
-          import starlette
-          import httpx
-          print("FastAPI :", fastapi.__version__)
-          print("Starlette:", starlette.__version__)
-          print("httpx    :", httpx.__version__)
-          PY
-
-      - name: Run pytest with coverage
-        working-directory: backend
         shell: bash
         run: |
           source .venv/bin/activate
+          python --version
+          uv pip freeze
+        
+
+
+      - name: Run pytest with coverage (debug)
+        working-directory: backend
+        shell: bash
+        env:
+            PYTHONFAULTHANDLER: "1"
+            PYTHONTRACEMALLOC: "25"
+        run: |
+          source .venv/bin/activate
+
+          python --version
+
           pytest tests/ \
-            --cov=app \
-            --cov-report=xml \
-            --cov-report=html \
-            --cov-report=term-missing \
-            -v
+          --full-trace \
+          --cov=app \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-report=term-missing \
+          -vv \
+          -s
 
       - name: Downgrade database
         working-directory: backend
