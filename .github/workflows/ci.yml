@@ -227,6 +227,13 @@ jobs:
           -vv \
           -s
 
+      - name: Run isolated resource cleanup test
+        working-directory: backend
+        shell: bash
+        run: |
+          source .venv/bin/activate
+          python -m pytest tests/integration/test_resource_cleanup.py -q
+
       - name: Downgrade database
         working-directory: backend
         if: always()

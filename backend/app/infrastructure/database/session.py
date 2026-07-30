@@ -46,6 +46,43 @@ _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
+def get_engine(settings: Settings) -> AsyncEngine | None:
+    """
+    Get the application's database engine instance.
+
+    Returns the lazily-initialized engine singleton. This getter pattern
+    allows the engine to be recreated or swapped without requiring consumers
+    to re-import references.
+
+    The engine is initialized on first call to _get_session_factory() and
+    cached at module level for the lifetime of the application.
+
+    Args:
+        settings: Application settings containing database configuration
+
+    Returns:
+        The AsyncEngine instance, or None if not yet initialized
+
+    Note:
+        This getter is preferred over directly importing _engine because:
+        - Allows engine lifecycle management (recreation, swapping)
+        - Prevents stale references if _engine is reassigned
+        - Centralizes access point for testing and lifecycle control
+        - Supports graceful shutdown (engine.dispose() during app shutdown)
+
+    Usage in application lifespan shutdown:
+        ```python
+        from app.core.settings import get_settings
+        from app.infrastructure.database.session import get_engine
+
+        engine = get_engine(get_settings())
+        if engine is not None:
+            await engine.dispose()
+        ```
+    """
+    return _engine
+
+
 def _get_session_factory(settings: Settings) -> async_sessionmaker[AsyncSession]:
     """
     Get or create the async session factory singleton.
@@ -171,3 +208,14 @@ async def get_db_session(
         raise
     finally:
         await session.close()
+
+async def dispose_engine() -> None:
+    """Dispose the database engine and reset cached globals."""
+
+    global _engine, _session_factory
+
+    if _engine is not None:
+        await _engine.dispose()
+
+    _engine = None
+    _session_factory = None

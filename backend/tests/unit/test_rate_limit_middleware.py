@@ -12,9 +12,10 @@ See: backend/openapi.yaml 429 TooManyRequests response
 from unittest.mock import MagicMock
 
 import pytest
-import redis
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
 
 from app.api.v1.middleware.rate_limit import RateLimitMiddleware
 from app.core.settings import RateLimitSettings
@@ -36,17 +37,25 @@ def rate_limit_settings(monkeypatch: pytest.MonkeyPatch) -> RateLimitSettings:
 @pytest.fixture
 def mock_redis(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Mock Redis client for unit tests."""
-    mock_client = MagicMock(spec=redis.Redis)
-    mock_from_url = MagicMock(return_value=mock_client)
+    import app.infrastructure.cache.redis_client as redis_module
+    
+    # Create a mock that looks like a Redis client
+    mock_client = MagicMock()
+    mock_client.incr = MagicMock(return_value=1)
+    mock_client.expire = MagicMock(return_value=True)
+    
+    # Patch both the module-level _redis_client AND the get_redis_client function
+    monkeypatch.setattr(redis_module, "_redis_client", mock_client)
     monkeypatch.setattr(
-        "app.api.v1.middleware.rate_limit.redis.from_url",
-        mock_from_url,
+        redis_module,
+        "get_redis_client",
+        MagicMock(return_value=mock_client),
     )
     return mock_client
 
 
 @pytest.fixture
-def app_with_rate_limit(rate_limit_settings: RateLimitSettings) -> FastAPI:
+def app_with_rate_limit(rate_limit_settings: RateLimitSettings, mock_redis: MagicMock) -> FastAPI:
     """Create FastAPI app with rate limit middleware."""
     app = FastAPI()
 
@@ -305,7 +314,7 @@ class TestRateLimitMiddlewareRedisInteraction:
     ) -> None:
         """Request succeeds when Redis connection fails (fail-open)."""
         # Setup: Redis connection error
-        mock_redis.incr.side_effect = redis.ConnectionError("Connection refused")
+        mock_redis.incr.side_effect = RedisConnectionError("Connection refused")
 
         with TestClient(app_with_rate_limit) as client:
             # Act: Make request despite Redis error

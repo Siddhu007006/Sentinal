@@ -28,13 +28,14 @@ class TestEngineDisposalOnShutdown:
         async def run_shutdown_with_mock() -> bool:
             from app.main import lifespan
 
-            # Mock the engine to verify dispose is called
-            with patch(
-                "app.main._engine",
-                new_callable=AsyncMock,
-            ) as mock_engine:
-                mock_engine.dispose = AsyncMock()
+            # Mock the get_engine function to return a mock engine
+            mock_engine = AsyncMock()
+            mock_engine.dispose = AsyncMock()
 
+            with patch(
+                "app.main.get_engine",
+                return_value=mock_engine,
+            ):
                 # Create a mock FastAPI app
                 app = FastAPI()
 
@@ -56,16 +57,17 @@ class TestEngineDisposalOnShutdown:
         async def run_shutdown_and_verify_log() -> bool:
             from app.main import lifespan
 
-            # Mock the engine to verify dispose is called and logs success
+            # Mock the engine and logger
+            mock_engine = AsyncMock()
+            mock_engine.dispose = AsyncMock()
+
             with (
                 patch(
-                    "app.main._engine",
-                    new_callable=AsyncMock,
-                ) as mock_engine,
+                    "app.main.get_engine",
+                    return_value=mock_engine,
+                ),
                 patch("app.main.get_logger") as mock_get_logger,
             ):
-                mock_engine.dispose = AsyncMock()
-
                 # Mock logger
                 mock_logger = MagicMock()
                 mock_logger.info = MagicMock()
@@ -91,18 +93,19 @@ class TestEngineDisposalOnShutdown:
         async def run_shutdown_with_failure() -> bool:
             from app.main import lifespan
 
+            # Mock engine that raises an error
+            mock_engine = AsyncMock()
+            mock_engine.dispose = AsyncMock(
+                side_effect=RuntimeError("Connection pool error")
+            )
+
             with (
                 patch(
-                    "app.main._engine",
-                    new_callable=AsyncMock,
-                ) as mock_engine,
+                    "app.main.get_engine",
+                    return_value=mock_engine,
+                ),
                 patch("app.main.get_logger") as mock_get_logger,
             ):
-                # Make dispose raise an exception
-                mock_engine.dispose = AsyncMock(
-                    side_effect=RuntimeError("Connection pool error")
-                )
-
                 # Mock logger
                 mock_logger = MagicMock()
                 mock_logger.error = MagicMock()
@@ -129,18 +132,19 @@ class TestEngineDisposalOnShutdown:
         async def run_shutdown_with_disposal_error() -> bool:
             from app.main import lifespan
 
+            # Mock engine that raises
+            mock_engine = AsyncMock()
+            mock_engine.dispose = AsyncMock(
+                side_effect=RuntimeError("Simulated disposal error")
+            )
+
             with (
                 patch(
-                    "app.main._engine",
-                    new_callable=AsyncMock,
-                ) as mock_engine,
+                    "app.main.get_engine",
+                    return_value=mock_engine,
+                ),
                 patch("app.main.get_logger"),
             ):
-                # Make dispose raise
-                mock_engine.dispose = AsyncMock(
-                    side_effect=RuntimeError("Simulated disposal error")
-                )
-
                 app = FastAPI()
 
                 # Should complete without raising
@@ -162,8 +166,8 @@ class TestEngineDisposalOnShutdown:
 
             with (
                 patch(
-                    "app.main._engine",
-                    new=None,
+                    "app.main.get_engine",
+                    return_value=None,
                 ),
                 patch("app.main.get_logger"),
             ):

@@ -27,9 +27,8 @@ class TestRequestIdMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
         assert response.status_code == 200
         assert "x-request-id" in response.headers
@@ -47,13 +46,12 @@ class TestRequestIdMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        provided_id = "custom-request-id-12345"
-        response = client.get(
-            "/api/v1/health",
-            headers={"X-Request-ID": provided_id},
-        )
+        with TestClient(app) as client:
+            provided_id = "custom-request-id-12345"
+            response = client.get(
+                "/api/v1/health",
+                headers={"X-Request-ID": provided_id},
+            )
 
         assert response.status_code == 200
         assert "x-request-id" in response.headers
@@ -71,8 +69,8 @@ class TestRequestIdMiddleware:
         async def test_route(request: Request) -> dict[str, str]:
             return {"request_id": request.state.request_id}
 
-        client = TestClient(app)
-        response = client.get("/test")
+        with TestClient(app) as client:
+            response = client.get("/test")
 
         assert response.status_code == 200
         data = response.json()
@@ -86,10 +84,9 @@ class TestRequestIdMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response1 = client.get("/api/v1/health")
-        response2 = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response1 = client.get("/api/v1/health")
+            response2 = client.get("/api/v1/health")
 
         request_id_1 = response1.headers["x-request-id"]
         request_id_2 = response2.headers["x-request-id"]
@@ -102,13 +99,12 @@ class TestRequestIdMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/api/v1/health",
-            headers={"X-Request-ID": custom_id},
-        )
+        with TestClient(app) as client:
+            custom_id = str(uuid.uuid4())
+            response = client.get(
+                "/api/v1/health",
+                headers={"X-Request-ID": custom_id},
+            )
 
         assert response.status_code == 200
         assert response.headers["x-request-id"] == custom_id
@@ -144,13 +140,12 @@ class TestCORSMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        # Make a request with the allowed origin
-        response = client.get(
-            "/api/v1/health",
-            headers={"Origin": "http://allowed.example.com"},
-        )
+        with TestClient(app) as client:
+            # Make a request with the allowed origin
+            response = client.get(
+                "/api/v1/health",
+                headers={"Origin": "http://allowed.example.com"},
+            )
 
         assert response.status_code == 200
         # CORS headers should be present for allowed origin
@@ -185,17 +180,16 @@ class TestCORSMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        # Preflight request
-        response = client.options(
-            "/api/v1/health",
-            headers={
-                "Origin": "http://allowed.example.com",
-                "Access-Control-Request-Method": "GET",
-                "Access-Control-Request-Headers": "content-type",
-            },
-        )
+        with TestClient(app) as client:
+            # Preflight request
+            response = client.options(
+                "/api/v1/health",
+                headers={
+                    "Origin": "http://allowed.example.com",
+                    "Access-Control-Request-Method": "GET",
+                    "Access-Control-Request-Headers": "content-type",
+                },
+            )
 
         # FastAPI may return 400 for OPTIONS on routes without explicit OPTIONS
         # but CORS middleware should still add headers
@@ -229,13 +223,12 @@ class TestCORSMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        # Request from disallowed origin
-        response = client.get(
-            "/api/v1/health",
-            headers={"Origin": "http://evil.example.com"},
-        )
+        with TestClient(app) as client:
+            # Request from disallowed origin
+            response = client.get(
+                "/api/v1/health",
+                headers={"Origin": "http://evil.example.com"},
+            )
 
         # Request should succeed (CORS doesn't block at server level)
         # but CORS headers should not include the evil origin
@@ -252,16 +245,15 @@ class TestCORSMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        # Preflight request asking for POST method
-        response = client.options(
-            "/api/v1/health",
-            headers={
-                "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "POST",
-            },
-        )
+        with TestClient(app) as client:
+            # Preflight request asking for POST method
+            response = client.options(
+                "/api/v1/health",
+                headers={
+                    "Origin": "http://localhost:3000",
+                    "Access-Control-Request-Method": "POST",
+                },
+            )
 
         assert response.status_code == 200
         if "access-control-allow-methods" in response.headers:
@@ -274,17 +266,16 @@ class TestCORSMiddleware:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        # Preflight request with required headers
-        response = client.options(
-            "/api/v1/health",
-            headers={
-                "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "GET",
-                "Access-Control-Request-Headers": "authorization,x-request-id",
-            },
-        )
+        with TestClient(app) as client:
+            # Preflight request with required headers
+            response = client.options(
+                "/api/v1/health",
+                headers={
+                    "Origin": "http://localhost:3000",
+                    "Access-Control-Request-Method": "GET",
+                    "Access-Control-Request-Headers": "authorization,x-request-id",
+                },
+            )
 
         assert response.status_code == 200
         # Response should allow the requested headers
@@ -315,15 +306,14 @@ class TestMiddlewareOrdering:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        # Regular request with Origin header
-        response = client.get(
-            "/api/v1/health",
-            headers={
-                "Origin": "http://localhost:3000",
-            },
-        )
+        with TestClient(app) as client:
+            # Regular request with Origin header
+            response = client.get(
+                "/api/v1/health",
+                headers={
+                    "Origin": "http://localhost:3000",
+                },
+            )
 
         # Request ID should be present
         assert "x-request-id" in response.headers
@@ -337,16 +327,15 @@ class TestMiddlewareIntegration:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        custom_request_id = str(uuid.uuid4())
-        response = client.get(
-            "/api/v1/health",
-            headers={
-                "X-Request-ID": custom_request_id,
-                "Origin": "http://localhost:3000",
-            },
-        )
+        with TestClient(app) as client:
+            custom_request_id = str(uuid.uuid4())
+            response = client.get(
+                "/api/v1/health",
+                headers={
+                    "X-Request-ID": custom_request_id,
+                    "Origin": "http://localhost:3000",
+                },
+            )
 
         assert response.status_code == 200
         # Request ID should be echoed
@@ -359,9 +348,8 @@ class TestMiddlewareIntegration:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/nonexistent-endpoint")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/nonexistent-endpoint")
 
         # Should get 404
         assert response.status_code == 404

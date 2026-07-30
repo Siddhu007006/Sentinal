@@ -437,12 +437,11 @@ class TestRequestLifecycleLogging:
 
         try:
             app = create_app()
-            client = TestClient(app)
+            with TestClient(app) as client:
+                # Make a request
+                response = client.get("/api/v1/health")
 
-            # Make a request
-            response = client.get("/api/v1/health")
-
-            assert response.status_code == 200
+                assert response.status_code == 200
 
             # Parse captured logs
             log_output = log_capture.getvalue()
@@ -479,11 +478,10 @@ class TestRequestLifecycleLogging:
 
         try:
             app = create_app()
-            client = TestClient(app)
+            with TestClient(app) as client:
+                response = client.get("/api/v1/health")
 
-            response = client.get("/api/v1/health")
-
-            assert response.status_code == 200
+                assert response.status_code == 200
 
             log_output = log_capture.getvalue()
             log_lines = [line for line in log_output.split("\n") if line.strip()]
@@ -522,13 +520,12 @@ class TestRequestLifecycleLogging:
 
         try:
             app = create_app()
-            client = TestClient(app)
-
-            # Provide custom request ID
-            custom_request_id = "test-correlation-id-789"
-            response = client.get(
-                "/api/v1/health", headers={"X-Request-ID": custom_request_id}
-            )
+            with TestClient(app) as client:
+                # Provide custom request ID
+                custom_request_id = "test-correlation-id-789"
+                response = client.get(
+                    "/api/v1/health", headers={"X-Request-ID": custom_request_id}
+                )
 
             assert response.status_code == 200
 

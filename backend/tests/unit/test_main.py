@@ -146,9 +146,8 @@ class TestHealthEndpoint:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
         assert response.status_code == 200
         data = response.json()
@@ -162,9 +161,8 @@ class TestHealthEndpoint:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
         assert "x-request-id" in response.headers
         # Should be a valid UUID format
@@ -180,9 +178,8 @@ class TestOpenAPIDocumentation:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/docs")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/docs")
 
         # Should return HTML (docs UI)
         assert response.status_code == 200
@@ -193,9 +190,8 @@ class TestOpenAPIDocumentation:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/openapi.json")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/openapi.json")
 
         assert response.status_code == 200
         data = response.json()
@@ -209,9 +205,8 @@ class TestOpenAPIDocumentation:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/redoc")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/redoc")
 
         # Should return HTML (ReDoc UI)
         assert response.status_code == 200

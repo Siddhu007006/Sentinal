@@ -74,14 +74,14 @@ Validate that the Alembic autogenerate workflow operates correctly with the asyn
 
 ### Implementation Checklist
 
-- [~] Read current state of `env.py`, `alembic.ini`, `script.py.mako`
-- [~] Verify `env.py` imports Base successfully
-- [~] Run: `cd backend && alembic revision --autogenerate -m "test"`
-- [~] Inspect generated migration file (if created)
-- [~] Verify migration file syntax: `python -m py_compile migrations/versions/<file>.py`
-- [~] Delete temporary test migration
-- [~] Run: `pytest backend/tests/ -v` (verify no regressions)
-- [~] Document findings in task completion note
+- [x] Read current state of `env.py`, `alembic.ini`, `script.py.mako`
+- [x] Verify `env.py` imports Base successfully
+- [x] Run: `cd backend && alembic revision --autogenerate -m "test"`
+- [x] Inspect generated migration file (if created)
+- [x] Verify migration file syntax: `python -m py_compile migrations/versions/<file>.py`
+- [x] Delete temporary test migration
+- [x] Run: `pytest backend/tests/ -v` (verify no regressions)
+- [x] Document findings in task completion note
 
 ### Scope Boundaries
 
@@ -133,17 +133,17 @@ Create integration tests that validate the migration lifecycle: upgrade from cle
 
 ### Implementation Checklist
 
-- [~] Create `backend/tests/integration/test_migrations.py`
-- [~] Add migration test fixtures:
+- [x] Create `backend/tests/integration/test_migrations.py`
+- [x] Add migration test fixtures:
   - `fresh_migration_db` (creates clean database for each test)
   - Helper: `run_alembic_upgrade()`
   - Helper: `run_alembic_downgrade()`
-- [~] Test 1: Upgrade on clean database (should succeed, no changes)
-- [~] Test 2: Idempotent upgrade (re-run, verify no-op)
-- [~] Test 3: Downgrade on clean database (should succeed, already at base)
-- [~] Test 4: Idempotent downgrade (re-run, verify no-op)
-- [~] Test 5: alembic_version table state verification
-- [~] Run: `pytest backend/tests/integration/test_migrations.py -v`
+- [x] Test 1: Upgrade on clean database (should succeed, no changes)
+- [x] Test 2: Idempotent upgrade (re-run, verify no-op)
+- [x] Test 3: Downgrade on clean database (should succeed, already at base)
+- [x] Test 4: Idempotent downgrade (re-run, verify no-op)
+- [x] Test 5: alembic_version table state verification
+- [x] Run: `pytest backend/tests/integration/test_migrations.py -v`
 - [ ] Run: `pytest backend/tests/ -v` (verify no regressions)
 
 ### Test Fixtures
@@ -224,8 +224,8 @@ Integrate migration validation into the GitHub Actions CI pipeline. Sequence: li
 
 ### Implementation Checklist
 
-- [~] Read current `.github/workflows/ci.yml`
-- [~] Add PostgreSQL service container:
+- [x] Read current `.github/workflows/ci.yml`
+- [x] Add PostgreSQL service container:
   ```yaml
   services:
     postgres:
@@ -235,7 +235,7 @@ Integrate migration validation into the GitHub Actions CI pipeline. Sequence: li
         POSTGRES_PASSWORD: test
         POSTGRES_DB: test
   ```
-- [~] Add migration upgrade stage (after linting):
+- [x] Add migration upgrade stage (after linting):
   ```yaml
   - name: Migrate database (upgrade)
     env:
@@ -244,7 +244,7 @@ Integrate migration validation into the GitHub Actions CI pipeline. Sequence: li
       cd backend
       alembic upgrade head
   ```
-- [~] Add migration downgrade stage (after tests):
+- [x] Add migration downgrade stage (after tests):
   ```yaml
   - name: Downgrade database
     env:
@@ -253,9 +253,9 @@ Integrate migration validation into the GitHub Actions CI pipeline. Sequence: li
       cd backend
       alembic downgrade base
   ```
-- [~] Verify workflow syntax: `yamllint .github/workflows/ci.yml`
-- [~] Commit and push to test branch
-- [~] Verify CI runs successfully on GitHub
+- [x] Verify workflow syntax: `yamllint .github/workflows/ci.yml`
+- [x] Commit and push to test branch
+- [x] Verify CI runs successfully on GitHub
 
 ### Scope Boundaries
 
@@ -311,25 +311,25 @@ Create developer-facing documentation on Alembic workflow. Document migration de
 
 ### Implementation Checklist
 
-- [ ] Create `backend/ALEMBIC_SETUP.md`:
-  - [~] Quick Start section (5 min overview)
-  - [~] Workflow section (step-by-step with User model example)
-  - [~] Example section (walkthrough of User model migration)
-  - [~] Troubleshooting section (connection, syntax, constraint errors)
-  - [~] Reference section (env vars, Alembic commands, file locations)
-- [ ] Update `backend/README.md`:
-  - [~] Add link to `backend/ALEMBIC_SETUP.md`
-  - [~] Add short blurb about Alembic workflow
-- [ ] Update `docs/00-Project-Context.md`:
-  - [~] Add reference to migration guide
-  - [~] Update reading order if applicable
-- [ ] Run quality gates:
-  - [~] `ruff check backend/` (0 violations)
-  - [~] `mypy backend/ --strict` (0 errors)
-  - [~] `pytest backend/tests/ -v` (100% pass)
-  - [~] `python -m compileall backend/` (success)
-- [~] Create final audit document: `.github/E3-T2-FINAL-AUDIT.md`
-- [~] Commit with message: "E3.T2: Alembic Configuration & Migration Workflow Complete"
+- [x] Create `backend/ALEMBIC_SETUP.md`:
+  - [x] Quick Start section (5 min overview)
+  - [x] Workflow section (step-by-step with User model example)
+  - [x] Example section (walkthrough of User model migration)
+  - [x] Troubleshooting section (connection, syntax, constraint errors)
+  - [x] Reference section (env vars, Alembic commands, file locations)
+- [x] Update `backend/README.md`:
+  - [x] Add link to `backend/ALEMBIC_SETUP.md`
+  - [x] Add short blurb about Alembic workflow
+- [x] Update `docs/00-Project-Context.md`:
+  - [x] Add reference to migration guide
+  - [x] Update reading order if applicable
+- [x] Run quality gates:
+  - [x] `ruff check backend/` (0 violations)
+  - [x] `mypy backend/ --strict` (0 errors)
+  - [x] `pytest backend/tests/ -v` (100% pass)
+  - [x] `python -m compileall backend/` (success)
+- [x] Create final audit document: `.github/E3-T2-FINAL-AUDIT.md`
+- [x] Commit with message: "E3.T2: Alembic Configuration & Migration Workflow Complete"
 
 ### Documentation Outline
 
@@ -386,13 +386,13 @@ Create developer-facing documentation on Alembic workflow. Document migration de
 ## Quality Gates (Final Validation)
 
 After all tasks complete:
-- [~] Ruff: `ruff check .` → 0 violations
-- [~] MyPy: `mypy . --strict` → 0 errors
-- [~] Pytest: `pytest backend/tests/ -v` → 100% pass rate
-- [~] Compileall: `python -m compileall backend/` → success
-- [~] No regressions in E3.T1 tests
-- [~] No regressions in E2 tests
-- [~] Git: All changes committed; branch clean
+- [x] Ruff: `ruff check .` → 0 violations
+- [x] MyPy: `mypy . --strict` → 0 errors
+- [x] Pytest: `pytest backend/tests/ -v` → 100% pass rate
+- [x] Compileall: `python -m compileall backend/` → success
+- [x] No regressions in E3.T1 tests
+- [x] No regressions in E2 tests
+- [x] Git: All changes committed; branch clean
 
 ---
 

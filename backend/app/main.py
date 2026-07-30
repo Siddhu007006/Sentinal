@@ -22,7 +22,8 @@ from app.api.v1.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.dependencies import get_logger, get_settings
 from app.core.settings import EnvironmentType
-from app.infrastructure.database.session import _engine
+from app.infrastructure.cache.redis_client import close_redis_client
+from app.infrastructure.database.session import get_engine
 from app.infrastructure.logging import configure_logging
 
 
@@ -61,10 +62,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     #   - Provider registry setup hooks
     yield
     # --- Shutdown ---
+    # Close Redis client
+    close_redis_client()
+
     # Dispose database connection pool
-    if _engine is not None:
+    engine = get_engine(settings)
+
+    if engine is not None:
         try:
-            await _engine.dispose()
+            await engine.dispose()
             logger.info("Database connection pool disposed")
         except Exception as e:
             logger.error(f"Failed to dispose database pool: {e}")

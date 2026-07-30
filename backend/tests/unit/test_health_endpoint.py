@@ -199,7 +199,7 @@ class TestHealthEndpointRequestID:
         app = create_app()
         with TestClient(app) as client:
             response1 = client.get("/api/v1/health")
-        response2 = client.get("/api/v1/health")
+            response2 = client.get("/api/v1/health")
 
         request_id1 = response1.headers["x-request-id"]
         request_id2 = response2.headers["x-request-id"]

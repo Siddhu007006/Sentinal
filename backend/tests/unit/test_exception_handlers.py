@@ -86,6 +86,16 @@ class TestHTTPExceptionHandler:
         error = data["error"]
         assert error["code"] == "rate_limit_exceeded"
 
+    def test_404_response_format_no_socket_leak(self) -> None:
+        """Verify a handled 404 returns the expected error response."""
+        app = create_app()
+
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/nonexistent")
+
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "not_found"
+
     def test_request_id_included_in_404(self) -> None:
         """Verify request_id included in 404 response."""
         app = create_app()

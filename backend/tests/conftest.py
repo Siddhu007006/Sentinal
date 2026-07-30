@@ -50,6 +50,10 @@ from app.core.settings import Settings
 os.environ.setdefault("ENVIRONMENT", "test")
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
+import gc
+import sys
+import time
+import pytest
 
 
 @pytest_asyncio.fixture(scope="function")
@@ -191,3 +195,27 @@ async def clean_db(
     # Cleanup is handled by db_session fixture
     # Returns None regardless of whether db_session is available
     return None
+
+
+# Windows-only: ensure background anyio/from_thread portals and their
+# ProactorEventLoop self-pipe sockets have time to shut down. On Windows
+# AnyIO's blocking portal may start a proactor event loop in a thread that
+# creates an internal `socketpair()`; in rare timing windows pytest can
+# observe unraisable finalizers for those sockets. This autouse fixture
+# is a pragmatic, minimal mitigation to promote stable CI on Windows by
+# forcing GC and waiting briefly after each test. See:
+# - scripts/trace_socket_leaks.py (temporary instrumentation)
+# - socket_leaks.log (sample captured stacks)
+@pytest.fixture(autouse=True)
+def ensure_background_cleanup() -> None:
+    yield
+    # Run only on Windows to avoid slowing non-Windows test runs
+    if sys.platform != "win32":
+        return
+    try:
+        gc.collect()
+        # small sleep to let background threads/finalizers run and close FDs
+        time.sleep(0.05)
+        gc.collect()
+    except Exception:
+        pass

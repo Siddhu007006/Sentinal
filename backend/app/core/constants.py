@@ -92,8 +92,8 @@ DEFAULT_ALLOWED_UPLOAD_MIME_TYPES: list[str] = [
 # ===========================================================================
 
 # JWT token types
-JWT_TOKEN_TYPE_ACCESS: str = "access"
-JWT_TOKEN_TYPE_REFRESH: str = "refresh"
+JWT_TOKEN_TYPE_ACCESS: str = "access"  # noqa: S105
+JWT_TOKEN_TYPE_REFRESH: str = "refresh"  # noqa: S105
 
 # HTTP Authorization header scheme
 HTTP_BEARER_SCHEME: str = "Bearer"
