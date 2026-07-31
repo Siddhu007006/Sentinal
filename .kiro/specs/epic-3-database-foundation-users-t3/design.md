@@ -111,6 +111,7 @@ class UserRole(enum.StrEnum):
     ANALYST = "analyst"
     VIEWER = "viewer"
 
+
 # In User model:
 role: Mapped[str] = mapped_column(
     String(20),
@@ -120,10 +121,7 @@ role: Mapped[str] = mapped_column(
 )
 
 # Table constraint:
-CheckConstraint(
-    "role IN ('admin', 'analyst', 'viewer')",
-    name="ck_users_role_valid"
-)
+CheckConstraint("role IN ('admin', 'analyst', 'viewer')", name="ck_users_role_valid")
 ```
 
 **Rationale:**
@@ -238,7 +236,7 @@ Implement soft delete via `deleted_at` nullable timestamp column:
 deleted_at: Mapped[datetime | None] = mapped_column(
     TIMESTAMP(timezone=True),
     nullable=True,
-    comment="Soft delete timestamp (UTC), null = active"
+    comment="Soft delete timestamp (UTC), null = active",
 )
 ```
 
@@ -343,13 +341,17 @@ Unit tests validate ORM behavior quickly. Integration tests validate database co
 ```python
 def test_duplicate_email_raises_unique_violation():
     """Integration test: UNIQUE constraint on email enforced."""
-    user1 = User(email="jane@example.com", password_hash="...", full_name="Jane", role="viewer")
+    user1 = User(
+        email="jane@example.com", password_hash="...", full_name="Jane", role="viewer"
+    )
     session.add(user1)
     await session.commit()  # First insert succeeds
-    
-    user2 = User(email="jane@example.com", password_hash="...", full_name="Other", role="viewer")
+
+    user2 = User(
+        email="jane@example.com", password_hash="...", full_name="Other", role="viewer"
+    )
     session.add(user2)
-    
+
     with pytest.raises(IntegrityError):  # Unique violation
         await session.commit()
 ```

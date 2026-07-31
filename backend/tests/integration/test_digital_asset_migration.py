@@ -121,9 +121,9 @@ async def test_all_digital_asset_columns_present_in_schema(
     actual_columns = set(columns)
 
     # Verify all expected columns are present
-    assert expected_columns.issubset(
-        actual_columns
-    ), f"Missing columns: {expected_columns - actual_columns}"
+    assert expected_columns.issubset(actual_columns), (
+        f"Missing columns: {expected_columns - actual_columns}"
+    )
 
 
 # ===========================================================================
@@ -186,7 +186,7 @@ async def test_fk_constraint_accepts_valid_user_id(
     # Create a valid user first
     user = User(
         email="asset-test@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Asset Test User",
         role=UserRole.ANALYST.value,
     )
@@ -236,7 +236,7 @@ async def test_fk_constraint_rejects_invalid_upload_id(
     # Create valid user first
     user = User(
         email="file-test@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="File Test",
         role=UserRole.VIEWER.value,
     )
@@ -282,7 +282,7 @@ async def test_fk_constraint_accepts_valid_upload_id(
     # Create valid user
     user = User(
         email="upload-asset-test@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Upload Asset Test",
         role=UserRole.ANALYST.value,
     )
@@ -346,7 +346,7 @@ async def test_unique_constraint_on_normalized_value_type(
     # Create valid user
     user = User(
         email="unique-test@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Unique Test",
         role=UserRole.ANALYST.value,
     )
@@ -401,7 +401,7 @@ async def test_unique_constraint_allows_same_value_different_type(
     # Create valid user
     user = User(
         email="same-value-types@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Same Value Types",
         role=UserRole.ANALYST.value,
     )
@@ -459,7 +459,7 @@ async def test_check_constraint_rejects_invalid_asset_type(
     # Create valid user
     user = User(
         email="invalid-type@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Invalid Type Test",
         role=UserRole.VIEWER.value,
     )
@@ -504,7 +504,7 @@ async def test_check_constraint_accepts_valid_asset_types(
     # Create valid user
     user = User(
         email="valid-types@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Valid Types Test",
         role=UserRole.ANALYST.value,
     )
@@ -595,7 +595,7 @@ async def test_check_constraint_file_type_requires_upload_id(
     # Create valid user
     user = User(
         email="file-no-upload@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="File No Upload",
         role=UserRole.VIEWER.value,
     )
@@ -641,7 +641,7 @@ async def test_check_constraint_non_file_type_no_upload_id(
     # Create valid user and upload
     user = User(
         email="url-with-upload@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="URL With Upload",
         role=UserRole.ANALYST.value,
     )
@@ -698,7 +698,7 @@ async def test_not_null_constraint_on_asset_type(
     # Create valid user
     user = User(
         email="null-type@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Null Type",
         role=UserRole.VIEWER.value,
     )
@@ -735,7 +735,7 @@ async def test_not_null_constraint_on_normalized_value(
     # Create valid user
     user = User(
         email="null-normalized@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Null Normalized",
         role=UserRole.VIEWER.value,
     )
@@ -782,7 +782,7 @@ async def test_insert_valid_asset_succeeds(
     # Create valid user
     user = User(
         email="valid-asset@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Valid Asset",
         role=UserRole.ANALYST.value,
     )
@@ -835,7 +835,7 @@ async def test_soft_delete_sets_deleted_at(
     # Create valid user and asset
     user = User(
         email="soft-delete@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Soft Delete Test",
         role=UserRole.ANALYST.value,
     )
@@ -887,7 +887,7 @@ async def test_default_is_active_is_true_at_database_level(
     # Create valid user
     user = User(
         email="default-active@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Default Active",
         role=UserRole.ANALYST.value,
     )
@@ -940,7 +940,7 @@ async def test_asset_lifecycle_with_user_relationship(
     # Create user with multiple assets
     user = User(
         email="multi-asset@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Multi Asset User",
         role=UserRole.ANALYST.value,
     )
@@ -995,13 +995,13 @@ async def test_multiple_users_can_have_same_asset_value(
     # Create two users
     user1 = User(
         email="user1-shared@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="User 1",
         role=UserRole.ANALYST.value,
     )
     user2 = User(
         email="user2-shared@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="User 2",
         role=UserRole.ANALYST.value,
     )
@@ -1060,7 +1060,7 @@ async def test_asset_can_store_metadata_json(
     # Create user
     user = User(
         email="metadata-test@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Metadata Test",
         role=UserRole.ANALYST.value,
     )
@@ -1120,7 +1120,7 @@ async def test_user_model_still_works_after_digital_asset_migration(
     users = [
         User(
             email=f"user-{i}@example.com",
-            password_hash="$2b$12$hash",
+            password_hash="$2b$12$hash",  # noqa: S106
             full_name=f"User {i}",
             role=UserRole.ANALYST.value,
         )
@@ -1162,7 +1162,7 @@ async def test_upload_model_still_works_after_digital_asset_migration(
     # Create user
     user = User(
         email="upload-regression@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Upload Regression Test",
         role=UserRole.ANALYST.value,
     )

@@ -96,7 +96,7 @@ def test_migration_upgrade_creates_users_table(db_session: AsyncSession | None) 
     # Run upgrade
     backend_dir = Path(__file__).parent.parent.parent
 
-    exit_code, stdout, stderr = run_alembic_command(
+    exit_code, _, stderr = run_alembic_command(
         ["python", "-m", "alembic", "upgrade", "head"],
         cwd=str(backend_dir),
     )
@@ -203,9 +203,9 @@ async def test_all_user_columns_present_in_schema(
     actual_columns = set(columns)
 
     # Verify all expected columns are present
-    assert expected_columns.issubset(
-        actual_columns
-    ), f"Missing columns: {expected_columns - actual_columns}"
+    assert expected_columns.issubset(actual_columns), (
+        f"Missing columns: {expected_columns - actual_columns}"
+    )
 
 
 # ===========================================================================
@@ -236,7 +236,7 @@ async def test_unique_constraint_on_email(
     # Create first user
     user1 = User(
         email="duplicate@example.com",
-        password_hash="$2b$12$hash1",
+        password_hash="$2b$12$hash1",  # noqa: S106
         full_name="User One",
         role="viewer",
     )
@@ -246,7 +246,7 @@ async def test_unique_constraint_on_email(
     # Attempt to insert second user with duplicate email
     user2 = User(
         email="duplicate@example.com",
-        password_hash="$2b$12$hash2",
+        password_hash="$2b$12$hash2",  # noqa: S106
         full_name="User Two",
         role="viewer",
     )
@@ -288,7 +288,7 @@ async def test_check_constraint_on_role(
     # We bypass Python enum to test database constraint directly
     user = User(
         email="invalid-role@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Invalid Role User",
     )
     # Manually set invalid role (bypassing Python enum)
@@ -331,7 +331,7 @@ async def test_not_null_constraint_on_email(
     # Create user with null email
     user = User(
         email=None,
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="No Email User",
     )
 
@@ -399,7 +399,7 @@ async def test_insert_valid_user_succeeds(
 
     user = User(
         email="valid@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Valid User",
         role="analyst",
         is_active=True,
@@ -430,19 +430,19 @@ async def test_insert_multiple_valid_users_with_different_roles(
     users = [
         User(
             email="admin1@example.com",
-            password_hash="$2b$12$hash1",
+            password_hash="$2b$12$hash1",  # noqa: S106
             full_name="Admin User",
             role=UserRole.ADMIN.value,
         ),
         User(
             email="analyst1@example.com",
-            password_hash="$2b$12$hash2",
+            password_hash="$2b$12$hash2",  # noqa: S106
             full_name="Analyst User",
             role=UserRole.ANALYST.value,
         ),
         User(
             email="viewer1@example.com",
-            password_hash="$2b$12$hash3",
+            password_hash="$2b$12$hash3",  # noqa: S106
             full_name="Viewer User",
             role=UserRole.VIEWER.value,
         ),
@@ -485,7 +485,7 @@ def test_migration_downgrade_drops_users_table(db_session: AsyncSession | None) 
 
     # Run downgrade
     backend_dir = Path(__file__).parent.parent.parent
-    exit_code, stdout, stderr = run_alembic_command(
+    exit_code, _, stderr = run_alembic_command(
         ["python", "-m", "alembic", "downgrade", "base"],
         cwd=str(backend_dir),
     )
@@ -589,7 +589,7 @@ async def test_default_role_is_viewer_at_database_level(
     # Insert user without specifying role
     user = User(
         email="default-role@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Default Role User",
         # role not specified, should default to 'viewer'
     )
@@ -617,7 +617,7 @@ async def test_default_is_active_is_true_at_database_level(
 
     user = User(
         email="default-active@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Default Active User",
         # is_active not specified, should default to true
     )
@@ -644,7 +644,7 @@ async def test_default_is_verified_is_false_at_database_level(
 
     user = User(
         email="default-verified@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Default Verified User",
         # is_verified not specified, should default to false
     )
@@ -684,7 +684,7 @@ async def test_created_at_and_updated_at_set_by_database(
 
     user = User(
         email="timestamps@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Timestamps User",
     )
 

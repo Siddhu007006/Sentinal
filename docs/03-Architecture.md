@@ -502,9 +502,12 @@ class ThreatScore:
 
     @property
     def severity(self) -> Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]:
-        if self.value < 0.25: return "LOW"
-        if self.value < 0.50: return "MEDIUM"
-        if self.value < 0.75: return "HIGH"
+        if self.value < 0.25:
+            return "LOW"
+        if self.value < 0.50:
+            return "MEDIUM"
+        if self.value < 0.75:
+            return "HIGH"
         return "CRITICAL"
 ```
 
@@ -814,14 +817,13 @@ worker pools become explicit requirements.
 @app.task(
     bind=True,
     max_retries=3,
-    default_retry_delay=60,          # 60s base
-    retry_backoff=True,              # Exponential: 60s, 120s, 240s
-    retry_backoff_max=600,           # Cap at 10 minutes
-    acks_late=True,                  # Don't ack until task completes
-    reject_on_worker_lost=True,      # Re-queue on hard worker crash
+    default_retry_delay=60,  # 60s base
+    retry_backoff=True,  # Exponential: 60s, 120s, 240s
+    retry_backoff_max=600,  # Cap at 10 minutes
+    acks_late=True,  # Don't ack until task completes
+    reject_on_worker_lost=True,  # Re-queue on hard worker crash
 )
-def run_full_analysis(self, job_id: str) -> None:
-    ...
+def run_full_analysis(self, job_id: str) -> None: ...
 ```
 
 Failed jobs after max retries transition to `FAILED` status and write
@@ -869,7 +871,7 @@ class AIVerdictOutput(BaseModel):
     iocs: list[IndicatorOfCompromise]
     reasoning_steps: list[str] = Field(..., min_length=1)
     data_gaps: list[str]  # What data was missing/unavailable
-    model_version: str    # Which model produced this output
+    model_version: str  # Which model produced this output
 ```
 
 ### 10.4 Provider Abstraction

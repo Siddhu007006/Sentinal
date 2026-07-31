@@ -298,7 +298,7 @@ def test_user_uploads_relationship_exists_on_user_model() -> None:
     """
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",
+        password_hash="$2b$12$hash",  # noqa: S106
         full_name="Test User",
     )
 

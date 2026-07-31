@@ -15,7 +15,6 @@ import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from redis.exceptions import ConnectionError as RedisConnectionError
-from redis.exceptions import RedisError
 
 from app.api.v1.middleware.rate_limit import RateLimitMiddleware
 from app.core.settings import RateLimitSettings
@@ -38,12 +37,12 @@ def rate_limit_settings(monkeypatch: pytest.MonkeyPatch) -> RateLimitSettings:
 def mock_redis(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     """Mock Redis client for unit tests."""
     import app.infrastructure.cache.redis_client as redis_module
-    
+
     # Create a mock that looks like a Redis client
     mock_client = MagicMock()
     mock_client.incr = MagicMock(return_value=1)
     mock_client.expire = MagicMock(return_value=True)
-    
+
     # Patch both the module-level _redis_client AND the get_redis_client function
     monkeypatch.setattr(redis_module, "_redis_client", mock_client)
     monkeypatch.setattr(
@@ -55,7 +54,9 @@ def mock_redis(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 
 @pytest.fixture
-def app_with_rate_limit(rate_limit_settings: RateLimitSettings, mock_redis: MagicMock) -> FastAPI:
+def app_with_rate_limit(
+    rate_limit_settings: RateLimitSettings, mock_redis: MagicMock
+) -> FastAPI:
     """Create FastAPI app with rate limit middleware."""
     app = FastAPI()
 

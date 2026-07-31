@@ -1207,9 +1207,9 @@ def test_digital_asset_relationship_has_selectin_lazy_loading() -> None:
     relationship_property = Analysis.__mapper__.relationships.get("digital_asset")
 
     assert relationship_property is not None, "digital_asset relationship not found"
-    assert (
-        relationship_property.lazy == "selectin"
-    ), f"Expected lazy='selectin', got '{relationship_property.lazy}'"
+    assert relationship_property.lazy == "selectin", (
+        f"Expected lazy='selectin', got '{relationship_property.lazy}'"
+    )
 
 
 def test_digital_asset_relationship_has_back_populates() -> None:
@@ -1248,9 +1248,9 @@ def test_user_relationship_has_selectin_lazy_loading() -> None:
     relationship_property = Analysis.__mapper__.relationships.get("user")
 
     assert relationship_property is not None, "user relationship not found"
-    assert (
-        relationship_property.lazy == "selectin"
-    ), f"Expected lazy='selectin', got '{relationship_property.lazy}'"
+    assert relationship_property.lazy == "selectin", (
+        f"Expected lazy='selectin', got '{relationship_property.lazy}'"
+    )
 
 
 def test_user_relationship_has_back_populates() -> None:
@@ -1313,8 +1313,7 @@ def test_index_ix_analyses_asset_status_exists() -> None:
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
     assert "ix_analyses_asset_status" in indexes, (
-        f"Index 'ix_analyses_asset_status' not found. "
-        f"Available: {list(indexes.keys())}"
+        f"Index 'ix_analyses_asset_status' not found. Available: {list(indexes.keys())}"
     )
 
 
@@ -1338,9 +1337,9 @@ def test_index_ix_analyses_asset_latest_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert (
-        "ix_analyses_asset_latest" in indexes
-    ), f"Index 'ix_analyses_asset_latest' not found. Available: {list(indexes.keys())}"
+    assert "ix_analyses_asset_latest" in indexes, (
+        f"Index 'ix_analyses_asset_latest' not found. Available: {list(indexes.keys())}"
+    )
 
 
 def test_index_ix_analyses_pending_exists() -> None:
@@ -1349,9 +1348,9 @@ def test_index_ix_analyses_pending_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert (
-        "ix_analyses_pending" in indexes
-    ), f"Index 'ix_analyses_pending' not found. Available: {list(indexes.keys())}"
+    assert "ix_analyses_pending" in indexes, (
+        f"Index 'ix_analyses_pending' not found. Available: {list(indexes.keys())}"
+    )
 
 
 def test_index_ix_analyses_pending_is_partial() -> None:
@@ -1365,9 +1364,9 @@ def test_index_ix_analyses_pending_is_partial() -> None:
     assert idx is not None
     # Partial indexes have postgresql_where in dialect_options['postgresql']
     postgresql_opts = idx.dialect_options.get("postgresql", {})
-    assert postgresql_opts.get(
-        "where"
-    ), "Index ix_analyses_pending should have a WHERE clause (partial index)"
+    assert postgresql_opts.get("where"), (
+        "Index ix_analyses_pending should have a WHERE clause (partial index)"
+    )
 
 
 def test_index_ix_analyses_user_history_exists() -> None:
@@ -1376,9 +1375,9 @@ def test_index_ix_analyses_user_history_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert (
-        "ix_analyses_user_history" in indexes
-    ), f"Index 'ix_analyses_user_history' not found. Available: {list(indexes.keys())}"
+    assert "ix_analyses_user_history" in indexes, (
+        f"Index 'ix_analyses_user_history' not found. Available: {list(indexes.keys())}"
+    )
 
 
 def test_index_ix_analyses_user_history_columns() -> None:
@@ -1401,9 +1400,9 @@ def test_index_ix_analyses_celery_task_exists() -> None:
     **Validates: Design §6.2**
     """
     indexes = {idx.name: idx for idx in Analysis.__table__.indexes}  # type: ignore[attr-defined]
-    assert (
-        "ix_analyses_celery_task" in indexes
-    ), f"Index 'ix_analyses_celery_task' not found. Available: {list(indexes.keys())}"
+    assert "ix_analyses_celery_task" in indexes, (
+        f"Index 'ix_analyses_celery_task' not found. Available: {list(indexes.keys())}"
+    )
 
 
 def test_index_ix_analyses_celery_task_is_partial() -> None:
@@ -1417,9 +1416,9 @@ def test_index_ix_analyses_celery_task_is_partial() -> None:
     assert idx is not None
     # Partial indexes should have WHERE clause in dialect_options['postgresql']
     postgresql_opts = idx.dialect_options.get("postgresql", {})
-    assert postgresql_opts.get(
-        "where"
-    ), "Index ix_analyses_celery_task should have a WHERE clause (partial index)"
+    assert postgresql_opts.get("where"), (
+        "Index ix_analyses_celery_task should have a WHERE clause (partial index)"
+    )
 
 
 def test_index_ix_analyses_severity_completed_exists() -> None:
@@ -1493,13 +1492,13 @@ def test_unique_index_columns() -> None:
 
     assert idx is not None
     column_names = [col.name for col in idx.columns]
-    assert (
-        "digital_asset_id" in column_names
-    ), f"Expected digital_asset_id in {column_names}"
+    assert "digital_asset_id" in column_names, (
+        f"Expected digital_asset_id in {column_names}"
+    )
     assert "analyzer_key" in column_names, f"Expected analyzer_key in {column_names}"
-    assert (
-        "analyzer_version" in column_names
-    ), f"Expected analyzer_version in {column_names}"
+    assert "analyzer_version" in column_names, (
+        f"Expected analyzer_version in {column_names}"
+    )
 
 
 def test_unique_index_is_partial() -> None:
@@ -1515,9 +1514,9 @@ def test_unique_index_is_partial() -> None:
     assert idx is not None
     # Should have WHERE clause for partial uniqueness in dialect_options
     postgresql_opts = idx.dialect_options.get("postgresql", {})
-    assert postgresql_opts.get(
-        "where"
-    ), "Unique index should have a WHERE clause (partial unique)"
+    assert postgresql_opts.get("where"), (
+        "Unique index should have a WHERE clause (partial unique)"
+    )
 
 
 # ===========================================================================
@@ -1667,6 +1666,6 @@ def test_analysis_table_has_primary_key_constraint() -> None:
     constraints = list(table.constraints)
     pk_constraints = [c for c in constraints if isinstance(c, PrimaryKeyConstraint)]
 
-    assert (
-        len(pk_constraints) == 1
-    ), f"Expected 1 PK constraint, got {len(pk_constraints)}"
+    assert len(pk_constraints) == 1, (
+        f"Expected 1 PK constraint, got {len(pk_constraints)}"
+    )

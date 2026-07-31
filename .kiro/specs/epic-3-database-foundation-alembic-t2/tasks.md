@@ -157,12 +157,14 @@ def fresh_migration_db():
     # Teardown: drop database
     yield db_url
 
+
 def run_alembic_upgrade(db_url, target="head"):
     """Helper: Execute alembic upgrade command."""
     # Set environment variable: DATABASE_MIGRATION_URL
     # Run: alembic upgrade <target>
     # Return exit code and output
     pass
+
 
 def run_alembic_downgrade(db_url, target="base"):
     """Helper: Execute alembic downgrade command."""

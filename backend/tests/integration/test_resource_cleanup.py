@@ -10,6 +10,19 @@ def test_health_endpoint_does_not_leak_resources_in_isolated_process() -> None:
     project_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root / "backend")
+    # Provide minimal DB env vars so Settings validation succeeds in subprocess.
+    # The subprocess only imports app and does small TestClient requests; no
+    # real DB connection is required here. Use lightweight SQLite memory URIs
+    # to satisfy pydantic validation of `DatabaseSettings`.
+    env["DATABASE_URL"] = "sqlite:///:memory:"
+    env["DATABASE_MIGRATION_URL"] = "sqlite:///:memory:"
+    # Provide minimal storage and security env vars required by Settings
+    env["S3_ENDPOINT_URL"] = "http://localhost:9000"
+    env["S3_BUCKET_NAME"] = "test-bucket"
+    env["S3_ACCESS_KEY"] = "test-access-key"
+    env["S3_SECRET_KEY"] = "test-secret-key"  # noqa: S105
+    env["JWT_SECRET_KEY"] = "test-secret-key-which-is-long-enough"  # noqa: S105
+    env["REDIS_URL"] = "redis://localhost:6379/0"
 
     script = textwrap.dedent(
         """
@@ -35,7 +48,7 @@ def test_health_endpoint_does_not_leak_resources_in_isolated_process() -> None:
         """
     )
 
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-W", "error::ResourceWarning", "-c", script],
         cwd=str(project_root),
         env=env,
@@ -56,6 +69,15 @@ def test_exception_handler_does_not_leak_resources_in_isolated_process() -> None
     project_root = Path(__file__).resolve().parents[2]
     env = os.environ.copy()
     env["PYTHONPATH"] = str(project_root / "backend")
+    # Provide minimal DB env vars so Settings validation succeeds in subprocess.
+    env["DATABASE_URL"] = "sqlite:///:memory:"
+    env["DATABASE_MIGRATION_URL"] = "sqlite:///:memory:"
+    env["S3_ENDPOINT_URL"] = "http://localhost:9000"
+    env["S3_BUCKET_NAME"] = "test-bucket"
+    env["S3_ACCESS_KEY"] = "test-access-key"
+    env["S3_SECRET_KEY"] = "test-secret-key"  # noqa: S105
+    env["JWT_SECRET_KEY"] = "test-secret-key-which-is-long-enough"  # noqa: S105
+    env["REDIS_URL"] = "redis://localhost:6379/0"
 
     script = textwrap.dedent(
         """
@@ -83,7 +105,7 @@ def test_exception_handler_does_not_leak_resources_in_isolated_process() -> None
         """
     )
 
-    result = subprocess.run(
+    result = subprocess.run(  # noqa: S603
         [sys.executable, "-W", "error::ResourceWarning", "-c", script],
         cwd=str(project_root),
         env=env,

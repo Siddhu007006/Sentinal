@@ -85,6 +85,10 @@ dev = [
     "factory-boy>=3.3.0,<4.0.0",
 ]
 
+[dependency-groups]
+dev = []
+
+
 # ===========================================================================
 # Ruff — Linting + Formatting + Import Sorting
 #
@@ -127,9 +131,11 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = [
+"tests/**" = [
     "S101",    # assert is the test mechanism
+    "S105",    # hardcoded secrets in test env vars
     "S106",    # hardcoded password fixture (tests use fixed test values)
+    "S603",    # subprocess call in tests
     "ANN",     # test functions don't need full annotation
     "T20",     # print can be useful in test debugging
 ]

@@ -91,20 +91,20 @@ user_id: Mapped[UUID] = mapped_column(
     UUID(as_uuid=True),
     ForeignKey("users.id", ondelete="RESTRICT"),
     nullable=False,
-    comment="Asset owner; assets cannot be deleted if user is deleted"
+    comment="Asset owner; assets cannot be deleted if user is deleted",
 )
 
 normalized_value: Mapped[str] = mapped_column(
     String(2048),
     nullable=False,
-    comment="Canonicalized form used for deduplication (lowercased domain, defanged URL, etc.)"
+    comment="Canonicalized form used for deduplication (lowercased domain, defanged URL, etc.)",
 )
 
 metadata: Mapped[dict | None] = mapped_column(
     JSON(),
     nullable=True,
     default=None,
-    comment="Asset-type-specific metadata (JSONB). See Database Design §5.4.1 for schemas."
+    comment="Asset-type-specific metadata (JSONB). See Database Design §5.4.1 for schemas.",
 )
 ```
 
@@ -127,11 +127,12 @@ Define `AssetType` as `enum.StrEnum` (not PostgreSQL ENUM type). Store as `VARCH
 ```python
 class AssetType(enum.StrEnum):
     """Classification of digital assets submitted to Sentinel."""
-    URL = "url"              # Uniform Resource Locator (http/https/ftp)
-    DOMAIN = "domain"        # DNS domain name (e.g., evil.com)
+
+    URL = "url"  # Uniform Resource Locator (http/https/ftp)
+    DOMAIN = "domain"  # DNS domain name (e.g., evil.com)
     IP_ADDRESS = "ip_address"  # IPv4 or IPv6 address
     FILE_HASH = "file_hash"  # Hash digest (SHA-256, MD5, etc.)
-    FILE = "file"            # Uploaded file content
+    FILE = "file"  # Uploaded file content
 ```
 
 **Supported Types:**
@@ -159,9 +160,10 @@ Enforce deduplication via UNIQUE constraint on `(normalized_value, asset_type)` 
 ```python
 __table_args__ = (
     UniqueConstraint(
-        "normalized_value", "asset_type",
+        "normalized_value",
+        "asset_type",
         name="uq_digital_assets_normalized_value_type",
-        comment="Deduplication: a user cannot have two assets with the same normalized value and type"
+        comment="Deduplication: a user cannot have two assets with the same normalized value and type",
     ),
 )
 ```
@@ -216,26 +218,30 @@ Create 6 indexes optimized for common query patterns:
 __table_args__ = (
     Index(
         "ix_da_user_created",
-        "user_id", "created_at",
+        "user_id",
+        "created_at",
         postgresql_ops={"created_at": "DESC"},
-        comment="User asset list, paginated by recency"
+        comment="User asset list, paginated by recency",
     ),
     Index(
         "ix_da_user_type_created",
-        "user_id", "asset_type", "created_at",
+        "user_id",
+        "asset_type",
+        "created_at",
         postgresql_ops={"created_at": "DESC"},
-        comment="Filter user's assets by type"
+        comment="Filter user's assets by type",
     ),
     Index(
         "ix_da_normalized_type",
-        "normalized_value", "asset_type",
-        comment="Deduplication check: does user already have this asset?"
+        "normalized_value",
+        "asset_type",
+        comment="Deduplication check: does user already have this asset?",
     ),
     Index(
         "ix_da_metadata_gin",
         "metadata",
         postgresql_using="gin",
-        comment="JSONB containment queries"
+        comment="JSONB containment queries",
     ),
 )
 ```

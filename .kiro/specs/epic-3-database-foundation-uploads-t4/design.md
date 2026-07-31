@@ -67,13 +67,13 @@ user_id: Mapped[UUID] = mapped_column(
     UUID(as_uuid=True),
     ForeignKey("users.id"),
     nullable=False,
-    comment="Foreign key to users table; every upload belongs to exactly one user"
+    comment="Foreign key to users table; every upload belongs to exactly one user",
 )
 
 checksum_sha256: Mapped[str | None] = mapped_column(
     String(64),
     nullable=True,
-    comment="SHA-256 hash of file content (hex); null until validation completes"
+    comment="SHA-256 hash of file content (hex); null until validation completes",
 )
 ```
 
@@ -97,10 +97,11 @@ Define `UploadStatus` as `enum.StrEnum` (not PostgreSQL ENUM type). Store as `VA
 ```python
 class UploadStatus(enum.StrEnum):
     """Upload lifecycle states."""
-    PENDING = "pending"         # Received, awaiting processing
-    PROCESSING = "processing"   # Validation/hashing in progress
-    COMPLETED = "completed"     # Terminal: processing succeeded, asset created
-    FAILED = "failed"           # Terminal: processing failed, see error_message
+
+    PENDING = "pending"  # Received, awaiting processing
+    PROCESSING = "processing"  # Validation/hashing in progress
+    COMPLETED = "completed"  # Terminal: processing succeeded, asset created
+    FAILED = "failed"  # Terminal: processing failed, see error_message
 ```
 
 **Traceability:** 07-Backend-Development-Standards §8, 04-Database-Design §2.1 (StrEnum strategy)
@@ -127,7 +128,7 @@ user: Mapped["User"] = relationship(
     "User",
     back_populates="uploads",
     lazy="joined",
-    comment="User who created this upload"
+    comment="User who created this upload",
 )
 
 # In User model (updated from E3.T3):
@@ -135,7 +136,7 @@ uploads: Mapped[list["Upload"]] = relationship(
     "Upload",
     back_populates="user",
     lazy="selectin",
-    cascade="all, delete-orphan"  # or restrict (soft delete preferred)
+    cascade="all, delete-orphan",  # or restrict (soft delete preferred)
 )
 ```
 
@@ -166,8 +167,12 @@ Create 4 indexes optimized for common query patterns:
 **Implementation:**
 ```python
 __table_args__ = (
-    Index("ix_uploads_user_created", "user_id", "created_at", 
-          postgresql_ops={"created_at": "DESC"}),
+    Index(
+        "ix_uploads_user_created",
+        "user_id",
+        "created_at",
+        postgresql_ops={"created_at": "DESC"},
+    ),
     Index("ix_uploads_storage_key", "storage_key", unique=True),
 )
 ```

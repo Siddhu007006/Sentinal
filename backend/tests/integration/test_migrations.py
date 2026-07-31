@@ -221,7 +221,7 @@ def test_downgrade_base_on_clean_database(
     - Complete successfully (exit code 0)
     - Be idempotent (already at base, no-op)
     """
-    exit_code, stdout, stderr = run_alembic_command(
+    exit_code, _, stderr = run_alembic_command(
         ["python", "-m", "alembic", "downgrade", "base"],
         alembic_env,
     )

@@ -209,6 +209,7 @@ async def get_db_session(
     finally:
         await session.close()
 
+
 async def dispose_engine() -> None:
     """Dispose the database engine and reset cached globals."""
 

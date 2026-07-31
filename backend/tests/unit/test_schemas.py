@@ -492,9 +492,9 @@ class TestOpenAPISchemaGeneration:
         # request_id should have alias in schema
         props = schema["properties"]
         # The field might be keyed by the actual field name or alias
-        assert any(
-            "request" in key.lower() for key in props
-        ), f"Properties: {list(props)}"
+        assert any("request" in key.lower() for key in props), (
+            f"Properties: {list(props)}"
+        )
 
     def test_timestamp_mixin_schema_has_camel_case_fields(self) -> None:
         """Verify TimestampMixin schema includes camelCase field names."""

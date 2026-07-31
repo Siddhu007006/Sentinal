@@ -53,6 +53,7 @@ Export `get_db_session()` from `app.core.dependencies` so route handlers can use
 ```python
 # Pseudo-test to verify import works
 from app.core.dependencies import get_db_session
+
 assert get_db_session is not None
 assert callable(get_db_session)
 ```
@@ -146,6 +147,7 @@ Create `tests/conftest.py` with reusable fixtures for database integration testi
    from app.core.settings import Settings
    from app.infrastructure.database.base import Base
 
+
    @pytest.fixture(scope="session")
    async def async_engine():
        """Create async engine once per test session."""
@@ -156,6 +158,7 @@ Create `tests/conftest.py` with reusable fixtures for database integration testi
        )
        yield engine
        await engine.dispose()
+
 
    @pytest.fixture(scope="function")
    async def db_session(async_engine):
@@ -170,6 +173,7 @@ Create `tests/conftest.py` with reusable fixtures for database integration testi
                raise
            finally:
                await session.close()
+
 
    @pytest.fixture(scope="function")
    async def clean_db(db_session):
@@ -210,10 +214,13 @@ async def test_fixture_isolation_a(db_session):
     await db_session.execute(insert(User).values(email="test@example.com"))
     # Test logic...
 
+
 @pytest.mark.asyncio
 async def test_fixture_isolation_b(db_session):
     # Should NOT see data from test_a
-    result = await db_session.execute(select(User).where(User.email == "test@example.com"))
+    result = await db_session.execute(
+        select(User).where(User.email == "test@example.com")
+    )
     assert result.scalar_one_or_none() is None  # Rollback cleared it
 ```
 
@@ -305,11 +312,14 @@ Create focused integration tests verifying:
    from app.core.dependencies import get_db_session
    # (Import User model once it exists in E3.T3+)
 
+
    @pytest.mark.asyncio
    async def test_get_db_session_export():
        """Verify get_db_session is exported from dependencies module."""
        from app.core.dependencies import get_db_session
+
        assert callable(get_db_session)
+
 
    @pytest.mark.asyncio
    async def test_session_lifecycle(db_session):
@@ -320,6 +330,7 @@ Create focused integration tests verifying:
        result = await db_session.execute(select(1))
        assert result.scalar() == 1
 
+
    @pytest.mark.asyncio
    async def test_fixture_isolation_data_cleared(db_session):
        """Verify rollback clears test data between tests."""
@@ -327,12 +338,15 @@ Create focused integration tests verifying:
        await db_session.execute(insert(SomeTable).values(marker="test"))
        # (Rollback happens in fixture cleanup, verified in next test)
 
+
    @pytest.mark.asyncio
    async def test_fixture_isolation_no_leakage(db_session):
        """Verify data from previous test is not present."""
        # This test runs after test_fixture_isolation_data_cleared
        # If rollback didn't work, this test would see the marker from the previous test
-       result = await db_session.execute(select(SomeTable).where(SomeTable.marker == "test"))
+       result = await db_session.execute(
+           select(SomeTable).where(SomeTable.marker == "test")
+       )
        assert result.scalar_one_or_none() is None  # Should not exist
    ```
 
