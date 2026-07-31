@@ -40,22 +40,17 @@ jobs:
         shell: bash
         run: |
           uv venv
-          source .venv/bin/activate
           uv sync --all-extras
 
       - name: Ruff lint
         working-directory: backend
         shell: bash
-        run: |
-          source .venv/bin/activate
-          ruff check app
+        run: uv run ruff check app
 
       - name: Ruff format check
         working-directory: backend
         shell: bash
-        run: |
-          source .venv/bin/activate
-          ruff format --check app
+        run: uv run ruff format --check app
 
   type-check:
     name: Type Check
@@ -86,15 +81,12 @@ jobs:
         shell: bash
         run: |
           uv venv
-          source .venv/bin/activate
           uv sync --all-extras
 
       - name: Type check with mypy
         working-directory: backend
         shell: bash
-        run: |
-          source .venv/bin/activate
-          mypy app --strict
+        run: uv run mypy app --strict
 
 
   test:
@@ -170,14 +162,12 @@ jobs:
         shell: bash
         run: |
           uv venv
-          source .venv/bin/activate
           uv sync --all-extras
 
       - name: Setup test environment
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
           cp ../.env.example .env
           sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
           sed -i 's|^DATABASE_MIGRATION_URL=.*|DATABASE_MIGRATION_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
@@ -192,20 +182,15 @@ jobs:
         env:
           DATABASE_MIGRATION_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
-          source .venv/bin/activate
-          echo "=== Running migrations (upgrade head) ==="
-          python -m alembic upgrade head
+          uv run python -m alembic upgrade head
           echo "✓ Database migration successful"
 
       - name: Show installed versions
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
-          python --version
+          uv run python --version
           uv pip freeze
-        
-
 
       - name: Run pytest with coverage (debug)
         working-directory: backend
@@ -214,11 +199,9 @@ jobs:
             PYTHONFAULTHANDLER: "1"
             PYTHONTRACEMALLOC: "25"
         run: |
-          source .venv/bin/activate
+          uv run python --version
 
-          python --version
-
-          pytest tests/ \
+          uv run pytest tests/ \
           --full-trace \
           --cov=app \
           --cov-report=xml \
@@ -231,8 +214,7 @@ jobs:
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
-          python -m pytest tests/integration/test_resource_cleanup.py -q
+          uv run pytest tests/integration/test_resource_cleanup.py -q
 
       - name: Downgrade database
         working-directory: backend
@@ -241,9 +223,7 @@ jobs:
         env:
           DATABASE_MIGRATION_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
-          source .venv/bin/activate
-          echo "=== Downgrading database (downgrade base) ==="
-          python -m alembic downgrade base
+          uv run python -m alembic downgrade base
           echo "✓ Database downgrade successful"
 
       - name: Archive coverage report
@@ -284,48 +264,43 @@ jobs:
         shell: bash
         run: |
           uv venv
-          source .venv/bin/activate
           uv sync --all-extras
 
       - name: Verify project structure
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
           echo "=== Verifying App Factory ==="
-          python -c "from app.main import create_app; app = create_app(); print('✓ App factory verified')"
+          uv run python -c "from app.main import create_app; app = create_app(); print('✓ App factory verified')"
           
           echo "=== Verifying Settings ==="
-          python -c "from app.core.settings import Settings; s = Settings(); print('✓ Settings verified')"
+          uv run python -c "from app.core.settings import Settings; s = Settings(); print('✓ Settings verified')"
           
           echo "=== Verifying Dependencies ==="
-          python -c "from app.core.dependencies import get_settings, get_logger, get_request_context; print('✓ Dependencies verified')"
+          uv run python -c "from app.core.dependencies import get_settings, get_logger, get_request_context; print('✓ Dependencies verified')"
 
       - name: Syntax compilation check
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
           echo "=== Compiling all Python modules ==="
-          python -m compileall -b app/
+          uv run python -m compileall -b app/
           echo "✓ All modules compiled successfully"
 
       - name: Verify imports
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
           echo "=== Verifying core module imports ==="
-          python -m py_compile app/main.py app/core/settings.py app/core/dependencies.py
+          uv run python -m py_compile app/main.py app/core/settings.py app/core/dependencies.py
           echo "✓ All imports resolved correctly"
 
       - name: Check Python package integrity
         working-directory: backend
         shell: bash
         run: |
-          source .venv/bin/activate
           echo "=== Verifying dependency consistency ==="
-          python -m pip check
+          uv run python -m pip check
           echo "✓ All dependencies consistent"
 
   status-check:
