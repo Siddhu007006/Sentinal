@@ -42,6 +42,17 @@ jobs:
           uv venv
           uv sync --locked --all-extras
 
+      - name: Debug environment files
+        working-directory: backend
+        shell: bash
+        run: |
+          pwd
+          ls -la
+          ls -la ..
+          test -f .env && echo "backend/.env FOUND" || echo "backend/.env MISSING"
+          test -f ../.env && echo "root/.env FOUND" || echo "root/.env MISSING"
+          test -f ../.env.example && echo "root/.env.example FOUND" || echo "root/.env.example MISSING"
+
       - name: Ruff lint
         working-directory: backend
         shell: bash
