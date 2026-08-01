@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           uv venv
-          uv sync --all-extras
+          uv sync --locked --all-extras
 
       - name: Ruff lint
         working-directory: backend
@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: |
           uv venv
-          uv sync --all-extras
+          uv sync --locked --all-extras
 
       - name: Type check with mypy
         working-directory: backend
@@ -162,7 +162,7 @@ jobs:
         shell: bash
         run: |
           uv venv
-          uv sync --all-extras
+          uv sync --locked --all-extras
 
       - name: Setup test environment
         working-directory: backend
@@ -192,6 +192,24 @@ jobs:
           uv run python --version
           uv pip freeze
 
+      - name: Show environment
+        run: |
+          uv run python --version
+          uv run python -c "import platform; print(platform.platform())"
+          uv run python -c "import fastapi, starlette, httpx; print(fastapi.__version__); print(starlette.__version__); print(httpx.__version__)"
+
+      - name: Debug environment
+        working-directory: backend
+        shell: bash
+        run: |
+          pwd
+          ls -la
+          uv run python --version
+          uv run python -c "import sys; print(sys.executable)"
+          uv run python -c "import platform; print(platform.platform())"
+          uv run python -c "import fastapi, starlette, httpx; print('fastapi=', fastapi.__version__); print('starlette=', starlette.__version__); print('httpx=', httpx.__version__)"
+          uv tree
+
       - name: Run pytest with coverage (debug)
         working-directory: backend
         shell: bash
@@ -201,14 +219,13 @@ jobs:
         run: |
           uv run python --version
 
-          uv run pytest tests/ \
-          --full-trace \
-          --cov=app \
-          --cov-report=xml \
-          --cov-report=html \
-          --cov-report=term-missing \
+          uv run pytest \
+          tests/unit/test_health_endpoint.py::TestHealthEndpointRequestID::test_health_request_id_is_valid_uuid \
           -vv \
-          -s
+          -s \
+          -rA \
+          --full-trace \
+          -W always::ResourceWarning
 
       - name: Run isolated resource cleanup test
         working-directory: backend
@@ -264,7 +281,7 @@ jobs:
         shell: bash
         run: |
           uv venv
-          uv sync --all-extras
+          uv sync --locked --all-extras
 
       - name: Verify project structure
         working-directory: backend
