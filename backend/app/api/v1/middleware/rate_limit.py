@@ -9,7 +9,6 @@ exceeded.
 Each IP gets a separate Redis key per minute bucket. The counter expires after
 60 seconds. Different minute buckets (e.g., :12345600 vs :12345661) are
 independent counters.
-
 **Atomicity**: Redis INCR is atomic. TTL is set only on first increment.
 Race condition between INCR returning 1 and EXPIRE is acceptable because:
 - EXPIRE is idempotent (setting on an already-expiring key just updates TTL)
@@ -32,28 +31,34 @@ See: backend/openapi.yaml 429 TooManyRequests response
 """
 
 import logging
-import os
 import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-import redis
 from fastapi import Request
+from redis.exceptions import ConnectionError as RedisConnectionError
+from redis.exceptions import RedisError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 from app.core.settings import RateLimitSettings
+from app.infrastructure.cache.redis_client import get_redis_client
 
 
 logger = logging.getLogger(__name__)
 
 # Paths excluded from rate limiting (health checks, docs, etc.)
+# Supports both test environment (unversioned) and production (versioned paths)
 DEFAULT_EXCLUDE_PATHS = [
     "/health",
     "/docs",
     "/redoc",
     "/openapi.json",
+    "/api/v1/health",
+    "/api/v1/docs",
+    "/api/v1/redoc",
+    "/api/v1/openapi.json",
 ]
 
 
@@ -93,21 +98,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         """
         super().__init__(app)
         self.settings = settings
-        self.redis_url = redis_url or os.environ.get(
-            "REDIS_URL",
-            "redis://localhost:6379/0",
-        )
+        self.redis_url = redis_url
         self.exclude_paths = DEFAULT_EXCLUDE_PATHS
         self._redis_error_logged = False  # Track if we've logged Redis errors
 
-        # Initialize Redis connection
-        try:
-            self.redis: Any = redis.from_url(self.redis_url, decode_responses=True)
-            # Test connection
-            self.redis.ping()
-        except redis.ConnectionError as e:
-            logger.error(f"Failed to connect to Redis at startup: {e}", exc_info=True)
-            self.redis = None
+        # Get Redis client (created once, reused for all requests)
+        self.redis = get_redis_client(redis_url)
 
     async def dispatch(
         self,
@@ -157,7 +153,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                 return response
 
             # Increment counter in Redis (atomic operation)
-            current_count = self.redis.incr(counter_key)
+            # Note: redis.incr() returns int, but type stubs mark it as Any/Awaitable
+            result = self.redis.incr(counter_key)
+            current_count: int = result  # type: ignore[assignment]
 
             # Set expiration on first increment (60-second window)
             # Race condition here is acceptable: EXPIRE is idempotent
@@ -172,7 +170,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
 
-        except redis.ConnectionError:
+        except RedisConnectionError:
             # If Redis is unavailable, fail-open (allow request)
             # Log the error once to avoid flooding logs during outages
             if not self._redis_error_logged:
@@ -184,7 +182,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
             response = await call_next(request)
             return response
-        except redis.RedisError as e:
+        except RedisError as e:
             # Other Redis errors: also fail-open
             logger.error(
                 f"Rate limiting error: {e}",

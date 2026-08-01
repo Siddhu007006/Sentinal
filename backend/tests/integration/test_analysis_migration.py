@@ -123,9 +123,9 @@ async def test_all_analysis_columns_present_in_schema(
     actual_columns = set(columns)
 
     # Verify all expected columns are present
-    assert expected_columns.issubset(
-        actual_columns
-    ), f"Missing columns: {expected_columns - actual_columns}"
+    assert expected_columns.issubset(actual_columns), (
+        f"Missing columns: {expected_columns - actual_columns}"
+    )
 
 
 # ===========================================================================
@@ -258,12 +258,10 @@ async def test_schema_matches_orm_model(
 
     # Verify NOT NULL constraints
     assert not schema["id"]["nullable"], "id should be NOT NULL"
-    assert (
-        not schema["digital_asset_id"]["nullable"]
-    ), "digital_asset_id should be NOT NULL"
-    assert (
-        not schema["requested_by"]["nullable"]
-    ), "requested_by should be NOT NULL"
+    assert not schema["digital_asset_id"]["nullable"], (
+        "digital_asset_id should be NOT NULL"
+    )
+    assert not schema["requested_by"]["nullable"], "requested_by should be NOT NULL"
     assert not schema["status"]["nullable"], "status should be NOT NULL"
 
     # Verify nullable fields
@@ -328,9 +326,9 @@ async def test_all_indexes_created_after_migration(
     actual_indexes = set(indexes)
 
     # Verify all expected indexes exist
-    assert expected_indexes.issubset(
-        actual_indexes
-    ), f"Missing indexes: {expected_indexes - actual_indexes}"
+    assert expected_indexes.issubset(actual_indexes), (
+        f"Missing indexes: {expected_indexes - actual_indexes}"
+    )
 
 
 # ===========================================================================
@@ -384,9 +382,9 @@ async def test_check_constraints_created_after_migration(
     actual_constraints = set(constraints)
 
     # Verify all expected constraints exist
-    assert expected_constraints.issubset(
-        actual_constraints
-    ), f"Missing CHECK constraints: {expected_constraints - actual_constraints}"
+    assert expected_constraints.issubset(actual_constraints), (
+        f"Missing CHECK constraints: {expected_constraints - actual_constraints}"
+    )
 
 
 # ===========================================================================

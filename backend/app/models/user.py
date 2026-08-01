@@ -15,6 +15,8 @@ Key design decisions:
 4. last_login_at tracked for security monitoring and inactive account cleanup
 5. is_verified separate from is_active to distinguish email verification state
    from administrative deactivation
+6. Bidirectional relationship to Upload (one-to-many; User.uploads uses
+   lazy="selectin" to avoid Cartesian product on collection)
 
 Security notes:
 - password_hash must NEVER be returned in API responses (enforced at repository)
@@ -27,12 +29,14 @@ Traces to: 08-Security-Architecture §4 (authentication, passwords)
 Traces to: 22-Engineering-Backlog E3.T3 (User ORM model task)
 """
 
+from __future__ import annotations
+
 import enum
-from datetime import datetime
+from datetime import datetime  # noqa: TC003
 
 from sqlalchemy import CheckConstraint, Index, String
 from sqlalchemy.dialects.postgresql import TIMESTAMP
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.base import BaseModel
 
@@ -100,11 +104,43 @@ class User(BaseModel):
         - UUIDs prevent user ID enumeration
         - Soft delete preserves audit trail
 
+    Relationships:
+        - uploads: List of Upload entities (one-to-many, lazy="selectin")
+                  Lazy loading strategy: selectin avoids Cartesian product on
+                  collection. Separate SELECT IN query retrieves all uploads.
+                  Optimizes common case of listing user's uploads without
+                  multiplying rows.
+
     Traces to: 04-Database-Design §5.1 (users table)
     Traces to: backend/openapi.yaml User schema
     """
 
     __tablename__ = "users"
+
+    # Uploads relationship - One-to-many: a user has many uploads
+    # Lazy loading strategy: "selectin" (separate SELECT IN query)
+    # Rationale: Collection may be large; joined load causes Cartesian product
+    #           (row count = cartesian product of users x uploads). Selectin
+    #           issues second query with WHERE uploads.user_id IN (...),
+    #           returning full result set efficiently. Application layer
+    #           handles pagination if needed.
+    uploads: Mapped[list[Upload]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "Upload",
+        back_populates="user",
+        lazy="selectin",
+    )
+
+    # Analyses relationship - One-to-many: a user has many analyses they requested
+    # Lazy loading strategy: "selectin" (separate SELECT IN query)
+    # Rationale: Same as uploads - collection may be large, selectin avoids
+    #           Cartesian product and efficiently retrieves all analyses
+    #           requested by a user.
+    analyses_requested: Mapped[list[Analysis]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "Analysis",
+        back_populates="user",
+        lazy="selectin",
+        foreign_keys="Analysis.requested_by",
+    )
 
     # Email - Primary login credential and contact address
     # Stored lowercase for case-insensitive uniqueness.
@@ -167,15 +203,6 @@ class User(BaseModel):
         default=False,
         server_default="false",
         comment="Email verification status",
-    )
-
-    # Last login timestamp - Security monitoring and inactive account detection
-    # Updated on successful authentication (POST /auth/login).
-    # Null = never logged in (possible for admin-created accounts).
-    last_login_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True),
-        nullable=True,
-        comment="Last successful login timestamp (UTC)",
     )
 
     # Soft delete timestamp - When user was deleted

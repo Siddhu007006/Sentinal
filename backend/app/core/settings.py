@@ -126,6 +126,7 @@ class EnvironmentType(StrEnum):
     DEVELOPMENT = "development"
     STAGING = "staging"
     PRODUCTION = "production"
+    TEST = "test"
 
 
 class AIProviderType(StrEnum):

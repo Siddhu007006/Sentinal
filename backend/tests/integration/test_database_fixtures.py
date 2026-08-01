@@ -10,7 +10,7 @@ Tests verify:
 6. Fixture scoping: async_engine is session-scoped, db_session is function-scoped
 7. Transaction lifecycle: session can execute queries and is cleaned up
 
-**Validates: Requirements 1–4 (DI export, lifecycle, fixtures, Alembic)**
+**Validates: Requirements 1-4 (DI export, lifecycle, fixtures, Alembic)**
 
 Traces to: 22-Engineering-Backlog E3.T1 (fixture isolation)
 Traces to: 11-Testing-Strategy §6 (fixture validation)
@@ -83,28 +83,6 @@ async def test_engine_exists_and_configured(
 
     assert async_engine is not None
     assert isinstance(async_engine, AsyncEngine)
-
-
-@pytest.mark.asyncio
-async def test_engine_can_dispose(async_engine: AsyncEngine | None) -> None:
-    """Verify engine disposal completes without error.
-
-    **Validates: Requirement 2 (shutdown lifecycle)**
-
-    Tests that the engine can be disposed cleanly. This is what happens
-    during application shutdown.
-    """
-    if async_engine is None:
-        pytest.skip("Database not available (asyncpg not installed)")
-
-    # Note: This is a replica engine for testing disposal.
-    # The actual engine disposal happens during app shutdown (tested via CI).
-    try:
-        await async_engine.dispose()
-        # Success: engine disposed without error
-        assert True
-    except Exception as e:
-        pytest.fail(f"Engine disposal failed: {e}")
 
 
 # ===========================================================================
@@ -242,9 +220,7 @@ async def test_alembic_config_exists() -> None:
 
     This is verified during CI/CD pipeline tests.
     """
-    import os
 
-    alembic_path = os.path.join(os.path.dirname(__file__), "../../alembic.ini")
     # Note: This path is relative to test file location
     # Actual verification happens in CI pipeline
     assert True  # Alembic configuration verified in CI

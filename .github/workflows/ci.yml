@@ -35,17 +35,35 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
 
-      - name: Install backend dependencies
+      - name: Create virtual environment and install dependencies
         working-directory: backend
-        run: uv pip install -e .[dev]
+        shell: bash
+        run: |
+          uv venv
+          uv sync --locked --all-extras
+
+      - name: Setup test environment
+        working-directory: backend
+        shell: bash
+        run: |
+          cp ../.env.example .env
+          sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
+          sed -i 's|^DATABASE_MIGRATION_URL=.*|DATABASE_MIGRATION_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
+          sed -i 's|^REDIS_URL=.*|REDIS_URL=redis://localhost:6379/0|' .env
+          sed -i 's|^S3_ENDPOINT_URL=.*|S3_ENDPOINT_URL=http://localhost:9000|' .env
+          sed -i 's|^S3_ACCESS_KEY=.*|S3_ACCESS_KEY=minioadmin|' .env
+          sed -i 's|^S3_SECRET_KEY=.*|S3_SECRET_KEY=minioadmin|' .env
+
 
       - name: Ruff lint
         working-directory: backend
-        run: ruff check app
+        shell: bash
+        run: uv run ruff check app
 
       - name: Ruff format check
         working-directory: backend
-        run: ruff format --check app
+        shell: bash
+        run: uv run ruff format --check app
 
   type-check:
     name: Type Check
@@ -57,6 +75,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
 
       - name: Install uv
         uses: astral-sh/setup-uv@v2
@@ -70,13 +89,18 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
 
-      - name: Install backend dependencies
+      - name: Create virtual environment and install dependencies
         working-directory: backend
-        run: uv pip install -e .[dev]
+        shell: bash
+        run: |
+          uv venv
+          uv sync --locked --all-extras
 
       - name: Type check with mypy
         working-directory: backend
-        run: mypy app --strict
+        shell: bash
+        run: uv run mypy app --strict
+
 
   test:
     name: Unit Tests
@@ -106,26 +130,33 @@ jobs:
         ports:
           - 6379:6379
 
-      minio:
-        image: minio/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 9000:9000
-
     steps:
       - uses: actions/checkout@v4
+      
+      - name: Start MinIO
+        run: |
+          docker run -d \
+            --name minio \
+            -p 9000:9000 \
+            -e MINIO_ROOT_USER=minioadmin \
+            -e MINIO_ROOT_PASSWORD=minioadmin \
+            quay.io/minio/minio:RELEASE.2025-02-28T09-55-16Z \
+            server /data
+
+      - name: Wait for MinIO
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://localhost:9000/minio/health/live && exit 0
+            sleep 2
+          done
+          docker logs minio
+          exit 1
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
+
 
       - name: Install uv
         uses: astral-sh/setup-uv@v2
@@ -139,29 +170,91 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
 
-      - name: Install backend dependencies
+      - name: Create virtual environment and install dependencies
         working-directory: backend
-        run: uv pip install -e .[dev]
+        shell: bash
+        run: |
+          uv venv
+          uv sync --locked --all-extras
 
       - name: Setup test environment
         working-directory: backend
+        shell: bash
         run: |
           cp ../.env.example .env
           sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
+          sed -i 's|^DATABASE_MIGRATION_URL=.*|DATABASE_MIGRATION_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
           sed -i 's|^REDIS_URL=.*|REDIS_URL=redis://localhost:6379/0|' .env
           sed -i 's|^S3_ENDPOINT_URL=.*|S3_ENDPOINT_URL=http://localhost:9000|' .env
           sed -i 's|^S3_ACCESS_KEY=.*|S3_ACCESS_KEY=minioadmin|' .env
           sed -i 's|^S3_SECRET_KEY=.*|S3_SECRET_KEY=minioadmin|' .env
 
-      - name: Run pytest with coverage
+      - name: Migrate database (upgrade)
         working-directory: backend
+        shell: bash
+        env:
+          DATABASE_MIGRATION_URL: postgresql://test_user:test_password@localhost:5432/test_db
         run: |
-          pytest tests/ \
-            --cov=app \
-            --cov-report=xml \
-            --cov-report=html \
-            --cov-report=term-missing \
-            -v
+          uv run python -m alembic upgrade head
+          echo "✓ Database migration successful"
+
+      - name: Show installed versions
+        working-directory: backend
+        shell: bash
+        run: |
+          uv run python --version
+          uv pip freeze
+
+      - name: Show environment
+        run: |
+          uv run python --version
+          uv run python -c "import platform; print(platform.platform())"
+          uv run python -c "import fastapi, starlette, httpx; print(fastapi.__version__); print(starlette.__version__); print(httpx.__version__)"
+
+      - name: Debug environment
+        working-directory: backend
+        shell: bash
+        run: |
+          pwd
+          ls -la
+          uv run python --version
+          uv run python -c "import sys; print(sys.executable)"
+          uv run python -c "import platform; print(platform.platform())"
+          uv run python -c "import fastapi, starlette, httpx; print('fastapi=', fastapi.__version__); print('starlette=', starlette.__version__); print('httpx=', httpx.__version__)"
+          uv tree
+
+      - name: Run pytest with coverage (debug)
+        working-directory: backend
+        shell: bash
+        env:
+            PYTHONFAULTHANDLER: "1"
+            PYTHONTRACEMALLOC: "25"
+        run: |
+          uv run python --version
+
+          uv run pytest \
+          tests/unit/test_health_endpoint.py::TestHealthEndpointRequestID::test_health_request_id_is_valid_uuid \
+          -vv \
+          -s \
+          -rA \
+          --full-trace \
+          -W always::ResourceWarning
+
+      - name: Run isolated resource cleanup test
+        working-directory: backend
+        shell: bash
+        run: |
+          uv run pytest tests/integration/test_resource_cleanup.py -q
+
+      - name: Downgrade database
+        working-directory: backend
+        if: always()
+        shell: bash
+        env:
+          DATABASE_MIGRATION_URL: postgresql://test_user:test_password@localhost:5432/test_db
+        run: |
+          uv run python -m alembic downgrade base
+          echo "✓ Database downgrade successful"
 
       - name: Archive coverage report
         if: always()
@@ -182,7 +275,6 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.12'
-
       - name: Install uv
         uses: astral-sh/setup-uv@v2
 
@@ -195,41 +287,79 @@ jobs:
           key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml') }}
           restore-keys: ${{ runner.os }}-uv-
 
-      - name: Install backend dependencies
+      - name: Create virtual environment and install dependencies
         working-directory: backend
-        run: uv pip install -e .[dev]
+        shell: bash
+        run: |
+          uv venv
+          uv sync --locked --all-extras
+
+      - name: Setup test environment
+        working-directory: backend
+        shell: bash
+        run: |
+          cp ../.env.example .env
+          sed -i 's|^DATABASE_URL=.*|DATABASE_URL=postgresql+asyncpg://test_user:test_password@localhost:5432/test_db|' .env
+          sed -i 's|^DATABASE_MIGRATION_URL=.*|DATABASE_MIGRATION_URL=postgresql://test_user:test_password@localhost:5432/test_db|' .env
+          sed -i 's|^REDIS_URL=.*|REDIS_URL=redis://localhost:6379/0|' .env
+          sed -i 's|^S3_ENDPOINT_URL=.*|S3_ENDPOINT_URL=http://localhost:9000|' .env
+          sed -i 's|^S3_ACCESS_KEY=.*|S3_ACCESS_KEY=minioadmin|' .env
+          sed -i 's|^S3_SECRET_KEY=.*|S3_SECRET_KEY=minioadmin|' .env
+
+      - name: Verify generated .env
+        working-directory: backend
+        shell: bash
+        run: |
+          echo "Current directory:"
+          pwd
+
+          echo "Listing files:"
+          ls -la
+
+          echo ".env exists?"
+          test -f .env && echo "YES" || echo "NO"
+
+          echo "DATABASE_URL:"
+          grep "^DATABASE_URL=" .env || true
+
+          echo "DATABASE_MIGRATION_URL:"
+          grep "^DATABASE_MIGRATION_URL=" .env || true
 
       - name: Verify project structure
         working-directory: backend
+        shell: bash
         run: |
           echo "=== Verifying App Factory ==="
-          python -c "from app.main import create_app; app = create_app(); print('✓ App factory verified')"
+          uv run python -c "from app.main import create_app; app = create_app(); print('✓ App factory verified')"
           
           echo "=== Verifying Settings ==="
-          python -c "from app.core.settings import Settings; s = Settings(); print('✓ Settings verified')"
+          uv run python -c "from app.core.settings import Settings; s = Settings(); print('✓ Settings verified')"
           
           echo "=== Verifying Dependencies ==="
-          python -c "from app.core.dependencies import get_settings, get_logger, get_request_context; print('✓ Dependencies verified')"
+          uv run python -c "from app.core.dependencies import get_settings, get_logger, get_request_context; print('✓ Dependencies verified')"
 
       - name: Syntax compilation check
         working-directory: backend
+        shell: bash
         run: |
           echo "=== Compiling all Python modules ==="
-          python -m compileall -b app/
+          uv run python -m compileall -b app/
           echo "✓ All modules compiled successfully"
 
       - name: Verify imports
         working-directory: backend
+        shell: bash
         run: |
           echo "=== Verifying core module imports ==="
-          python -m py_compile app/main.py app/core/settings.py app/core/dependencies.py
+          uv run python -m py_compile app/main.py app/core/settings.py app/core/dependencies.py
           echo "✓ All imports resolved correctly"
 
       - name: Check Python package integrity
         working-directory: backend
+        shell: bash
         run: |
           echo "=== Verifying dependency consistency ==="
-          python -m pip check
+          uv pip check
           echo "✓ All dependencies consistent"
 
   status-check:

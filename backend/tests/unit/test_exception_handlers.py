@@ -32,10 +32,9 @@ class TestHTTPExceptionHandler:
     def test_404_response_format(self) -> None:
         """Verify 404 returns error envelope with correct code."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        # Request non-existent route
-        response = client.get("/api/v1/nonexistent")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            # Request non-existent route
+            response = client.get("/api/v1/nonexistent")
 
         assert response.status_code == 404
         data: dict[str, Any] = response.json()
@@ -59,8 +58,8 @@ class TestHTTPExceptionHandler:
         async def test_403_route() -> dict[str, Any]:
             raise HTTPException(status_code=403, detail="Forbidden")
 
-        client_instance = TestClient(app, raise_server_exceptions=False)
-        response = client_instance.get("/test-403")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-403")
 
         assert response.status_code == 403
         data: dict[str, Any] = response.json()
@@ -78,8 +77,8 @@ class TestHTTPExceptionHandler:
         async def test_429_route() -> dict[str, Any]:
             raise HTTPException(status_code=429, detail="Too Many Requests")
 
-        client_instance = TestClient(app, raise_server_exceptions=False)
-        response = client_instance.get("/test-429")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-429")
 
         assert response.status_code == 429
         data: dict[str, Any] = response.json()
@@ -87,16 +86,25 @@ class TestHTTPExceptionHandler:
         error = data["error"]
         assert error["code"] == "rate_limit_exceeded"
 
+    def test_404_response_format_no_socket_leak(self) -> None:
+        """Verify a handled 404 returns the expected error response."""
+        app = create_app()
+
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/nonexistent")
+
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "not_found"
+
     def test_request_id_included_in_404(self) -> None:
         """Verify request_id included in 404 response."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        # Make request with custom X-Request-ID
-        custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
-        )
+        with TestClient(app, raise_server_exceptions=False) as client:
+            # Make request with custom X-Request-ID
+            custom_id = str(uuid.uuid4())
+            response = client.get(
+                "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
+            )
 
         assert response.status_code == 404
         data = response.json()
@@ -114,25 +122,24 @@ class TestHTTPExceptionHandler:
         async def test_status_route(code: int) -> dict[str, Any]:
             raise HTTPException(status_code=code, detail="Test error")
 
-        client = TestClient(app, raise_server_exceptions=False)
+        with TestClient(app, raise_server_exceptions=False) as client:
+            status_code_map: dict[int, str] = {
+                400: "bad_request",
+                401: "unauthorized",
+                403: "forbidden",
+                404: "not_found",
+                405: "method_not_allowed",
+                409: "conflict",
+                500: "internal_server_error",
+                503: "service_unavailable",
+            }
 
-        status_code_map: dict[int, str] = {
-            400: "bad_request",
-            401: "unauthorized",
-            403: "forbidden",
-            404: "not_found",
-            405: "method_not_allowed",
-            409: "conflict",
-            500: "internal_server_error",
-            503: "service_unavailable",
-        }
+            for status_code, expected_code in status_code_map.items():
+                response = client.get(f"/test-status/{status_code}")
+                assert response.status_code == status_code
 
-        for status_code, expected_code in status_code_map.items():
-            response = client.get(f"/test-status/{status_code}")
-            assert response.status_code == status_code
-
-            data: dict[str, Any] = response.json()
-            assert data["error"]["code"] == expected_code
+                data: dict[str, Any] = response.json()
+                assert data["error"]["code"] == expected_code
 
     def test_http_exception_no_stack_trace(self) -> None:
         """Verify HTTP exceptions don't leak stack trace."""
@@ -142,8 +149,8 @@ class TestHTTPExceptionHandler:
         async def test_no_trace_route() -> dict[str, Any]:
             raise HTTPException(status_code=500, detail="Internal error")
 
-        client_instance = TestClient(app, raise_server_exceptions=False)
-        response = client_instance.get("/test-no-trace")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-no-trace")
 
         data: dict[str, Any] = response.json()
 
@@ -166,12 +173,12 @@ class TestValidationExceptionHandler:
             # FastAPI will validate the body
             return data
 
-        client_instance = TestClient(app, raise_server_exceptions=False)
-
-        # Send invalid JSON
-        response = client_instance.post(
-            "/test-validate", json={"not": "valid"}  # Missing required fields
-        )
+        with TestClient(app, raise_server_exceptions=False) as client:
+            # Send invalid JSON
+            response = client.post(
+                "/test-validate",
+                json={"not": "valid"},  # Missing required fields
+            )
 
         # May be 422 or 200 depending on route definition
         # For now, verify the route works
@@ -206,10 +213,9 @@ class TestValidationExceptionHandler:
         async def test_json_route(data: dict[str, Any]) -> dict[str, Any]:
             return data
 
-        client = TestClient(app, raise_server_exceptions=False)
-
-        # Send invalid JSON using content parameter instead of data
-        response = client.post("/test-json", content="not json")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            # Send invalid JSON using content parameter instead of data
+            response = client.post("/test-json", content="not json")
 
         # Should get 422 (validation error) or 400 (bad request)
         assert response.status_code in (400, 422)
@@ -231,8 +237,8 @@ class TestUnhandledExceptionHandler:
         async def test_unhandled_route() -> dict[str, Any]:
             raise RuntimeError("Simulated application error")
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-unhandled")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-unhandled")
 
         assert response.status_code == 500
 
@@ -244,8 +250,8 @@ class TestUnhandledExceptionHandler:
         async def test_generic_route() -> dict[str, Any]:
             raise ValueError("Specific error message that should not leak")
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-generic")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-generic")
 
         assert response.status_code == 500
         data: dict[str, Any] = response.json()
@@ -264,8 +270,8 @@ class TestUnhandledExceptionHandler:
         async def test_type_leak_route() -> dict[str, Any]:
             raise KeyError("database_connection")
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-type-leak")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-type-leak")
 
         data: dict[str, Any] = response.json()
         response_str = json.dumps(data)
@@ -286,8 +292,8 @@ class TestUnhandledExceptionHandler:
                 raise RuntimeError("Division error occurred") from None
             return {}  # This line is unreachable but satisfies type checker
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-no-trace")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-no-trace")
 
         data: dict[str, Any] = response.json()
         response_str = json.dumps(data)
@@ -306,12 +312,9 @@ class TestUnhandledExceptionHandler:
         async def test_error_id_route() -> dict[str, Any]:
             raise RuntimeError("Test error")
 
-        client = TestClient(app, raise_server_exceptions=False)
-
-        custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/test-error-id", headers={"X-Request-ID": custom_id}
-        )
+        with TestClient(app, raise_server_exceptions=False) as client:
+            custom_id = str(uuid.uuid4())
+            response = client.get("/test-error-id", headers={"X-Request-ID": custom_id})
 
         assert response.status_code == 500
         data: dict[str, Any] = response.json()
@@ -326,12 +329,11 @@ class TestErrorResponseIntegration:
     def test_request_id_correlation_with_header(self) -> None:
         """Verify response request_id matches X-Request-ID header."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
-        )
+        with TestClient(app, raise_server_exceptions=False) as client:
+            custom_id = str(uuid.uuid4())
+            response = client.get(
+                "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
+            )
 
         # Should correlate
         data: dict[str, Any] = response.json()
@@ -346,8 +348,8 @@ class TestErrorResponseIntegration:
         async def test_timestamp_route() -> dict[str, Any]:
             raise RuntimeError("Test")
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-timestamp")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-timestamp")
 
         data: dict[str, Any] = response.json()
         timestamp = data["timestamp"]
@@ -355,9 +357,7 @@ class TestErrorResponseIntegration:
         # Should be ISO-8601 format with UTC indicator
         assert "T" in timestamp  # ISO-8601 separator
         assert ":" in timestamp  # Time component
-        assert (
-            "Z" in timestamp or "+00:00" in timestamp
-        )  # UTC indicator
+        assert "Z" in timestamp or "+00:00" in timestamp  # UTC indicator
 
     def test_all_error_responses_have_envelope(self) -> None:
         """Verify all error responses follow envelope schema."""
@@ -371,10 +371,9 @@ class TestErrorResponseIntegration:
         async def test_500() -> dict[str, Any]:
             raise RuntimeError("Error")
 
-        client = TestClient(app, raise_server_exceptions=False)
-
-        # Test 404
-        response = client.get("/test-envelope-404")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            # Test 404
+            response = client.get("/test-envelope-404")
         data: dict[str, Any] = response.json()
         assert "error" in data
         assert "requestId" in data
@@ -395,8 +394,8 @@ class TestErrorResponseIntegration:
         async def test_body() -> dict[str, Any]:
             raise HTTPException(status_code=403, detail="Access denied")
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-body")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-body")
 
         data: dict[str, Any] = response.json()
         error = data["error"]
@@ -413,9 +412,8 @@ class TestExceptionHandlersIntegration:
     def test_health_endpoint_returns_valid_response(self) -> None:
         """Verify health endpoint returns expected schema (not error)."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/health")
 
         assert response.status_code == 200
         data: dict[str, Any] = response.json()
@@ -429,9 +427,8 @@ class TestExceptionHandlersIntegration:
     def test_404_on_unknown_route_returns_error_envelope(self) -> None:
         """Verify unknown routes return proper error envelope."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        response = client.get("/api/v1/unknown/path")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/unknown/path")
 
         assert response.status_code == 404
         data: dict[str, Any] = response.json()
@@ -449,8 +446,8 @@ class TestExceptionHandlersIntegration:
         async def error_route() -> dict[str, Any]:
             raise ValueError("Unhandled application error")
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/api/v1/error-route")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/error-route")
 
         assert response.status_code == 500
         data: dict[str, Any] = response.json()
@@ -464,12 +461,11 @@ class TestExceptionHandlersIntegration:
     def test_error_request_id_available_for_logging(self) -> None:
         """Verify request_id available in error responses for log correlation."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        custom_id = str(uuid.uuid4())
-        response = client.get(
-            "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
-        )
+        with TestClient(app, raise_server_exceptions=False) as client:
+            custom_id = str(uuid.uuid4())
+            response = client.get(
+                "/api/v1/nonexistent", headers={"X-Request-ID": custom_id}
+            )
 
         data: dict[str, Any] = response.json()
 
@@ -486,9 +482,8 @@ class TestErrorResponseCamelCaseAliasing:
     def test_request_id_aliased_as_request_id_in_json(self) -> None:
         """Verify request_id appears as requestId in JSON."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        response = client.get("/api/v1/nonexistent")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/nonexistent")
         data = response.json()
 
         # Should use camelCase in JSON
@@ -498,9 +493,8 @@ class TestErrorResponseCamelCaseAliasing:
     def test_error_body_present_in_response(self) -> None:
         """Verify error body is present (not error_body)."""
         app = create_app()
-        client = TestClient(app, raise_server_exceptions=False)
-
-        response = client.get("/api/v1/nonexistent")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/api/v1/nonexistent")
         data = response.json()
 
         assert "error" in data
@@ -518,8 +512,8 @@ class TestExceptionHandlerErrorCases:
         async def test_no_detail() -> dict[str, Any]:
             raise HTTPException(status_code=404)  # No detail provided
 
-        client = TestClient(app, raise_server_exceptions=False)
-        response = client.get("/test-no-detail")
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get("/test-no-detail")
 
         data: dict[str, Any] = response.json()
         error = data["error"]
@@ -548,5 +542,3 @@ class TestExceptionHandlerErrorCases:
             for error in errors:
                 assert "loc" in error
                 assert "msg" in error
-
-

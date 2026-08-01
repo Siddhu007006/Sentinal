@@ -182,6 +182,12 @@ class BaseModel(Base):
         server_onupdate=func.now(),
     )
 
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        default=None,
+    )
+
     def __repr__(self) -> str:
         """
         String representation for debugging.

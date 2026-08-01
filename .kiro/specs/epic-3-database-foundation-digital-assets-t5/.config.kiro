@@ -1,0 +1,108 @@
+{
+  "specType": "feature",
+  "featureName": "epic-3-database-foundation-digital-assets-t5",
+  "workflowType": "requirements-first",
+  "createdAt": "2026-07-20T00:00:00Z",
+  "status": "ready-for-implementation",
+  "phase": "tasks-complete",
+  "documents": {
+    "requirements": {
+      "path": ".kiro/specs/epic-3-database-foundation-digital-assets-t5/requirements.md",
+      "status": "complete",
+      "requirementCount": 6,
+      "acceptanceCriteriaCount": 35
+    },
+    "design": {
+      "path": ".kiro/specs/epic-3-database-foundation-digital-assets-t5/design.md",
+      "status": "complete",
+      "designDecisionCount": 10
+    },
+    "tasks": {
+      "path": ".kiro/specs/epic-3-database-foundation-digital-assets-t5/tasks.md",
+      "status": "complete",
+      "taskCount": 5,
+      "estimatedEffort": "3.5-4 hours"
+    }
+  },
+  "traceability": {
+    "backlog": "docs/22-Engineering-Backlog.md (E3.T5)",
+    "databaseDesign": "docs/04-Database-Design.md (§4 ERD, §5.4 DigitalAsset table)",
+    "domainModel": "docs/02-Domain-Model.md (§3 DigitalAsset entity)"
+  },
+  "dependencies": {
+    "predecessors": [
+      "epic-3-database-foundation (E3.T1 - Database Foundation)",
+      "epic-3-database-foundation-alembic-t2 (E3.T2 - Alembic Configuration)",
+      "epic-3-database-foundation-users-t3 (E3.T3 - User Model)",
+      "epic-3-database-foundation-uploads-t4 (E3.T4 - Upload Model)"
+    ],
+    "successors": [
+      "epic-3-database-foundation-relationships-t6 (E3.T6 - DigitalAsset Relationships)"
+    ]
+  },
+  "qualityGates": {
+    "ruff": "0 violations",
+    "mypy": "0 errors (--strict)",
+    "pytest": "all passing (≥300+ tests)",
+    "compileall": "success"
+  },
+  "readinessChecklist": {
+    "e3t4Complete": true,
+    "e3t3Complete": true,
+    "e3t1Complete": true,
+    "e3t2Complete": true,
+    "databaseDesignReviewed": true,
+    "domainModelReviewed": true,
+    "backlogReviewed": true,
+    "alembicWorkflowProven": true,
+    "postgresqlOperational": true,
+    "ciPipelineReady": true
+  },
+  "testingStrategy": {
+    "unitTests": "16+ tests (instantiation, defaults, types, enum, immutability, __repr__)",
+    "integrationTests": "10+ tests (FK, UNIQUE composite, NOT NULL, CHECK, soft delete, migration lifecycle)",
+    "totalExpectedTests": "300+ (275+ existing + 25+ new)",
+    "regressionTesting": "E3.T3 ≥250 + E3.T4 baseline + E2 baseline + new 25"
+  },
+  "estimatedTimeline": {
+    "task1": "25 minutes",
+    "task2": "10 minutes",
+    "task3": "50 minutes",
+    "task4": "90 minutes",
+    "task5": "30 minutes",
+    "total": "205 minutes (3.42 hours) + buffer"
+  },
+  "criticality": "P0",
+  "keyDesignDecisions": {
+    "d1": "Inherit from BaseModel (consistency, shared infrastructure)",
+    "d2": "UUID PK + (normalized_value, asset_type) UNIQUE (technical vs. domain identity)",
+    "d3": "Mapped[T] syntax (type safety, clarity)",
+    "d4": "StrEnum + CHECK constraint (zero-downtime asset type additions)",
+    "d5": "Composite UNIQUE on (normalized_value, asset_type) (per-user deduplication)",
+    "d6": "Structural immutability enforcement (no UPDATE on core fields)",
+    "d7": "6 indexes optimized for common queries (user asset history, type filtering, deduplication)",
+    "d8": "Nullable columns: upload_id, display_label, metadata, deleted_at",
+    "d9": "Autogenerate migration + manual review (audit trail + quality)",
+    "d10": "Unit + integration tests (comprehensive coverage)"
+  },
+  "nextSteps": [
+    "Execute Task 1: Validate DigitalAsset ORM Model Structure",
+    "Execute Task 2: Generate Initial Alembic Migration",
+    "Execute Task 3: Manual Review of Generated Migration (13+ checkpoints)",
+    "Execute Task 4: ORM and Migration Tests",
+    "Execute Task 5: Validation and Final Audit",
+    "After completion: Begin E3.T6 (DigitalAsset Relationships) or downstream epics"
+  ],
+  "notes": [
+    "DigitalAsset is the central entity of Sentinel — every analysis and verdict revolves around it",
+    "Immutability is a core domain invariant: new content = new row, never edit existing",
+    "Composite UNIQUE on (normalized_value, asset_type) is the deduplication key",
+    "UUID PK + hash UNIQUE constraint separates technical identity from domain identity",
+    "Manual review gate in Task 3 is critical (13+ checkpoints required)",
+    "Follow E3.T3 and E3.T4 manual review and audit patterns exactly",
+    "AssetType enum supports five types: URL, DOMAIN, IP_ADDRESS, FILE_HASH, FILE",
+    "Structural immutability: database role granted INSERT privilege, not UPDATE on core fields",
+    "Migration down_revision must reference E3.T4 Upload migration (established linear history)",
+    "This is the second time the full E3 pattern is applied (after E3.T4); quality bar is established"
+  ]
+}

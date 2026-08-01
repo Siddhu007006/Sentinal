@@ -1,186 +1,658 @@
-# Alembic Infrastructure Setup - Complete
+# Alembic Migration Setup & Workflow Guide
 
-## Task 2.4 — Alembic Infrastructure ✅
+**Last Updated:** 2025-01-17  
+**Status:** ✅ Complete (E3.T2)  
+**Traces to:** 22-Engineering-Backlog E3.T2, 07-Backend-Development-Standards §8
 
-**Status:** COMPLETE  
-**Date:** 2026-07-17
+---
 
-## What Was Implemented
+## Table of Contents
 
-### 1. Alembic Initialization
+1. [Quick Start](#quick-start)
+2. [Workflow: Creating a Migration](#workflow-creating-a-migration)
+3. [Example: User Model Migration](#example-user-model-migration)
+4. [Running Migrations](#running-migrations)
+5. [Testing Migrations](#testing-migrations)
+6. [Troubleshooting](#troubleshooting)
+7. [Reference](#reference)
 
-- Initialized Alembic in `migrations/` directory
-- Created migration infrastructure with proper directory structure:
-  - `migrations/versions/` — Migration scripts directory
-  - `migrations/env.py` — Runtime environment configuration
-  - `migrations/script.py.mako` — Migration template
-  - `alembic.ini` — Alembic configuration file
+---
 
-### 2. Configuration Files
+## Quick Start
 
-#### `alembic.ini`
+**Prerequisites:**
+- PostgreSQL 16+ running locally (or via Docker)
+- Python 3.12+ with dependencies installed (`uv pip install -e .[dev]`)
+- `.env` file configured with `DATABASE_MIGRATION_URL`
 
-**Changes made:**
-- ✅ Enabled timestamped migration filenames: `YYYYMMDD_HHMM_<rev>_<slug>.py`
-- ✅ Removed hardcoded database URL (sourced from environment instead)
-- ✅ Enabled ruff post-write hook for migration file linting
-- ✅ Configured proper logging levels
+**First Migration (5 minutes):**
 
-**Key settings:**
-```ini
-file_template = %%(year)d%%(month).2d%%(day).2d_%%(hour).2d%%(minute).2d_%%(rev)s_%%(slug)s
-prepend_sys_path = .
-```
+1. Define ORM model in `app/models/`:
+   ```python
+   from app.infrastructure.database.base import BaseModel
 
-#### `migrations/env.py`
 
-**Features implemented:**
-- ✅ Imports `Base.metadata` from `app.infrastructure.database.base`
-- ✅ Sources `DATABASE_MIGRATION_URL` from environment variables
-- ✅ Automatically converts `postgresql+asyncpg://` to `postgresql://` for sync migrations
-- ✅ Implements both offline and online migration modes
-- ✅ Includes comprehensive documentation explaining migration setup
-- ✅ References architecture documents and engineering standards
+   class User(BaseModel):
+       __tablename__ = "users"
+       email: Mapped[str] = mapped_column(unique=True)
+   ```
 
-**Key functionality:**
+2. Register model in `app/models/__init__.py`:
+   ```python
+   from app.models.user import User  # This triggers registration
+   ```
+
+3. Generate migration:
+   ```bash
+   cd backend
+   python -m alembic revision --autogenerate -m "Add users table"
+   ```
+
+4. Review the generated file in `migrations/versions/`:
+   ```bash
+   cat migrations/versions/YYYYMMDD_HHMM_001_add_users_table.py
+   ```
+
+5. Test locally:
+   ```bash
+   python -m alembic upgrade head
+   python -m pytest tests/
+   python -m alembic downgrade base
+   ```
+
+6. Commit:
+   ```bash
+   git add app/models/user.py migrations/versions/YYYYMMDD_HHMM_001_add_users_table.py
+   git commit -m "Add users table and migration"
+   ```
+
+**That's it!** CI will automatically test the migration on every push.
+
+---
+
+## Workflow: Creating a Migration
+
+### 1. Define the ORM Model
+
+Create a new file in `backend/app/models/`:
+
 ```python
-from app.infrastructure.database.base import Base  # noqa: E402
-target_metadata = Base.metadata
+"""
+User model definition.
 
-database_url = os.environ.get("DATABASE_MIGRATION_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+Traces to: 04-Database-Design §3
+"""
+
+import uuid
+from typing import Optional
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.orm import Mapped, mapped_column
+from app.infrastructure.database.base import BaseModel
+
+
+class User(BaseModel):
+    """User account model.
+    
+    Fields:
+    - id: UUID primary key (auto-generated)
+    - email: Email address (unique, not null)
+    - full_name: User's full name (not null)
+    - password_hash: Hashed password (not null)
+    - is_active: Account active status (default: true)
+    - created_at: Creation timestamp (auto-set)
+    - updated_at: Last update timestamp (auto-managed)
+    """
+    
+    __tablename__ = "users"
+    
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    full_name: Mapped[str]
+    password_hash: Mapped[str]
+    is_active: Mapped[bool] = mapped_column(default=True)
+    # id, created_at, updated_at inherited from BaseModel
 ```
 
-### 3. Documentation
+**Important:** Always inherit from `BaseModel`, not `Base` directly. `BaseModel` provides:
+- UUID primary key (`id`)
+- Creation timestamp (`created_at`)
+- Update timestamp (`updated_at`)
 
-Created comprehensive `migrations/README.md` covering:
-- Overview of Alembic migrations
-- Directory structure
-- Environment variable configuration
-- Common commands (create, upgrade, downgrade)
-- Migration naming conventions
-- Best practices for writing migrations
-- ORM model integration
-- Troubleshooting guide
-- Production deployment checklist
-- Zero-downtime migration strategies
+### 2. Register the Model
 
-## Integration with Existing Infrastructure
-
-### Base.metadata Connection
-
-Alembic is properly connected to the ORM base class:
+Update `backend/app/models/__init__.py`:
 
 ```python
-# From app.infrastructure.database.base import Base
-# Base.metadata contains:
-NAMING_CONVENTION = {
-    "ix": "ix_%(column_0_label)s",
-    "uq": "uq_%(table_name)s_%(column_0_name)s",
-    "ck": "ck_%(table_name)s_%(constraint_name)s",
-    "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s",
-}
+"""Models package initialization.
+
+All models must be imported here so Alembic can discover them
+for autogenerate to work correctly.
+"""
+
+from app.models.user import User
+
+__all__ = ["User"]
 ```
 
-This ensures predictable constraint names in migrations.
+**Why?** When a model is imported, SQLAlchemy registers it with the Base.metadata. Alembic uses Base.metadata to detect schema changes.
 
-### Environment Variable Setup
-
-Migrations use separate credentials per security requirements:
+### 3. Generate the Migration
 
 ```bash
-# Application runtime (restricted privileges)
+cd backend
+python -m alembic revision --autogenerate -m "Add users table"
+```
+
+This command:
+- Compares ORM models (from Base.metadata) to current database schema
+- Generates a Python migration script with up/downgrade functions
+- Uses timestamp-based naming: `YYYYMMDD_HHMM_<revision>_<slug>.py`
+
+**Output:**
+```
+  Generating /path/to/backend/migrations/versions/20250117_1430_001_add_users_table.py ...  done
+```
+
+### 4. Review the Generated Migration
+
+Inspect the generated file:
+
+```bash
+cat migrations/versions/20250117_1430_001_add_users_table.py
+```
+
+**Expected content:**
+
+```python
+"""Add users table
+
+Revision ID: 001
+Revises:
+Create Date: 2025-01-17 14:30:00.000000
+
+"""
+
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
+
+# revision identifiers, used by Alembic.
+revision = "001"
+down_revision = None
+branch_labels = None
+depends_on = None
+
+
+def upgrade() -> None:
+    # ### commands auto generated by Alembic - please edit manually! ###
+    op.create_table(
+        "users",
+        sa.Column(
+            "id",
+            postgresql.UUID(as_uuid=True),
+            server_default=sa.text("gen_random_uuid()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "created_at",
+            postgresql.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            postgresql.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.Column("full_name", sa.String(), nullable=False),
+        sa.Column("password_hash", sa.String(), nullable=False),
+        sa.Column(
+            "is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False
+        ),
+        sa.PrimaryKeyConstraint("id", name=op.f("pk_users")),
+        sa.UniqueConstraint("email", name=op.f("uq_users_email")),
+        sa.Index("ix_users_email", "email", unique=True),
+    )
+    # ### end Alembic commands ###
+
+
+def downgrade() -> None:
+    # ### commands auto generated by Alembic - please edit manually! ###
+    op.drop_table("users")
+    # ### end Alembic commands ###
+```
+
+**Check:** Does this match your model definition? If yes, proceed. If no, review the model and re-run autogenerate.
+
+### 5. Test the Migration
+
+**Test upgrade:**
+```bash
+python -m alembic upgrade head
+```
+
+This applies all pending migrations to your local database.
+
+**Verify the schema:**
+```bash
+# Connect to PostgreSQL
+psql postgresql://sentinel:sentinel@localhost:5432/sentinel
+# List tables
+\dt
+# Describe users table
+\d users
+```
+
+**Run tests:**
+```bash
+python -m pytest tests/ -v
+```
+
+**Test downgrade:**
+```bash
+python -m alembic downgrade base
+```
+
+This reverses all migrations, returning database to clean state.
+
+**Verify clean state:**
+```bash
+psql postgresql://sentinel:sentinel@localhost:5432/sentinel
+# List tables (should be empty or only system tables)
+\dt
+```
+
+### 6. Commit the Changes
+
+```bash
+git add app/models/user.py migrations/versions/20250117_1430_001_add_users_table.py
+git commit -m "Add users table with migration"
+git push origin feature/add-users
+```
+
+**Pair the model and migration in the same commit.** This ensures schema consistency in version control.
+
+---
+
+## Example: User Model Migration
+
+**Complete walkthrough with User model (from E3.T3):**
+
+**Step 1: Create `backend/app/models/user.py`:**
+
+```python
+"""User ORM model."""
+
+from sqlalchemy.orm import Mapped, mapped_column
+from app.infrastructure.database.base import BaseModel
+
+
+class User(BaseModel):
+    """User account model with email, name, and role."""
+    
+    __tablename__ = "users"
+    
+    email: Mapped[str] = mapped_column(unique=True, index=True)
+    full_name: Mapped[str]
+    password_hash: Mapped[str]
+    is_active: Mapped[bool] = mapped_column(default=True)
+```
+
+**Step 2: Register in `backend/app/models/__init__.py`:**
+
+```python
+from app.models.user import User
+
+__all__ = ["User"]
+```
+
+**Step 3: Generate migration:**
+
+```bash
+cd backend
+python -m alembic revision --autogenerate -m "Add users table"
+```
+
+**Step 4: Review `migrations/versions/YYYYMMDD_HHMM_001_add_users_table.py`**
+
+**Step 5: Apply migration:**
+
+```bash
+python -m alembic upgrade head
+```
+
+**Step 6: Test:**
+
+```bash
+python -m pytest tests/integration/test_migrations.py -v
+```
+
+**Step 7: Commit:**
+
+```bash
+git add app/models/user.py migrations/versions/YYYYMMDD_HHMM_001_add_users_table.py
+git commit -m "E3.T3: Add users table"
+```
+
+---
+
+## Running Migrations
+
+### Upgrade (Apply Migrations)
+
+**Apply all pending migrations:**
+
+```bash
+cd backend
+python -m alembic upgrade head
+```
+
+**Apply specific migration:**
+
+```bash
+python -m alembic upgrade +1  # Apply next one migration
+python -m alembic upgrade 001  # Apply to specific revision
+```
+
+### Downgrade (Revert Migrations)
+
+**Downgrade to baseline (clean database):**
+
+```bash
+python -m alembic downgrade base
+```
+
+**Downgrade N steps:**
+
+```bash
+python -m alembic downgrade -1  # Revert last migration
+python -m alembic downgrade -2  # Revert last 2 migrations
+```
+
+### Check Current Revision
+
+```bash
+python -m alembic current
+```
+
+Returns current revision applied to database. Example: `001` or `base` (if no migrations applied).
+
+### View Migration History
+
+```bash
+python -m alembic history
+```
+
+Shows all revisions in the chain. Example:
+
+```
+<base> -> 001, Add users table (head)
+```
+
+---
+
+## Testing Migrations
+
+### Unit Tests
+
+Tests in `backend/tests/integration/test_migrations.py` verify:
+- ✅ Upgrade succeeds on clean database
+- ✅ Upgrade is idempotent (re-running is a no-op)
+- ✅ Downgrade succeeds
+- ✅ Downgrade is idempotent
+- ✅ alembic_version table state is consistent
+
+**Run migration tests:**
+
+```bash
+python -m pytest tests/integration/test_migrations.py -v
+```
+
+### CI Testing
+
+CI pipeline automatically:
+1. Applies all migrations (`alembic upgrade head`)
+2. Runs application tests
+3. Reverts all migrations (`alembic downgrade base`)
+
+This ensures migrations are reversible and don't break tests.
+
+### Manual Testing Workflow
+
+1. **Create model and migration** (steps 1-3 above)
+2. **Review migration file** (step 4 above)
+3. **Apply upgrade:**
+   ```bash
+   python -m alembic upgrade head
+   ```
+4. **Verify schema:**
+   ```bash
+   psql postgresql://sentinel:sentinel@localhost:5432/sentinel -c "\d users"
+   ```
+5. **Run tests:**
+   ```bash
+   python -m pytest tests/ -v
+   ```
+6. **Test downgrade:**
+   ```bash
+   python -m alembic downgrade base
+   ```
+7. **Verify clean state:**
+   ```bash
+   psql postgresql://sentinel:sentinel@localhost:5432/sentinel -c "\dt"
+   ```
+8. **Commit changes** (step 6 above)
+
+---
+
+## Troubleshooting
+
+### Issue: "Connection refused" when running alembic
+
+**Cause:** PostgreSQL is not running or DATABASE_MIGRATION_URL is incorrect.
+
+**Solution:**
+1. Check PostgreSQL is running:
+   ```bash
+   docker ps | grep postgres
+   # or
+   docker compose ps
+   ```
+2. Verify DATABASE_MIGRATION_URL in `.env`:
+   ```bash
+   grep DATABASE_MIGRATION_URL backend/.env
+   ```
+3. Test connection:
+   ```bash
+   psql postgresql://sentinel:sentinel@localhost:5432/sentinel -c "SELECT 1"
+   ```
+
+### Issue: "ImportError" when running autogenerate
+
+**Cause:** ORM model is not imported (not registered with Base.metadata).
+
+**Solution:**
+1. Ensure model class is in `app/models/` directory
+2. Ensure model is imported in `app/models/__init__.py`
+3. Verify import doesn't have errors:
+   ```bash
+   python -c "from app.models import User; print('✓ User imported')"
+   ```
+
+### Issue: Migration file is empty (only pass statements)
+
+**Cause:** No schema changes detected between ORM models and current database.
+
+**Solution:**
+1. Verify model was actually modified (not just re-importing same class)
+2. Check `alembic_version` table to see what's already applied:
+   ```bash
+   psql postgresql://sentinel:sentinel@localhost:5432/sentinel -c "SELECT * FROM alembic_version"
+   ```
+3. If stuck, clean up and restart:
+   ```bash
+   python -m alembic downgrade base
+   python -m alembic upgrade head
+   ```
+
+### Issue: Migration fails with constraint error
+
+**Cause:** Database state doesn't match ORM definition (e.g., missing model field that exists in database).
+
+**Solution:**
+1. Inspect the error message (includes which constraint failed)
+2. Either:
+   - **Update ORM model** to match database schema
+   - **Update migration file** to handle the constraint
+   - **Reset database** and restart migrations:
+     ```bash
+     python -m alembic downgrade base
+     python -m alembic upgrade head
+     ```
+
+### Issue: "No changes detected" when expecting migration
+
+**Cause:** Alembic doesn't see changes (metadata not updated).
+
+**Solution:**
+1. Verify model is imported:
+   ```bash
+   python -c "from app.models import *; from app.infrastructure.database.base import Base; print(list(Base.metadata.tables.keys()))"
+   ```
+2. Check model has `__tablename__` defined
+3. Clear Alembic cache:
+   ```bash
+   rm -rf migrations/__pycache__
+   python -m alembic revision --autogenerate -m "desc"
+   ```
+
+### Issue: "Command failed with error code 1" in CI
+
+**Cause:** CI migration tests failing (usually database connectivity in CI environment).
+
+**Solution:**
+1. Check CI logs for specific error message
+2. Verify `.github/workflows/ci.yml` has correct DATABASE_MIGRATION_URL setup
+3. Ensure `migrations/versions/` directory exists and is committed to git
+4. Test locally first:
+   ```bash
+   docker compose up -d
+   python -m alembic upgrade head
+   python -m pytest tests/ -v
+   ```
+
+---
+
+## Reference
+
+### File Structure
+
+```
+backend/
+├── alembic.ini                    # Alembic configuration
+├── migrations/
+│   ├── env.py                     # Migration environment setup
+│   ├── script.py.mako             # Migration template
+│   └── versions/
+│       ├── 20250117_1430_001_add_users_table.py       # First migration
+│       ├── 20250117_1500_002_add_uploads_table.py     # Second migration
+│       └── ...
+├── app/
+│   ├── models/
+│   │   ├── __init__.py            # Model imports (registration)
+│   │   ├── user.py                # User model
+│   │   └── ...
+│   └── infrastructure/
+│       └── database/
+│           └── base.py            # BaseModel and Base
+└── tests/
+    └── integration/
+        └── test_migrations.py     # Migration tests
+```
+
+### Environment Variables
+
+- **DATABASE_MIGRATION_URL**: PostgreSQL connection URL for migrations
+  - Format: `postgresql://user:password@host:port/database`
+  - Used by `env.py` when running Alembic commands
+  - Must have DDL privileges (CREATE TABLE, ALTER, etc.)
+  - Different from APPLICATION's `DATABASE_URL` (which uses asyncpg driver)
+
+Example `.env`:
+```dotenv
 DATABASE_URL=postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel
-
-# Migrations (DDL privileges)
-DATABASE_MIGRATION_URL=postgresql+asyncpg://sentinel_admin:sentinel_admin@localhost:5432/sentinel
+DATABASE_MIGRATION_URL=postgresql+asyncpg://sentinel:sentinel@localhost:5432/sentinel
 ```
 
-**Traces to:** 08-Security-Architecture §9 (least privilege)
+### Alembic Commands
 
-## Quality Gates
+| Command | Purpose |
+|---------|---------|
+| `alembic revision --autogenerate -m "desc"` | Generate migration from ORM changes |
+| `alembic upgrade head` | Apply all pending migrations |
+| `alembic downgrade base` | Revert to clean database |
+| `alembic current` | Show current revision |
+| `alembic history` | Show all revisions |
+| `alembic upgrade +1` | Apply next 1 migration |
+| `alembic downgrade -1` | Revert last 1 migration |
 
-### ✅ Ruff Checks
+### Naming Conventions
 
-```bash
-python -m ruff check migrations/env.py
-# Result: All checks passed!
-```
+Alembic auto-generates constraint names following patterns defined in `Base.metadata.naming_convention`:
 
-### ✅ Python Compilation
+| Constraint Type | Pattern | Example |
+|-----------------|---------|---------|
+| Index | `ix_%(column_0_label)s` | `ix_users_email` |
+| Unique | `uq_%(table_name)s_%(column_0_name)s` | `uq_users_email` |
+| Check | `ck_%(table_name)s_%(constraint_name)s` | `ck_users_email_format` |
+| Foreign Key | `fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s` | `fk_uploads_user_id_users` |
+| Primary Key | `pk_%(table_name)s` | `pk_users` |
 
-```bash
-python -m py_compile migrations/env.py
-# Result: Success
-```
+### Configuration Files
 
-### ✅ Base.metadata Import
+**alembic.ini:**
+- Specifies migration script location: `backend/migrations/versions/`
+- Defines file template: timestamp-based naming with semantic slug
+- Post-write hooks: runs Ruff linter on generated migration files
+- DATABASE_MIGRATION_URL sourced from environment (not hardcoded)
 
-```bash
-python -c "from app.infrastructure.database.base import Base; print(Base.metadata.naming_convention)"
-# Result: {'ix': 'ix_%(column_0_label)s', 'uq': 'uq_...', ...}
-```
+**migrations/env.py:**
+- Loads BASE.metadata from ORM for autogenerate support
+- Handles async driver conversion (asyncpg → psycopg2 for migrations)
+- Runs migrations in online mode (with database connection)
+- Sets up logging and configuration
 
-### ✅ Migration Creation
+**migrations/script.py.mako:**
+- Template for generating new migration files
+- Defines structure of upgrade/downgrade functions
+- Includes docstrings and metadata headers
 
-```bash
-DATABASE_MIGRATION_URL="postgresql://..." python -m alembic revision -m "test"
-# Result: Migration file created successfully with timestamped name
-```
+### Key Principles
 
-**Note:** Full migration workflow (autogenerate, upgrade, downgrade) requires a running PostgreSQL database. The infrastructure is ready; database verification will occur when first ORM models are created.
+1. **Pair model + migration in same commit** — ensures schema consistency
+2. **Always test locally before committing** — upgrade, verify, tests, downgrade
+3. **Migrations are immutable** — once committed, don't modify (create new migration instead)
+4. **Migrations must be reversible** — downgrade must undo upgrade
+5. **Review generated migrations** — autogenerate sometimes needs manual adjustment
+6. **Run CI before merge** — CI tests migrations automatically
 
-## Definition of Done — Verification
+---
 
-Per the task requirements:
+## Related Documentation
 
-| Requirement | Status | Notes |
-|-------------|--------|-------|
-| `alembic revision --autogenerate` succeeds | ✅ | Infrastructure tested, requires database for full test |
-| `alembic upgrade head` succeeds | ✅ | Infrastructure ready, requires database for full test |
-| `alembic downgrade base` succeeds | ✅ | Infrastructure ready, requires database for full test |
-| `Base.metadata` correctly imported | ✅ | Verified with import test |
-| `DATABASE_URL` from environment, not hardcoded | ✅ | Sources from `DATABASE_MIGRATION_URL` env var |
-| Alembic initialized | ✅ | Complete with proper configuration |
-| `env.py` configured | ✅ | Imports Base.metadata, handles async→sync URL conversion |
-| `alembic.ini` configured | ✅ | Timestamped filenames, ruff hooks, no hardcoded credentials |
+- **Database Design:** `docs/04-Database-Design.md`
+- **Backend Standards:** `docs/07-Backend-Development-Standards.md` §8
+- **Repository Structure:** `docs/06-Repository-Structure.md` §3
+- **CI/CD Architecture:** `docs/12-CI-CD-Architecture.md` §3
+- **Engineering Backlog:** `docs/22-Engineering-Backlog.md` E3.T2–E3.T5
 
-## What's Next
+---
 
-The Alembic infrastructure is ready. When the first ORM model is created (e.g., User model), the workflow will be:
+## Support
 
-1. Define model in `app/models/user.py` inheriting from `BaseModel`
-2. Import model in `migrations/env.py` (so autogenerate detects it)
-3. Run `python -m alembic revision --autogenerate -m "add_user_table"`
-4. Review generated migration
-5. Run `python -m alembic upgrade head`
-6. Verify table creation in database
-
-## Files Created/Modified
-
-### Created
-- ✅ `alembic.ini` — Alembic configuration
-- ✅ `migrations/env.py` — Migration environment setup
-- ✅ `migrations/versions/` — Empty directory for migration scripts
-- ✅ `migrations/README.md` — Comprehensive migration documentation
-- ✅ `migrations/script.py.mako` — Migration file template (Alembic-generated)
-- ✅ `backend/ALEMBIC_SETUP.md` — This summary document
-
-### Modified
-- None (all new files)
-
-## Architecture Compliance
-
-**Traces to:**
-- ✅ 04-Database-Design (PostgreSQL schema management)
-- ✅ 07-Backend-Development-Standards §8 (migration standards, naming conventions)
-- ✅ 08-Security-Architecture §9 (separate migration credentials, least privilege)
-- ✅ 22-Engineering-Backlog E3.T2 (Alembic infrastructure task)
-
-## Summary
-
-Alembic infrastructure is **fully configured and ready for use**. No ORM models or tables have been created yet (as specified in the task scope). The setup follows all security, naming, and quality standards from the canonical architecture documents.
-
-**Next task:** Task 2.5 — Verify migration workflow with `alembic upgrade head` (once database is running)
+For questions or issues:
+1. **Check Troubleshooting section above** (most issues covered)
+2. **Read Alembic documentation:** https://alembic.sqlalchemy.org/
+3. **Check database design:** `docs/04-Database-Design.md`
+4. **Ask team:** Reference this guide in code review

@@ -254,10 +254,11 @@ Analysis table has **18 explicit columns** across 6 logical groups, plus 2 inher
 ```python
 class AnalysisStatus(str, Enum):
     """Analysis job lifecycle states."""
-    PENDING = "pending"      # Queued, awaiting worker pickup
-    RUNNING = "running"      # Worker actively processing
+
+    PENDING = "pending"  # Queued, awaiting worker pickup
+    RUNNING = "running"  # Worker actively processing
     COMPLETED = "completed"  # Successfully finished with verdict
-    FAILED = "failed"        # Failed; error details in error_message/error_code
+    FAILED = "failed"  # Failed; error details in error_message/error_code
     CANCELLED = "cancelled"  # Cancelled before completion
 ```
 
@@ -315,7 +316,7 @@ CHECK (severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') OR severity IS NULL)
 ```python
 digital_asset_id: Mapped[uuid.UUID] = mapped_column(
     ForeignKey("digital_assets.id", ondelete="RESTRICT", onupdate="RESTRICT"),
-    nullable=False
+    nullable=False,
 )
 ```
 
@@ -386,8 +387,7 @@ Many common analysis operations need only Analysis fields, not related objects:
 
 ```python
 requested_by: Mapped[uuid.UUID] = mapped_column(
-    ForeignKey("users.id", ondelete="RESTRICT", onupdate="RESTRICT"),
-    nullable=False
+    ForeignKey("users.id", ondelete="RESTRICT", onupdate="RESTRICT"), nullable=False
 )
 ```
 
@@ -820,75 +820,127 @@ Traces to: E3.T6 Requirements, 04-Database-Design §5.6
 """
 
 # Migration metadata
-revision = '001a'
-down_revision = '<E3.T5 migration ID>'
+revision = "001a"
+down_revision = "<E3.T5 migration ID>"
+
 
 def upgrade() -> None:
     # 1. Create analyses table with all columns
     op.create_table(
-        'analyses',
+        "analyses",
         # Identity columns (id, digital_asset_id, requested_by, created_at)
-        Column('id', UUID, server_default='gen_random_uuid()', primary_key=True),
-        Column('digital_asset_id', UUID, ForeignKey('digital_assets.id', ondelete='RESTRICT'), nullable=False),
-        Column('requested_by', UUID, ForeignKey('users.id', ondelete='RESTRICT'), nullable=False),
-        Column('created_at', TIMESTAMP(tz=True), server_default='now()', nullable=False),
-        
+        Column("id", UUID, server_default="gen_random_uuid()", primary_key=True),
+        Column(
+            "digital_asset_id",
+            UUID,
+            ForeignKey("digital_assets.id", ondelete="RESTRICT"),
+            nullable=False,
+        ),
+        Column(
+            "requested_by",
+            UUID,
+            ForeignKey("users.id", ondelete="RESTRICT"),
+            nullable=False,
+        ),
+        Column(
+            "created_at", TIMESTAMP(tz=True), server_default="now()", nullable=False
+        ),
         # Analyzer identity (analyzer_key, analyzer_version, analyzer_slugs)
-        Column('analyzer_key', String, nullable=False),
-        Column('analyzer_version', String, nullable=False),
-        Column('analyzer_slugs', ARRAY(String), nullable=False),
-        
+        Column("analyzer_key", String, nullable=False),
+        Column("analyzer_version", String, nullable=False),
+        Column("analyzer_slugs", ARRAY(String), nullable=False),
         # Status & tracking (status, retry_count, celery_task_id, error_message, error_code)
-        Column('status', String, server_default='pending', nullable=False),
-        Column('retry_count', Integer, server_default='0', nullable=False),
-        Column('celery_task_id', String, nullable=True),
-        Column('error_message', String, nullable=True),
-        Column('error_code', String, nullable=True),
-        
+        Column("status", String, server_default="pending", nullable=False),
+        Column("retry_count", Integer, server_default="0", nullable=False),
+        Column("celery_task_id", String, nullable=True),
+        Column("error_message", String, nullable=True),
+        Column("error_code", String, nullable=True),
         # Verdict fields (threat_score, confidence, severity)
-        Column('threat_score', Double, nullable=True),
-        Column('confidence', Double, nullable=True),
-        Column('severity', String, nullable=True),
-        
+        Column("threat_score", Double, nullable=True),
+        Column("confidence", Double, nullable=True),
+        Column("severity", String, nullable=True),
         # JSONB fields (reasoning_payload, enrichment_data)
-        Column('reasoning_payload', JSONB, nullable=True),
-        Column('enrichment_data', JSONB, nullable=True),
-        
+        Column("reasoning_payload", JSONB, nullable=True),
+        Column("enrichment_data", JSONB, nullable=True),
         # Lifecycle timestamps (started_at, completed_at)
-        Column('started_at', TIMESTAMP(tz=True), nullable=True),
-        Column('completed_at', TIMESTAMP(tz=True), nullable=True),
-        
+        Column("started_at", TIMESTAMP(tz=True), nullable=True),
+        Column("completed_at", TIMESTAMP(tz=True), nullable=True),
         # Constraints: PK, FKs, CHECKs, UNIQUE
     )
-    
+
     # 2. Create CHECK constraints (status, score ranges, retry count, severity)
-    op.create_check_constraint('ck_analyses_status', 'analyses', "status IN ('pending', 'running', 'completed', 'failed', 'cancelled')")
-    op.create_check_constraint('ck_analyses_threat_score', 'analyses', 'threat_score BETWEEN 0.0 AND 1.0 OR threat_score IS NULL')
-    op.create_check_constraint('ck_analyses_confidence', 'analyses', 'confidence BETWEEN 0.0 AND 1.0 OR confidence IS NULL')
-    op.create_check_constraint('ck_analyses_severity', 'analyses', "severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') OR severity IS NULL")
-    op.create_check_constraint('ck_analyses_retry_count', 'analyses', 'retry_count >= 0')
-    
+    op.create_check_constraint(
+        "ck_analyses_status",
+        "analyses",
+        "status IN ('pending', 'running', 'completed', 'failed', 'cancelled')",
+    )
+    op.create_check_constraint(
+        "ck_analyses_threat_score",
+        "analyses",
+        "threat_score BETWEEN 0.0 AND 1.0 OR threat_score IS NULL",
+    )
+    op.create_check_constraint(
+        "ck_analyses_confidence",
+        "analyses",
+        "confidence BETWEEN 0.0 AND 1.0 OR confidence IS NULL",
+    )
+    op.create_check_constraint(
+        "ck_analyses_severity",
+        "analyses",
+        "severity IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL') OR severity IS NULL",
+    )
+    op.create_check_constraint(
+        "ck_analyses_retry_count", "analyses", "retry_count >= 0"
+    )
+
     # 3. Create indexes (in dependency order: PK first, then application indexes)
-    op.create_index('ix_analyses_asset_status', 'analyses', ['digital_asset_id', 'status'])
-    op.create_index('ix_analyses_asset_latest', 'analyses', ['digital_asset_id', 'created_at DESC'])
-    op.create_index('ix_analyses_user_history', 'analyses', ['requested_by', 'created_at DESC'])
-    op.create_index('ix_analyses_pending', 'analyses', ['created_at'], postgresql_where="status = 'pending'")
-    op.create_index('ix_analyses_celery_task', 'analyses', ['celery_task_id'], postgresql_where='celery_task_id IS NOT NULL')
-    op.create_index('ix_analyses_severity_completed', 'analyses', ['severity', 'created_at DESC'], postgresql_where="status = 'completed'")
-    op.create_unique_index('uq_analyses_asset_analyzer_completed', 'analyses', ['digital_asset_id', 'analyzer_key', 'analyzer_version'], postgresql_where="status = 'completed'")
+    op.create_index(
+        "ix_analyses_asset_status", "analyses", ["digital_asset_id", "status"]
+    )
+    op.create_index(
+        "ix_analyses_asset_latest", "analyses", ["digital_asset_id", "created_at DESC"]
+    )
+    op.create_index(
+        "ix_analyses_user_history", "analyses", ["requested_by", "created_at DESC"]
+    )
+    op.create_index(
+        "ix_analyses_pending",
+        "analyses",
+        ["created_at"],
+        postgresql_where="status = 'pending'",
+    )
+    op.create_index(
+        "ix_analyses_celery_task",
+        "analyses",
+        ["celery_task_id"],
+        postgresql_where="celery_task_id IS NOT NULL",
+    )
+    op.create_index(
+        "ix_analyses_severity_completed",
+        "analyses",
+        ["severity", "created_at DESC"],
+        postgresql_where="status = 'completed'",
+    )
+    op.create_unique_index(
+        "uq_analyses_asset_analyzer_completed",
+        "analyses",
+        ["digital_asset_id", "analyzer_key", "analyzer_version"],
+        postgresql_where="status = 'completed'",
+    )
+
 
 def downgrade() -> None:
     # 1. Drop indexes in reverse order (FIFO)
-    op.drop_index('uq_analyses_asset_analyzer_completed', table_name='analyses')
-    op.drop_index('ix_analyses_severity_completed', table_name='analyses')
-    op.drop_index('ix_analyses_celery_task', table_name='analyses')
-    op.drop_index('ix_analyses_pending', table_name='analyses')
-    op.drop_index('ix_analyses_user_history', table_name='analyses')
-    op.drop_index('ix_analyses_asset_latest', table_name='analyses')
-    op.drop_index('ix_analyses_asset_status', table_name='analyses')
-    
+    op.drop_index("uq_analyses_asset_analyzer_completed", table_name="analyses")
+    op.drop_index("ix_analyses_severity_completed", table_name="analyses")
+    op.drop_index("ix_analyses_celery_task", table_name="analyses")
+    op.drop_index("ix_analyses_pending", table_name="analyses")
+    op.drop_index("ix_analyses_user_history", table_name="analyses")
+    op.drop_index("ix_analyses_asset_latest", table_name="analyses")
+    op.drop_index("ix_analyses_asset_status", table_name="analyses")
+
     # 2. Drop table (automatically drops PK, FKs, CHECKs)
-    op.drop_table('analyses')
+    op.drop_table("analyses")
 ```
 
 **Implementation Guide:**
@@ -1210,20 +1262,24 @@ def test_idempotency_partial_unique_completed():
     asset_id = uuid4()
     analyzer_key = "virustotal"
     analyzer_version = "v2.1.0"
-    
+
     # Insert first completed analysis
-    analysis1 = analyses_table.insert().values(
-        id=uuid4(),
-        digital_asset_id=asset_id,
-        requested_by=user_id,
-        analyzer_key=analyzer_key,
-        analyzer_version=analyzer_version,
-        status='completed',
-        threat_score=0.9,
-        confidence=0.85,
-        severity='CRITICAL'
-    ).execute()
-    
+    analysis1 = (
+        analyses_table.insert()
+        .values(
+            id=uuid4(),
+            digital_asset_id=asset_id,
+            requested_by=user_id,
+            analyzer_key=analyzer_key,
+            analyzer_version=analyzer_version,
+            status="completed",
+            threat_score=0.9,
+            confidence=0.85,
+            severity="CRITICAL",
+        )
+        .execute()
+    )
+
     # Try to insert second completed analysis (same triple) → should fail
     with pytest.raises(IntegrityError):
         analyses_table.insert().values(
@@ -1232,10 +1288,10 @@ def test_idempotency_partial_unique_completed():
             requested_by=user_id,
             analyzer_key=analyzer_key,
             analyzer_version=analyzer_version,
-            status='completed',
+            status="completed",
             threat_score=0.8,  # Different score
             confidence=0.9,
-            severity='HIGH'
+            severity="HIGH",
         ).execute()
 ```
 
@@ -1259,16 +1315,16 @@ def test_idempotency_partial_unique_completed():
 def test_migration_upgrade_idempotent():
     """Running upgrade twice is idempotent."""
     # First upgrade
-    runner.upgrade(revision='head')
-    
+    runner.upgrade(revision="head")
+
     # Verify table exists
-    assert 'analyses' in inspector.get_table_names()
-    
+    assert "analyses" in inspector.get_table_names()
+
     # Second upgrade (should be no-op)
-    runner.upgrade(revision='head')
-    
+    runner.upgrade(revision="head")
+
     # Verify table still exists (unchanged)
-    assert 'analyses' in inspector.get_table_names()
+    assert "analyses" in inspector.get_table_names()
 ```
 
 ### 12.4 Constraint Tests

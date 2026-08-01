@@ -21,12 +21,14 @@ from app.api.v1.middleware.rate_limit import RateLimitMiddleware
 from app.api.v1.middleware.request_id import RequestIdMiddleware
 from app.api.v1.router import api_v1_router
 from app.core.dependencies import get_logger, get_settings
-from app.infrastructure.database.session import _engine
+from app.core.settings import EnvironmentType
+from app.infrastructure.cache.redis_client import close_redis_client
+from app.infrastructure.database.session import get_engine
 from app.infrastructure.logging import configure_logging
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Application lifespan context manager.
 
     Handles startup and shutdown lifecycle events. Resources acquired
@@ -60,10 +62,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     #   - Provider registry setup hooks
     yield
     # --- Shutdown ---
+    # Close Redis client
+    close_redis_client()
+
     # Dispose database connection pool
-    if _engine is not None:
+    engine = get_engine(settings)
+
+    if engine is not None:
         try:
-            await _engine.dispose()
+            await engine.dispose()
             logger.info("Database connection pool disposed")
         except Exception as e:
             logger.error(f"Failed to dispose database pool: {e}")
@@ -124,28 +131,37 @@ def create_app() -> FastAPI:
     )
 
     # --- Middleware ---
-    # Registration order matters: middleware executes in reverse order
+    # Registration order matters: middleware executes in REVERSE order
     # of registration (last registered = outermost = executes first).
     #
     # Execution order for an inbound request:
-    #   1. CORS (outermost — must run before anything else)
+    #   1. CORS (outermost — must run first for CORS headers)
     #   2. RequestIdMiddleware (sets request ID for all downstream)
-    #   3. RateLimitMiddleware (uses request ID for correlation)
+    #   3. RateLimitMiddleware (uses request ID for correlation) — SKIP IN TEST
     #
-    # RequestIdMiddleware is registered first, so it executes LAST (innermost)
-    # RateLimitMiddleware is registered second, so it executes in the middle
-    # CORS is registered last, so it wraps everything (executes first, outermost)
+    # To achieve this execution order, register in REVERSE:
+    #   - Register RateLimitMiddleware first → executes last (innermost)
+    #   - Register RequestIdMiddleware second → executes middle
+    #   - Register CORS last → executes first (outermost)
+    #
+    # This ensures:
+    # - CORS runs first (allows preflight requests through)
+    # - RequestIdMiddleware sets request.state.request_id
+    # - RateLimitMiddleware can access request.state.request_id
     #
     # See: 07-Backend-Development-Standards §4 (middleware).
     # See: 08-Security-Architecture §7 (CORS and rate limiting).
 
-    application.add_middleware(RequestIdMiddleware)
+    # Skip rate limiting during tests (no Redis required for unit tests)
+    # Tests that explicitly need rate limiting can use integration tests with Redis
+    if settings.environment != EnvironmentType.TEST:
+        application.add_middleware(
+            RateLimitMiddleware,
+            settings=settings.rate_limit,
+            redis_url=settings.queue.broker_url,
+        )
 
-    application.add_middleware(
-        RateLimitMiddleware,
-        settings=settings.rate_limit,
-        redis_url=settings.queue.broker_url,
-    )
+    application.add_middleware(RequestIdMiddleware)
 
     application.add_middleware(
         CORSMiddleware,

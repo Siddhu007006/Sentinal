@@ -196,7 +196,7 @@ class TestSensitiveDataFilter:
             args=(),
             exc_info=None,
         )
-        record.fields = {"email": "user@example.com", "password": "secret123"}  # type: ignore[attr-defined]
+        record.fields = {"email": "user@example.com", "password": "secret123"}
 
         log_filter.filter(record)
 
@@ -215,7 +215,7 @@ class TestSensitiveDataFilter:
             args=(),
             exc_info=None,
         )
-        record.fields = {"api_key": "secret-key", "access_token": "bearer-token"}  # type: ignore[attr-defined]
+        record.fields = {"api_key": "secret-key", "access_token": "bearer-token"}
 
         log_filter.filter(record)
 
@@ -234,7 +234,7 @@ class TestSensitiveDataFilter:
             args=(),
             exc_info=None,
         )
-        record.fields = {  # type: ignore[attr-defined]
+        record.fields = {
             "database": {"host": "localhost", "password": "db-secret"},
             "api": {"url": "https://api.example.com", "secret_key": "api-secret"},
         }
@@ -437,12 +437,11 @@ class TestRequestLifecycleLogging:
 
         try:
             app = create_app()
-            client = TestClient(app)
+            with TestClient(app) as client:
+                # Make a request
+                response = client.get("/api/v1/health")
 
-            # Make a request
-            response = client.get("/api/v1/health")
-
-            assert response.status_code == 200
+                assert response.status_code == 200
 
             # Parse captured logs
             log_output = log_capture.getvalue()
@@ -450,9 +449,7 @@ class TestRequestLifecycleLogging:
 
             # Find the request_started log
             started_logs = [
-                json.loads(line)
-                for line in log_lines
-                if "request_started" in line
+                json.loads(line) for line in log_lines if "request_started" in line
             ]
             assert len(started_logs) > 0
 
@@ -481,20 +478,17 @@ class TestRequestLifecycleLogging:
 
         try:
             app = create_app()
-            client = TestClient(app)
+            with TestClient(app) as client:
+                response = client.get("/api/v1/health")
 
-            response = client.get("/api/v1/health")
-
-            assert response.status_code == 200
+                assert response.status_code == 200
 
             log_output = log_capture.getvalue()
             log_lines = [line for line in log_output.split("\n") if line.strip()]
 
             # Find the request_completed log
             completed_logs = [
-                json.loads(line)
-                for line in log_lines
-                if "request_completed" in line
+                json.loads(line) for line in log_lines if "request_completed" in line
             ]
             assert len(completed_logs) > 0
 
@@ -505,7 +499,7 @@ class TestRequestLifecycleLogging:
             assert completed_log["path"] == "/api/v1/health"
             assert completed_log["status_code"] == 200
             assert "duration_ms" in completed_log
-            assert isinstance(completed_log["duration_ms"], (int, float))
+            assert isinstance(completed_log["duration_ms"], int | float)
             assert completed_log["duration_ms"] >= 0
 
         finally:
@@ -526,13 +520,12 @@ class TestRequestLifecycleLogging:
 
         try:
             app = create_app()
-            client = TestClient(app)
-
-            # Provide custom request ID
-            custom_request_id = "test-correlation-id-789"
-            response = client.get(
-                "/api/v1/health", headers={"X-Request-ID": custom_request_id}
-            )
+            with TestClient(app) as client:
+                # Provide custom request ID
+                custom_request_id = "test-correlation-id-789"
+                response = client.get(
+                    "/api/v1/health", headers={"X-Request-ID": custom_request_id}
+                )
 
             assert response.status_code == 200
 

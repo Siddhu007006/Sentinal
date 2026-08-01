@@ -155,8 +155,8 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'a1b2c3d4e5f6'
-down_revision: str | Sequence[str] | None = 'previous_revision_id'
+revision: str = "a1b2c3d4e5f6"
+down_revision: str | Sequence[str] | None = "previous_revision_id"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
@@ -165,17 +165,17 @@ def upgrade() -> None:
     """Upgrade schema."""
     # Forward migration logic
     op.create_table(
-        'users',
-        sa.Column('id', sa.UUID(), nullable=False),
-        sa.Column('email', sa.String(), nullable=False),
-        sa.PrimaryKeyConstraint('id', name='pk_users'),
+        "users",
+        sa.Column("id", sa.UUID(), nullable=False),
+        sa.Column("email", sa.String(), nullable=False),
+        sa.PrimaryKeyConstraint("id", name="pk_users"),
     )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
     # Reverse migration logic
-    op.drop_table('users')
+    op.drop_table("users")
 ```
 
 ### Best Practices
@@ -195,50 +195,52 @@ def downgrade() -> None:
 
 ```python
 op.create_table(
-    'table_name',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('created_at', sa.TIMESTAMP(timezone=True), nullable=False),
-    sa.PrimaryKeyConstraint('id', name='pk_table_name'),
+    "table_name",
+    sa.Column("id", sa.UUID(), nullable=False),
+    sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False),
+    sa.PrimaryKeyConstraint("id", name="pk_table_name"),
 )
 ```
 
 #### Add Column
 
 ```python
-op.add_column('table_name', sa.Column('new_column', sa.String(), nullable=True))
+op.add_column("table_name", sa.Column("new_column", sa.String(), nullable=True))
 ```
 
 #### Drop Column
 
 ```python
-op.drop_column('table_name', 'column_name')
+op.drop_column("table_name", "column_name")
 ```
 
 #### Add Index
 
 ```python
-op.create_index('ix_table_name_column', 'table_name', ['column_name'])
+op.create_index("ix_table_name_column", "table_name", ["column_name"])
 ```
 
 #### Add Foreign Key
 
 ```python
 op.create_foreign_key(
-    'fk_table_name_other_id_other_table',
-    'table_name',
-    'other_table',
-    ['other_id'],
-    ['id'],
+    "fk_table_name_other_id_other_table",
+    "table_name",
+    "other_table",
+    ["other_id"],
+    ["id"],
 )
 ```
 
 #### Execute Raw SQL
 
 ```python
-op.execute(sa.text("""
+op.execute(
+    sa.text("""
     CREATE INDEX CONCURRENTLY ix_table_name_column
     ON table_name (column_name);
-"""))
+""")
+)
 ```
 
 ## ORM Model Integration
@@ -318,7 +320,7 @@ For migrations that take > 5 minutes on production data:
 
 1. Use `CONCURRENTLY` for index creation (doesn't lock table):
    ```python
-   op.create_index('ix_name', 'table', ['column'], postgresql_concurrently=True)
+   op.create_index("ix_name", "table", ["column"], postgresql_concurrently=True)
    ```
 
 2. Use `batch_alter_table()` for multiple changes to the same table

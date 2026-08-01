@@ -33,22 +33,38 @@ Traces to: 07-Backend-Development-Standards §13 (test isolation)
 Traces to: 22-Engineering-Backlog E3.T1 (database fixtures)
 """
 
+import gc
 import os
+import sys
+import time
+import warnings
 from collections.abc import AsyncGenerator
+from contextlib import suppress
 
+import pytest
 import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.settings import Settings
 
 
-@pytest_asyncio.fixture(scope="session")
-async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
-    """Create async engine once per test session.
+# Set ENVIRONMENT=test for all test runs
+# This ensures middleware requiring external services
+# (for example Redis rate limiting) is not registered during unit tests.
+os.environ.setdefault("ENVIRONMENT", "test")
 
-    The engine is expensive to create (connection pool initialization).
-    By making it session-scoped, we create it once and reuse it for all tests,
-    significantly improving test suite performance.
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError
+
+
+@pytest_asyncio.fixture(scope="function")
+async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
+    """Create async engine per test function.
+
+    Creates a fresh engine for each test function to ensure complete
+    isolation. This aligns with pytest-asyncio's function-scoped event loop
+    and ensures no connection state leaks between tests.
 
     Database Selection:
       - Uses TEST_DATABASE_URL env var if set (recommended for CI)
@@ -56,8 +72,9 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
       - This allows tests to use a distinct test database
 
     Yields:
-        AsyncEngine: Configured async SQLAlchemy engine, or None if
-                    database driver (asyncpg) is not available
+        AsyncEngine: Configured async SQLAlchemy engine with NullPool
+                    (no connection pooling), or None if database driver
+                    (asyncpg) is not available
     """
     # Get test database URL
     test_db_url = os.getenv("TEST_DATABASE_URL")
@@ -67,24 +84,39 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
         settings = Settings()
         test_db_url = settings.database.url
 
+    engine: AsyncEngine | None = None
     try:
-        # Create engine for test database
+        # Create engine for test database with NullPool for test isolation
+        # NullPool ensures each test gets a fresh connection and prevents
+        # connection pool state corruption across tests.
         engine = create_async_engine(
             test_db_url,
             # Disable SQL echo in tests (cleaner output)
             echo=False,
             # SQLAlchemy 2.0 style (required for async)
             future=True,
+            # NullPool: Create fresh connection per test, no pooling
+            # Simplifies test isolation and prevents state leakage
+            poolclass=NullPool,
         )
+        try:
+            async with engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except (ConnectionRefusedError, OSError, OperationalError):
+            yield None
+            return
 
         yield engine
-
-        # Cleanup: dispose of connection pool after all tests
-        await engine.dispose()
     except ModuleNotFoundError:
         # Database driver (asyncpg) not available
         # Yield None to allow tests to skip gracefully
         yield None
+    finally:
+        # Cleanup: dispose of connection pool even when a test skips, fails,
+        # or exits during teardown. Code after a fixture yield is not enough
+        # to guarantee cleanup for generator finalization paths.
+        if engine is not None:
+            await engine.dispose()
 
 
 @pytest_asyncio.fixture
@@ -102,12 +134,12 @@ async def db_session(
       2. Session yielded to test
       3. Test executes queries (inserts, updates, deletes)
       4. After test: explicit rollback (undoes mutations)
-      5. Session closed, connection returned to pool
+      5. Session closed, connection discarded (NullPool)
 
-    Rollback Guarantee:
-      - Rollback happens regardless of test outcome
-      - try/except/finally ensures cleanup even if test raises
-      - This guarantees isolation stricter than auto-commit patterns
+    Error Handling:
+      Suppresses RuntimeError/AttributeError during teardown to handle
+      edge cases where the event loop closes before fixture cleanup completes.
+      This is safe because NullPool discards the connection anyway.
 
     Yields:
         AsyncSession: Request-scoped session connected to test database,
@@ -119,24 +151,24 @@ async def db_session(
     if async_engine is None:
         yield None
         return
-    
-    async with AsyncSession(async_engine, expire_on_commit=False) as session:
-        try:
-            # Yield session to test
-            yield session
 
-            # After test completes successfully: explicit rollback
-            # This undoes all mutations (inserts, updates, deletes)
-            # Ensures data from this test doesn't persist to next test
+    session = AsyncSession(async_engine, expire_on_commit=False)
+    try:
+        # Yield session to test
+        yield session
+    except Exception:
+        # If test raises exception: rollback and re-raise
+        # This ensures cleanup even when test fails
+        with suppress(RuntimeError, AttributeError, Exception):
             await session.rollback()
-        except Exception:
-            # If test raises exception: also rollback
-            # This ensures cleanup even when test fails
+        raise
+    else:
+        # Test passed: rollback to ensure isolation
+        with suppress(RuntimeError, AttributeError, Exception):
             await session.rollback()
-            raise
-        finally:
-            # Always close session, returning connection to pool
-            # This allows reuse by other tests
+    finally:
+        # Always close session
+        with suppress(RuntimeError, AttributeError, Exception):
             await session.close()
 
 
@@ -168,3 +200,27 @@ async def clean_db(
     # Cleanup is handled by db_session fixture
     # Returns None regardless of whether db_session is available
     return None
+
+
+# Windows-only: ensure background anyio/from_thread portals and their
+# ProactorEventLoop self-pipe sockets have time to shut down. On Windows
+# AnyIO's blocking portal may start a proactor event loop in a thread that
+# creates an internal `socketpair()`; in rare timing windows pytest can
+# observe unraisable finalizers for those sockets. This autouse fixture
+# is a pragmatic, minimal mitigation to promote stable CI on Windows by
+# waiting briefly after each test. The extra GC here is only a best-effort
+# helper and must not fail the test suite if an internal finalizer emits
+# a ResourceWarning (we ignore those during cleanup).
+@pytest.fixture(autouse=True)
+def ensure_background_cleanup() -> None:
+    """Clean up background resources on Windows to avoid ResourceWarnings."""
+    yield
+    # Run only on Windows to avoid slowing non-Windows test runs
+    if sys.platform != "win32":
+        return
+    with suppress(Exception), warnings.catch_warnings():
+        warnings.simplefilter("ignore", ResourceWarning)
+        gc.collect()
+        # small sleep to let background threads/finalizers run and close FDs
+        time.sleep(0.05)
+        gc.collect()

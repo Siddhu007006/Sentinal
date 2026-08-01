@@ -46,9 +46,7 @@ class TestCreateApp:
 
         # Check that routes are registered
         # Use getattr to get path safely (some routes may not have path attr)
-        route_paths = [
-            getattr(route, "path", "") for route in app.routes
-        ]
+        route_paths = [getattr(route, "path", "") for route in app.routes]
 
         # Should have /api/v1/health from api_v1_router
         assert any("/api/v1" in path for path in route_paths)
@@ -148,9 +146,8 @@ class TestHealthEndpoint:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
         assert response.status_code == 200
         data = response.json()
@@ -164,9 +161,8 @@ class TestHealthEndpoint:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/health")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/health")
 
         assert "x-request-id" in response.headers
         # Should be a valid UUID format
@@ -182,9 +178,8 @@ class TestOpenAPIDocumentation:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/docs")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/docs")
 
         # Should return HTML (docs UI)
         assert response.status_code == 200
@@ -195,9 +190,8 @@ class TestOpenAPIDocumentation:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/openapi.json")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/openapi.json")
 
         assert response.status_code == 200
         data = response.json()
@@ -211,9 +205,8 @@ class TestOpenAPIDocumentation:
         from app.main import create_app
 
         app = create_app()
-        client = TestClient(app)
-
-        response = client.get("/api/v1/redoc")
+        with TestClient(app) as client:
+            response = client.get("/api/v1/redoc")
 
         # Should return HTML (ReDoc UI)
         assert response.status_code == 200
@@ -246,4 +239,3 @@ class TestLifespanManagement:
 
         # After exiting, shutdown hooks have executed
         # (Currently no-op, but validates the pattern)
-

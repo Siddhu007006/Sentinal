@@ -14,7 +14,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.schemas.base import BaseSchema
-from app.schemas.error import ErrorDetail, ErrorResponse
+from app.schemas.error import ErrorBody, ErrorDetail, ErrorResponse
 from app.schemas.health import HealthResponse
 from app.schemas.mixins import TimestampMixin
 from app.schemas.pagination import PaginatedResponse
@@ -58,7 +58,16 @@ class TestBaseSchema:
             timestamp: datetime
 
         # Create schema with UTC datetime
-        dt = datetime(2025, 1, 28, 10, 15, 30, 123456, tzinfo=UTC)
+        dt = datetime(
+            2025,
+            1,
+            28,
+            10,
+            15,
+            30,
+            123456,
+            tzinfo=UTC,
+        )
         schema = TestSchema(timestamp=dt)
 
         # Serialize
@@ -93,7 +102,15 @@ class TestBaseSchema:
             timestamp: datetime
 
         # Naive datetime (no timezone)
-        dt = datetime(2025, 1, 28, 10, 15, 30, 123456)
+        dt = datetime(  # noqa: DTZ001 - intentionally testing naive datetime handling
+            2025,
+            1,
+            28,
+            10,
+            15,
+            30,
+            123456,
+        )
         schema = TestSchema(timestamp=dt)
 
         # Serialize
@@ -109,7 +126,10 @@ class TestErrorResponse:
     def test_error_response_structure(self) -> None:
         """Verify ErrorResponse includes all required fields."""
         resp = ErrorResponse(
-            error={"code": "test_error", "message": "Test message"},
+            error=ErrorBody(
+                code="test_error",
+                message="Test message",
+            ),
             request_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
             timestamp=datetime(2025, 1, 28, 10, 15, 30, tzinfo=UTC),
         )
@@ -121,7 +141,7 @@ class TestErrorResponse:
     def test_error_response_request_id_alias(self) -> None:
         """Verify request_id serializes with requestId alias."""
         resp = ErrorResponse(
-            error={"code": "test", "message": "Test"},
+            error=ErrorBody(code="test", message="Test"),
             request_id=UUID("550e8400-e29b-41d4-a716-446655440000"),
             timestamp=datetime(2025, 1, 28, 10, 15, 30, tzinfo=UTC),
         )
@@ -186,7 +206,16 @@ class TestHealthResponse:
 
     def test_health_response_datetime_serialization(self) -> None:
         """Verify HealthResponse datetime is serialized to ISO 8601 UTC."""
-        dt = datetime(2025, 1, 28, 10, 15, 30, 123456, tzinfo=UTC)
+        dt = datetime(
+            2025,
+            1,
+            28,
+            10,
+            15,
+            30,
+            123456,
+            tzinfo=UTC,
+        )
         resp = HealthResponse(
             status="ok",
             version="1.0.0",
@@ -463,9 +492,9 @@ class TestOpenAPISchemaGeneration:
         # request_id should have alias in schema
         props = schema["properties"]
         # The field might be keyed by the actual field name or alias
-        assert any(
-            "request" in key.lower() for key in props.keys()
-        ), f"Properties: {list(props.keys())}"
+        assert any("request" in key.lower() for key in props), (
+            f"Properties: {list(props)}"
+        )
 
     def test_timestamp_mixin_schema_has_camel_case_fields(self) -> None:
         """Verify TimestampMixin schema includes camelCase field names."""
@@ -479,4 +508,3 @@ class TestOpenAPISchemaGeneration:
         # Should have createdAt and updatedAt in the schema
         # The exact representation may vary based on Pydantic schema generation
         assert len(props) > 0
-

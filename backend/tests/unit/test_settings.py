@@ -8,6 +8,8 @@ See: 07-Backend-Development-Standards §11 (Configuration).
 See: docs/22-Engineering-Backlog.md E2.T1 (Settings Management).
 """
 
+from contextlib import suppress
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -18,7 +20,9 @@ from app.core.settings import Settings
 class TestSettingsValidConfiguration:
     """Tests for valid settings configuration."""
 
-    def test_settings_loads_from_env_file(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_settings_loads_from_env_file(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Settings loads successfully with all required variables."""
         # Set all required env vars
         monkeypatch.setenv(
@@ -66,7 +70,8 @@ class TestSettingsValidConfiguration:
         settings = Settings()
 
         # Check defaults
-        assert settings.environment == "development"
+        # Note: ENVIRONMENT=test is set by conftest.py for all tests
+        assert settings.environment == "test"
         assert settings.security.jwt_algorithm == "HS256"
         assert settings.security.jwt_access_token_expire_minutes == 15
         assert settings.security.jwt_refresh_token_expire_days == 7
@@ -99,7 +104,7 @@ class TestSettingsValidConfiguration:
 
 class TestSettingsMissingRequired:
     """Tests for missing required fields.
-    
+
     NOTE: With nested BaseSettings architecture and env_file configured,
     nested settings classes load from .env file when instantiated inside
     Settings.__init__(). To verify fail-fast behavior, we must ensure
@@ -108,7 +113,7 @@ class TestSettingsMissingRequired:
     """
 
     def test_missing_database_url_raises_validation_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Settings raises ValidationError when DATABASE_URL missing."""
         # Change to temp directory with no .env file
@@ -133,7 +138,7 @@ class TestSettingsMissingRequired:
         assert "database_url" in error_str or "url" in error_str
 
     def test_missing_jwt_secret_key_raises_validation_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Settings raises ValidationError when JWT_SECRET_KEY missing."""
         # Change to temp directory with no .env file
@@ -163,7 +168,7 @@ class TestSettingsMissingRequired:
         assert "jwt_secret_key" in error_str or "secret" in error_str
 
     def test_missing_redis_url_raises_validation_error(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: pytest.TempPath
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         """Settings raises ValidationError when REDIS_URL missing."""
         # Change to temp directory with no .env file
@@ -198,7 +203,10 @@ class TestSettingsInvalidType:
     def test_invalid_jwt_expire_minutes_raises_validation_error(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Settings raises ValidationError when JWT_ACCESS_TOKEN_EXPIRE_MINUTES is not int."""
+        """
+        Settings raises ValidationError when
+        JWT_ACCESS_TOKEN_EXPIRE_MINUTES is not int.
+        """
         # Set all required vars
         monkeypatch.setenv(
             "DATABASE_URL",
@@ -220,9 +228,10 @@ class TestSettingsInvalidType:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "jwt_access_token_expire_minutes" in str(
-            exc_info.value
-        ).lower() or "int" in str(exc_info.value).lower()
+        assert (
+            "jwt_access_token_expire_minutes" in str(exc_info.value).lower()
+            or "int" in str(exc_info.value).lower()
+        )
 
     def test_invalid_log_level_raises_validation_error(
         self, monkeypatch: pytest.MonkeyPatch
@@ -249,9 +258,10 @@ class TestSettingsInvalidType:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "log_level" in str(exc_info.value).lower() or "level" in str(
-            exc_info.value
-        ).lower()
+        assert (
+            "log_level" in str(exc_info.value).lower()
+            or "level" in str(exc_info.value).lower()
+        )
 
     def test_invalid_jwt_algorithm_raises_validation_error(
         self, monkeypatch: pytest.MonkeyPatch
@@ -278,9 +288,10 @@ class TestSettingsInvalidType:
         with pytest.raises(ValidationError) as exc_info:
             Settings()
 
-        assert "jwt_algorithm" in str(exc_info.value).lower() or "algorithm" in str(
-            exc_info.value
-        ).lower()
+        assert (
+            "jwt_algorithm" in str(exc_info.value).lower()
+            or "algorithm" in str(exc_info.value).lower()
+        )
 
 
 class TestSettingsImmutability:
@@ -311,11 +322,12 @@ class TestSettingsImmutability:
 
         # Attempt to modify environment field
         with pytest.raises(ValidationError) as exc_info:
-            settings.environment = "hacked"  # type: ignore[misc]
+            settings.environment = "hacked"  # type: ignore[misc,assignment]
 
-        assert "frozen" in str(exc_info.value).lower() or "immutable" in str(
-            exc_info.value
-        ).lower()
+        assert (
+            "frozen" in str(exc_info.value).lower()
+            or "immutable" in str(exc_info.value).lower()
+        )
 
     def test_nested_settings_are_immutable(
         self, monkeypatch: pytest.MonkeyPatch
@@ -343,13 +355,10 @@ class TestSettingsImmutability:
         # Nested settings groups should also be immutable
         # Note: Pydantic v2 doesn't automatically freeze nested models
         # This test documents current behavior
-        try:
-            settings.database.url = "hacked"  # type: ignore[misc]
+        with suppress(ValidationError, AttributeError):
+            settings.database.url = "hacked"
             # If this doesn't raise, nested settings are not frozen
             # This is acceptable since root Settings is frozen
-        except (ValidationError, AttributeError):
-            # If it raises, nested settings are also immutable (ideal)
-            pass
 
 
 class TestSettingsCORSParsing:
@@ -409,9 +418,7 @@ class TestCommaSeparatedParsing:
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Comma-separated string produces a list of trimmed values."""
-        monkeypatch.setenv(
-            "CORS_ORIGINS", "http://a.com,http://b.com,http://c.com"
-        )
+        monkeypatch.setenv("CORS_ORIGINS", "http://a.com,http://b.com,http://c.com")
 
         from app.core.settings import CORSSettings
 
@@ -433,9 +440,7 @@ class TestCommaSeparatedParsing:
 
     def test_json_array_format(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """JSON array string is parsed correctly (forward-compatibility)."""
-        monkeypatch.setenv(
-            "CORS_ORIGINS", '["http://a.com","http://b.com"]'
-        )
+        monkeypatch.setenv("CORS_ORIGINS", '["http://a.com","http://b.com"]')
 
         from app.core.settings import CORSSettings
 
@@ -478,9 +483,7 @@ class TestCommaSeparatedParsing:
         # Empty env var is still a string — split(",") yields [""]
         assert cors.allowed_origins == [""]
 
-    def test_missing_env_uses_default(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_missing_env_uses_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Missing CORS_ORIGINS falls back to the field default."""
         monkeypatch.delenv("CORS_ORIGINS", raising=False)
 
@@ -572,4 +575,3 @@ class TestParseCommaSeparatedUnit:
 
         result = _parse_comma_separated("[1,2,3]")
         assert result == ["1", "2", "3"]
-
