@@ -84,6 +84,7 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
         settings = Settings()
         test_db_url = settings.database.url
 
+    engine: AsyncEngine | None = None
     try:
         # Create engine for test database with NullPool for test isolation
         # NullPool ensures each test gets a fresh connection and prevents
@@ -102,18 +103,20 @@ async def async_engine() -> AsyncGenerator[AsyncEngine | None, None]:
             async with engine.connect() as conn:
                 await conn.execute(text("SELECT 1"))
         except (ConnectionRefusedError, OSError, OperationalError):
-            await engine.dispose()
             yield None
             return
 
         yield engine
-
-        # Cleanup: dispose of connection pool after all tests
-        await engine.dispose()
     except ModuleNotFoundError:
         # Database driver (asyncpg) not available
         # Yield None to allow tests to skip gracefully
         yield None
+    finally:
+        # Cleanup: dispose of connection pool even when a test skips, fails,
+        # or exits during teardown. Code after a fixture yield is not enough
+        # to guarantee cleanup for generator finalization paths.
+        if engine is not None:
+            await engine.dispose()
 
 
 @pytest_asyncio.fixture

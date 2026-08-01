@@ -80,7 +80,7 @@ Validate that the Alembic autogenerate workflow operates correctly with the asyn
 - [x] Inspect generated migration file (if created)
 - [x] Verify migration file syntax: `python -m py_compile migrations/versions/<file>.py`
 - [x] Delete temporary test migration
-- [x] Run: `pytest backend/tests/ -v` (verify no regressions)
+- [ ] Run: `pytest backend/tests/ -v` (verify no regressions)
 - [x] Document findings in task completion note
 
 ### Scope Boundaries

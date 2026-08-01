@@ -283,6 +283,16 @@ jobs:
           uv venv
           uv sync --locked --all-extras
 
+      - name: Debug environment
+        working-directory: backend
+        shell: bash
+        run: |
+          pwd
+          ls -la
+          ls -la ..
+          test -f .env && echo ".env FOUND" || echo ".env NOT FOUND"
+          test -f ../.env && echo "../.env FOUND" || echo "../.env NOT FOUND"
+
       - name: Verify project structure
         working-directory: backend
         shell: bash
