@@ -21,6 +21,7 @@ from logging.config import fileConfig
 from alembic import context
 from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
+from sqlalchemy.exc import OperationalError
 
 
 # Load environment variables from .env file
@@ -106,17 +107,31 @@ def run_migrations_online() -> None:
 
     alembic_config = config.get_section(config.config_ini_section, {})
 
-    connectable = engine_from_config(
-        alembic_config,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
+    try:
+        connectable = engine_from_config(
+            alembic_config,
+            prefix="sqlalchemy.",
+            poolclass=pool.NullPool,
+        )
 
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        with connectable.connect() as connection:
+            context.configure(connection=connection, target_metadata=target_metadata)
 
-        with context.begin_transaction():
-            context.run_migrations()
+            with context.begin_transaction():
+                context.run_migrations()
+    except OperationalError as e:
+        # If we can't connect to the database, provide helpful error message
+        print("\nERROR: Could not connect to database for migrations.")
+        print("Details:", str(e))
+        print("\nFor Alembic to work, the database must be:")
+        print("  1. Running and accessible at the configured host/port")
+        print("  2. Created with appropriate credentials")
+        print("\nDatabase URL configured:", url or "(not set)")
+        print("\nTo fix:")
+        print("  - Ensure PostgreSQL is running")
+        print("  - Verify DATABASE_MIGRATION_URL in .env file")
+        print("  - Check that the database exists and credentials are correct")
+        raise
 
 
 if context.is_offline_mode():

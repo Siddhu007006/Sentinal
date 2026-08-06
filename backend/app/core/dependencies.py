@@ -26,20 +26,39 @@ from contextvars import ContextVar
 from functools import lru_cache
 from typing import Any
 
-from fastapi import Request
+from fastapi import Depends, Request
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.settings import Settings
+from app.domain.repositories import (
+    AnalysisRepository,
+    DigitalAssetRepository,
+    UploadRepository,
+    UserRepository,
+)
+from app.infrastructure.database.repositories.analysis import (
+    PostgreSQLAnalysisRepository,
+)
+from app.infrastructure.database.repositories.digital_asset import (
+    PostgreSQLDigitalAssetRepository,
+)
+from app.infrastructure.database.repositories.upload import PostgreSQLUploadRepository
+from app.infrastructure.database.repositories.user import PostgreSQLUserRepository
 from app.infrastructure.database.session import get_db_session
 
 
 # Re-exports for DI interface
 __all__ = [
     "RequestContext",
+    "get_analysis_repository",
     "get_db_session",
+    "get_digital_asset_repository",
     "get_logger",
     "get_request_context",
     "get_request_context_dict",
     "get_settings",
+    "get_upload_repository",
+    "get_user_repository",
 ]
 
 
@@ -240,3 +259,151 @@ def get_request_context_dict() -> dict[str, Any]:
     """
     context = _request_context_var.get()
     return context if context is not None else {}
+
+
+# ===========================================================================
+# Repository Providers (Phase A: E3.T7)
+# ===========================================================================
+# FastAPI dependencies providing request-scoped repository instances.
+# Each repository receives the current async session and is responsible
+# for all database operations for its entity.
+#
+# Phase A repositories (E3.T7):
+#   - UserRepository (manages User entities)
+#   - UploadRepository (manages Upload entities)
+#   - DigitalAssetRepository (manages DigitalAsset entities)
+#   - AnalysisRepository (manages Analysis entities)
+#
+# Phase B repositories (E3.T8-E3.T9, deferred until ORM models created):
+#   - ReportRepository (deferred until Report ORM model created)
+#   - RefreshTokenRepository (deferred until RefreshToken ORM model created)
+#
+# See: 03-Architecture §3 (Infrastructure layer, repository pattern).
+# See: 22-Engineering-Backlog E3.T7 (repository DI wiring).
+# ===========================================================================
+
+
+async def get_user_repository(
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+) -> UserRepository:
+    """Get UserRepository dependency for use in endpoints/services.
+
+    Provides a request-scoped UserRepository instance using the current
+    async session. All User entity operations in the request flow through
+    this repository instance.
+
+    Args:
+        session: Request-scoped AsyncSession (injected by get_db_session).
+
+    Returns:
+        UserRepository: Concrete PostgreSQL implementation ready for use.
+
+    Usage in endpoints:
+        ```python
+        @router.get("/users/{user_id}")
+        async def get_user(
+            user_id: UUID,
+            user_repo: UserRepository = Depends(get_user_repository),
+        ) -> UserResponse:
+            user = await user_repo.get_by_id(user_id)
+            return UserResponse.from_domain(user)
+        ```
+
+    See: 03-Architecture §3 (repository injection).
+    """
+    return PostgreSQLUserRepository(session)
+
+
+async def get_upload_repository(
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+) -> UploadRepository:
+    """Get UploadRepository dependency for use in endpoints/services.
+
+    Provides a request-scoped UploadRepository instance using the current
+    async session. All Upload entity operations in the request flow through
+    this repository instance.
+
+    Args:
+        session: Request-scoped AsyncSession (injected by get_db_session).
+
+    Returns:
+        UploadRepository: Concrete PostgreSQL implementation ready for use.
+
+    Usage in endpoints:
+        ```python
+        @router.post("/uploads")
+        async def create_upload(
+            data: CreateUploadRequest,
+            upload_repo: UploadRepository = Depends(get_upload_repository),
+        ) -> UploadResponse:
+            upload = await upload_repo.create(Upload(**data.model_dump()))
+            return UploadResponse.from_domain(upload)
+        ```
+
+    See: 03-Architecture §3 (repository injection).
+    """
+    return PostgreSQLUploadRepository(session)
+
+
+async def get_digital_asset_repository(
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+) -> DigitalAssetRepository:
+    """Get DigitalAssetRepository dependency for use in endpoints/services.
+
+    Provides a request-scoped DigitalAssetRepository instance using the current
+    async session. All DigitalAsset entity operations in the request flow through
+    this repository instance.
+
+    Args:
+        session: Request-scoped AsyncSession (injected by get_db_session).
+
+    Returns:
+        DigitalAssetRepository: Concrete PostgreSQL implementation ready for use.
+
+    Usage in endpoints:
+        ```python
+        @router.get("/assets/{asset_id}")
+        async def get_asset(
+            asset_id: UUID,
+            asset_repo: DigitalAssetRepository = Depends(get_digital_asset_repository),
+        ) -> DigitalAssetResponse:
+            asset = await asset_repo.get_by_id(asset_id)
+            return DigitalAssetResponse.from_domain(asset)
+        ```
+
+    See: 03-Architecture §3 (repository injection).
+    """
+    return PostgreSQLDigitalAssetRepository(session)
+
+
+async def get_analysis_repository(
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+) -> AnalysisRepository:
+    """Get AnalysisRepository dependency for use in endpoints/services.
+
+    Provides a request-scoped AnalysisRepository instance using the current
+    async session. All Analysis entity operations in the request flow through
+    this repository instance.
+
+    Args:
+        session: Request-scoped AsyncSession (injected by get_db_session).
+
+    Returns:
+        AnalysisRepository: Concrete PostgreSQL implementation ready for use.
+
+    Usage in endpoints:
+        ```python
+        @router.post("/analyses")
+        async def request_analysis(
+            asset_id: UUID,
+            analysis_repo: AnalysisRepository = Depends(get_analysis_repository),
+        ) -> AnalysisResponse:
+            analysis = await analysis_repo.create(
+                Analysis(digital_asset_id=asset_id, ...)
+            )
+            return AnalysisResponse.from_domain(analysis)
+        ```
+
+    See: 03-Architecture §3 (repository injection).
+    """
+    return PostgreSQLAnalysisRepository(session)

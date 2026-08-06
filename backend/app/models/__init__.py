@@ -12,7 +12,10 @@ Traces to: 07-Backend-Development-Standards §8 (ORM model conventions)
 """
 
 from app.models.analysis import Analysis, AnalysisStatus
+from app.models.audit_log import AuditLog
 from app.models.digital_asset import AssetType, DigitalAsset
+from app.models.refresh_token import RefreshToken
+from app.models.report import Report, ReportStatus
 from app.models.upload import Upload, UploadStatus
 from app.models.user import User, UserRole
 
@@ -21,7 +24,11 @@ __all__ = [
     "Analysis",
     "AnalysisStatus",
     "AssetType",
+    "AuditLog",
     "DigitalAsset",
+    "RefreshToken",
+    "Report",
+    "ReportStatus",
     "Upload",
     "UploadStatus",
     "User",

@@ -65,7 +65,9 @@ def get_redis_client(redis_url: str | None = None) -> redis.Redis | None:
     global _redis_client
 
     if _redis_client is None:
-        url = redis_url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        url = redis_url or os.environ.get("REDIS_URL")
+        if not url:
+            raise ValueError("REDIS_URL environment variable must be set")
         try:
             _redis_client = redis.from_url(
                 url,

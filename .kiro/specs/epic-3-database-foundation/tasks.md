@@ -273,11 +273,11 @@ Verify that Alembic is configured correctly for async SQLAlchemy operations. Thi
 - ✅ Verification results documented (for final audit)
 
 **Verification Checklist** (record in final audit):
-- [ ] `alembic.ini` reads DATABASE_URL from env
-- [ ] `env.py` uses async pattern (create_async_engine or asyncio.run)
-- [ ] `env.py` can import Base from app.infrastructure.database.base
-- [ ] `alembic revision --autogenerate` succeeds
-- [ ] Result: ✅ Verified / ❌ Incompatible
+- [x] `alembic.ini` reads DATABASE_URL from env
+- [x] `env.py` uses async pattern (create_async_engine or asyncio.run)
+- [x] `env.py` can import Base from app.infrastructure.database.base
+- [x] `alembic revision --autogenerate` succeeds
+- [x] Result: ✅ Verified / ❌ Incompatible
 
 ---
 
@@ -520,14 +520,14 @@ Run all quality gates and produce the final audit document for E3.T1.
 
 ## Definition of Done Checklist
 
-- [ ] Task 1: get_db_session exported from dependencies.py
-- [ ] Task 2: Engine disposal added to lifespan shutdown
-- [ ] Task 3: conftest.py created with fixtures
-- [ ] Task 4: Alembic configuration verified
-- [ ] Task 5: Integration tests pass
-- [ ] Task 6: Final audit document created
-- [ ] All quality gates pass (ruff, mypy, pytest, compileall)
-- [ ] No regression in existing Epic 2 tests
-- [ ] Commit message references all 6 tasks
-- [ ] Ready for E3.T2: Alembic Configuration
+- [x] Task 1: get_db_session exported from dependencies.py
+- [x] Task 2: Engine disposal added to lifespan shutdown
+- [x] Task 3: conftest.py created with fixtures
+- [x] Task 4: Alembic configuration verified
+- [x] Task 5: Integration tests pass
+- [x] Task 6: Final audit document created
+- [x] All quality gates pass (ruff, mypy, pytest, compileall)
+- [x] No regression in existing Epic 2 tests
+- [x] Commit message references all 6 tasks
+- [x] Ready for E3.T2: Alembic Configuration
 

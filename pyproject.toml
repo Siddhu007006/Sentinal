@@ -61,6 +61,7 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4,<2.0.0",
     "python-multipart>=0.0.12,<1.0.0",
     "httpx>=0.28.0,<1.0.0",
+    "httpx2>=2.9.1,<3.0.0",  # Required by Starlette TestClient
     "boto3>=1.35.0,<2.0.0",
 ]
 
@@ -231,6 +232,7 @@ filterwarnings = [
     "ignore::DeprecationWarning:passlib.*",
     "ignore::DeprecationWarning:asyncio.*",
     "ignore::DeprecationWarning:pytest_asyncio.*",
+    "ignore::starlette.exceptions.StarletteDeprecationWarning",
 ]
 addopts = [
     "--strict-markers",
