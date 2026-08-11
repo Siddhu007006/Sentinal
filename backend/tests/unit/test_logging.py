@@ -201,7 +201,7 @@ class TestSensitiveDataFilter:
         log_filter.filter(record)
 
         assert record.fields["email"] == "user@example.com"  # type: ignore[attr-defined]
-        assert record.fields["password"] == "[REDACTED]"  # type: ignore[attr-defined]  # noqa: S105
+        assert record.fields["password"] == "[REDACTED]"  # type: ignore[attr-defined]
 
     def test_redacts_token_fields(self) -> None:
         """Verify token fields are redacted."""
@@ -220,7 +220,7 @@ class TestSensitiveDataFilter:
         log_filter.filter(record)
 
         assert record.fields["api_key"] == "[REDACTED]"  # type: ignore[attr-defined]
-        assert record.fields["access_token"] == "[REDACTED]"  # type: ignore[attr-defined]  # noqa: S105
+        assert record.fields["access_token"] == "[REDACTED]"  # type: ignore[attr-defined]
 
     def test_redacts_nested_sensitive_fields(self) -> None:
         """Verify nested sensitive fields are redacted."""
@@ -242,9 +242,9 @@ class TestSensitiveDataFilter:
         log_filter.filter(record)
 
         assert record.fields["database"]["host"] == "localhost"  # type: ignore[attr-defined]
-        assert record.fields["database"]["password"] == "[REDACTED]"  # type: ignore[attr-defined]  # noqa: S105
+        assert record.fields["database"]["password"] == "[REDACTED]"  # type: ignore[attr-defined]
         assert record.fields["api"]["url"] == "https://api.example.com"  # type: ignore[attr-defined]
-        assert record.fields["api"]["secret_key"] == "[REDACTED]"  # type: ignore[attr-defined]  # noqa: S105
+        assert record.fields["api"]["secret_key"] == "[REDACTED]"  # type: ignore[attr-defined]
 
 
 class TestContextFilter:

@@ -32,15 +32,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import Settings
 from app.domain.repositories import (
     AnalysisRepository,
+    AuditLogRepository,
     DigitalAssetRepository,
+    RefreshTokenRepository,
     UploadRepository,
     UserRepository,
 )
 from app.infrastructure.database.repositories.analysis import (
     PostgreSQLAnalysisRepository,
 )
+from app.infrastructure.database.repositories.audit_log import (
+    PostgreSQLAuditLogRepository,
+)
 from app.infrastructure.database.repositories.digital_asset import (
     PostgreSQLDigitalAssetRepository,
+)
+from app.infrastructure.database.repositories.refresh_token import (
+    PostgreSQLRefreshTokenRepository,
 )
 from app.infrastructure.database.repositories.upload import PostgreSQLUploadRepository
 from app.infrastructure.database.repositories.user import PostgreSQLUserRepository
@@ -51,9 +59,11 @@ from app.infrastructure.database.session import get_db_session
 __all__ = [
     "RequestContext",
     "get_analysis_repository",
+    "get_audit_log_repository",
     "get_db_session",
     "get_digital_asset_repository",
     "get_logger",
+    "get_refresh_token_repository",
     "get_request_context",
     "get_request_context_dict",
     "get_settings",
@@ -407,3 +417,68 @@ async def get_analysis_repository(
     See: 03-Architecture §3 (repository injection).
     """
     return PostgreSQLAnalysisRepository(session)
+
+
+async def get_audit_log_repository(
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+) -> AuditLogRepository:
+    """Get AuditLogRepository dependency for use in endpoints/services.
+
+    Provides a request-scoped AuditLogRepository instance using the current
+    async session. All AuditLog entity operations in the request flow through
+    this repository instance.
+
+    Args:
+        session: Request-scoped AsyncSession (injected by get_db_session).
+
+    Returns:
+        AuditLogRepository: Concrete PostgreSQL implementation ready for use.
+
+    Usage in endpoints:
+        ```python
+        @router.get("/audit-logs")
+        async def list_audit_logs(
+            audit_repo: AuditLogRepository = Depends(get_audit_log_repository),
+        ) -> list[AuditLogResponse]:
+            logs, total = await audit_repo.list(skip=0, limit=50)
+            return [AuditLogResponse.from_domain(log) for log in logs]
+        ```
+
+    See: 03-Architecture §3 (repository injection).
+    See: 22-Engineering-Backlog E3.T8 (Audit Logs ORM Model & Migration).
+    """
+    return PostgreSQLAuditLogRepository(session)
+
+
+async def get_refresh_token_repository(
+    session: AsyncSession = Depends(get_db_session),  # noqa: B008
+) -> RefreshTokenRepository:
+    """Get RefreshTokenRepository dependency for use in endpoints/services.
+
+    Provides a request-scoped RefreshTokenRepository instance using the current
+    async session. All RefreshToken entity operations in the request flow through
+    this repository instance.
+
+    Args:
+        session: Request-scoped AsyncSession (injected by get_db_session).
+
+    Returns:
+        RefreshTokenRepository: Concrete PostgreSQL implementation ready for use.
+
+    Usage in endpoints:
+        ```python
+        @router.post("/token/refresh")
+        async def refresh_token(
+            token_hash: str,
+            token_repo: RefreshTokenRepository = Depends(get_refresh_token_repository),
+        ) -> TokenResponse:
+            token = await token_repo.get_by_hash(token_hash)
+            if not token or token.is_revoked or token.expires_at < now():
+                raise Unauthorized()
+            return TokenResponse(access_token=new_access_token, ...)
+        ```
+
+    See: 03-Architecture §3 (repository injection).
+    See: 22-Engineering-Backlog E3.T9 (Refresh Tokens ORM Model & Migration).
+    """
+    return PostgreSQLRefreshTokenRepository(session)

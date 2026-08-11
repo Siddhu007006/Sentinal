@@ -58,7 +58,7 @@ from app.domain.exceptions import (
 )
 
 
-def map_db_exception(exc: Exception) -> RepositoryException:
+def map_db_exception(exc: Exception) -> RepositoryException:  # noqa: C901
     """
     Convert a SQLAlchemy or database exception to a domain exception.
 

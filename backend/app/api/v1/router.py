@@ -12,7 +12,7 @@ See: backend/openapi.yaml (tags define the route modules).
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import health
+from app.api.v1.routes import auth, health, users
 
 
 api_v1_router = APIRouter()
@@ -24,8 +24,6 @@ api_v1_router = APIRouter()
 # Routes are registered in the order they appear in the OpenAPI spec.
 #
 # Future Epics will add:
-#   api_v1_router.include_router(auth.router, prefix="/auth")
-#   api_v1_router.include_router(users.router, prefix="/users")
 #   api_v1_router.include_router(uploads.router, prefix="/uploads")
 #   api_v1_router.include_router(assets.router, prefix="/assets")
 #   api_v1_router.include_router(analyzers.router, prefix="/analyzers")
@@ -36,3 +34,9 @@ api_v1_router = APIRouter()
 
 # Health has no prefix — it lives at /health per openapi.yaml
 api_v1_router.include_router(health.router)
+
+# Auth routes at /auth per openapi.yaml
+api_v1_router.include_router(auth.router, prefix="/auth")
+
+# User management routes at /users per openapi.yaml
+api_v1_router.include_router(users.router, prefix="/users")

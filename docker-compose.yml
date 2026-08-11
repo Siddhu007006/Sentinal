@@ -1,9 +1,9 @@
-# ===========================================================================
-# Sentinel — Docker Compose for Local Development
+﻿# ===========================================================================
+# Sentinel â€” Docker Compose for Local Development
 # ===========================================================================
 #
 # Purpose: Provide local development environment with PostgreSQL, Redis, and
-#          MinIO matching 09-Deployment-Architecture §2 (Environment Parity)
+#          MinIO matching 09-Deployment-Architecture Â§2 (Environment Parity)
 #
 # Usage:
 #   docker compose up -d
@@ -11,16 +11,16 @@
 #   docker compose down
 #   docker compose down -v         # remove volumes
 #
-# Reference: 09-Deployment-Architecture §5 (Container Architecture),
-#            06-Repository-Structure §12 (docker-compose.yml)
+# Reference: 09-Deployment-Architecture Â§5 (Container Architecture),
+#            06-Repository-Structure Â§12 (docker-compose.yml)
 #
 # ===========================================================================
 
 services:
   # =========================================================================
-  # PostgreSQL 16 — System of Record
+  # PostgreSQL 16 â€” System of Record
   # =========================================================================
-  # Per 09-Deployment-Architecture §8: "PostgreSQL is the durable system
+  # Per 09-Deployment-Architecture Â§8: "PostgreSQL is the durable system
   # of record for all structured metadata... its underlying storage volume
   # is persistent and independent of any single API or Worker container's
   # lifecycle."
@@ -33,8 +33,13 @@ services:
     image: postgres:16-alpine
     container_name: sentinel-postgres
     environment:
-      POSTGRES_USER: sentinel
-      POSTGRES_PASSWORD: sentinel
+      # Bootstrap user (superuser) â€” used ONLY for initial setup and postgres-init service
+      # Per 04-Database-Design Â§11.1: Privilege Separation
+      # Application runtime connects as sentinel_api role (via DATABASE_URL)
+      # Migrations connect as schema_owner role (via DATABASE_MIGRATION_URL)
+      # Two-role architecture enforces database-level audit immutability.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: sentinel
       # Reduce logging verbosity in development
       POSTGRES_INITDB_ARGS: "-c log_statement=none"
@@ -44,7 +49,7 @@ services:
       # Persistent volume for database files
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sentinel"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -52,9 +57,109 @@ services:
     restart: unless-stopped
 
   # =========================================================================
-  # Redis 7 — Queue Broker
+  # PostgreSQL Role Bootstrap (Initialization)
   # =========================================================================
-  # Per 09-Deployment-Architecture §3: "Redis / Queue — the durable
+  # Per 04-Database-Design Â§11.1: Two-role architecture requires role
+  # provisioning outside Alembic to avoid circular dependency.
+  #
+  # This init container runs create_roles.sql AFTER postgres is healthy
+  # and BEFORE migrations run, ensuring schema_owner and sentinel_api roles
+  # exist before Alembic attempts DDL operations.
+  #
+  # Reference: Phase 2 (Bootstrap SQL Script), Phase 3 (Docker Integration)
+  # =========================================================================
+
+  postgres-init:
+    image: postgres:16-alpine
+    container_name: sentinel-postgres-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: sentinel
+      POSTGRESQL_SCHEMA_OWNER_PASSWORD: ${POSTGRESQL_SCHEMA_OWNER_PASSWORD:-schema_owner_password}
+      POSTGRESQL_SENTINEL_API_PASSWORD: ${POSTGRESQL_SENTINEL_API_PASSWORD:-sentinel_api_password}
+    volumes:
+      # Mount bootstrap script from repository
+      - ./docker/bootstrap/create_roles.sql:/tmp/create_roles.sql:ro
+    entrypoint: /bin/sh
+    command: 
+      - -c
+      - |
+        set -e
+        echo "Waiting for PostgreSQL to be ready..."
+        until pg_isready -h postgres -U postgres; do
+          sleep 1
+        done
+        echo "PostgreSQL ready. Running role provisioning..."
+        
+        # Create temporary file with substituted bootstrap script
+        mkdir -p /tmp/bootstrap
+        sed \
+          -e "s|POSTGRESQL_SCHEMA_OWNER_PASSWORD|$POSTGRESQL_SCHEMA_OWNER_PASSWORD|g" \
+          -e "s|POSTGRESQL_SENTINEL_API_PASSWORD|$POSTGRESQL_SENTINEL_API_PASSWORD|g" \
+          /tmp/create_roles.sql > /tmp/bootstrap/create_roles_substituted.sql
+        
+        # Execute bootstrap script
+        # set -e ensures the script exits on first SQL error
+        # (psql will output error details before exiting with status != 0)
+        echo "Executing role provisioning script..."
+        if psql -h postgres -U postgres -d sentinel -f /tmp/bootstrap/create_roles_substituted.sql; then
+          echo "Role provisioning completed successfully"
+          exit 0
+        else
+          echo "ERROR: Role provisioning failed (see output above for details)"
+          exit 1
+        fi
+    restart: "no"
+  # =========================================================================
+  # PostgreSQL Post-Migration Permission Fix
+  # =========================================================================
+  # Per ROLE_PROVISIONING_IMPLEMENTATION.md Phase 4: After Alembic creates
+  # audit_logs, this service applies permission restrictions (SELECT+INSERT
+  # only for sentinel_api) to enforce immutability per 04-Database-Design §11.1.
+  #
+  # This service:
+  #   - Waits for postgres-init to complete (role provisioning)
+  #   - Waits for Alembic migrations to complete (alembic_version table exists)
+  #   - Executes fix_audit_logs_post_migration.sql
+  #   - Verifies the permissions are correctly applied
+  #
+  # Integration: Application should depend on this service completing
+  # before starting (ensures audit_logs is secured before app runtime).
+  # =========================================================================
+
+  postgres-init-post-migration:
+    image: postgres:16-alpine
+    container_name: sentinel-postgres-init-post-migration
+    depends_on:
+      postgres:
+        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
+    environment:
+      PGHOST: postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: sentinel
+    volumes:
+      # Mount post-migration fix script
+      - ./docker/bootstrap/fix_audit_logs_post_migration.sql:/tmp/fix_audit_logs_post_migration.sql:ro
+      # Mount entrypoint script
+      - ./docker/bootstrap/apply_audit_logs_fix.sh:/docker-entrypoint.sh:ro
+    entrypoint: /bin/sh
+    command:
+      - /docker-entrypoint.sh
+    restart: "no"
+
+
+  # =========================================================================
+  # Redis 7 â€” Queue Broker
+  # =========================================================================
+  # Per 09-Deployment-Architecture Â§3: "Redis / Queue â€” the durable
   # hand-off mechanism between the API (producer) and Workers (consumer)."
   #
   # Per 00-Project-Context: asynchronous pipeline with Celery + Redis.
@@ -78,13 +183,13 @@ services:
     restart: unless-stopped
 
   # =========================================================================
-  # MinIO — S3-Compatible Object Storage
+  # MinIO â€” S3-Compatible Object Storage
   # =========================================================================
-  # Per 09-Deployment-Architecture §8: "Raw binary content (uploaded files)
+  # Per 09-Deployment-Architecture Â§8: "Raw binary content (uploaded files)
   # persists in S3-compatible Object Storage... In Development, this may be
   # an emulated local container."
   #
-  # Per 00-Project-Context §6: files are never stored in PostgreSQL;
+  # Per 00-Project-Context Â§6: files are never stored in PostgreSQL;
   # S3-compatible store required.
   # =========================================================================
 
@@ -112,9 +217,9 @@ services:
     restart: unless-stopped
 
   # =========================================================================
-  # MinIO Client — Auto-create Default Bucket
+  # MinIO Client â€” Auto-create Default Bucket
   # =========================================================================
-  # Per 09-Deployment-Architecture §5: Services should be initialized
+  # Per 09-Deployment-Architecture Â§5: Services should be initialized
   # with required configuration (health checks, startup validation).
   #
   # This init container creates the default bucket (sentinel-assets)
@@ -134,6 +239,7 @@ services:
       exit 0;
       "
     restart: "no"
+
 
 volumes:
   # Persistent volume for PostgreSQL data
@@ -158,7 +264,7 @@ volumes:
 #   docker compose up, or pass via docker compose environment flags.
 #
 # Health Checks:
-#   All services include health checks per 09-Deployment-Architecture §10.
+#   All services include health checks per 09-Deployment-Architecture Â§10.
 #   Use `docker compose ps` to verify all services show (healthy).
 #
 # Networking:
@@ -171,3 +277,4 @@ volumes:
 #   Use `docker compose down -v` to remove volumes and reset state.
 #
 # ===========================================================================
+

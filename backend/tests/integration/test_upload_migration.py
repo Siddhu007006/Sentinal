@@ -183,7 +183,7 @@ async def test_fk_constraint_accepts_valid_user_id(
     # Create a valid user first
     user = User(
         email="upload-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Upload Test User",
         role=UserRole.ANALYST.value,
     )
@@ -234,7 +234,7 @@ async def test_unique_constraint_on_storage_key_rejects_duplicates(
     # Create a valid user first
     user = User(
         email="storage-key-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Storage Key Test",
         role=UserRole.ANALYST.value,
     )
@@ -292,7 +292,7 @@ async def test_unique_constraint_on_storage_key_accepts_different_keys(
     # Create a valid user
     user = User(
         email="storage-key-test2@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Storage Key Test 2",
         role=UserRole.ANALYST.value,
     )
@@ -362,7 +362,7 @@ async def test_not_null_constraint_on_original_filename(
     # Create valid user first
     user = User(
         email="filename-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -400,7 +400,7 @@ async def test_not_null_constraint_on_storage_key(
     # Create valid user first
     user = User(
         email="storage-key-null-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -438,7 +438,7 @@ async def test_not_null_constraint_on_content_type(
     # Create valid user first
     user = User(
         email="content-type-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -476,7 +476,7 @@ async def test_not_null_constraint_on_file_size_bytes(
     # Create valid user first
     user = User(
         email="file-size-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -514,7 +514,7 @@ async def test_not_null_constraint_on_upload_status(
     # Create valid user first
     user = User(
         email="upload-status-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -563,7 +563,7 @@ async def test_check_constraint_on_upload_status_rejects_invalid(
     # Create valid user first
     user = User(
         email="status-check-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -611,7 +611,7 @@ async def test_check_constraint_on_upload_status_accepts_valid(
     # Create valid user
     user = User(
         email="status-check-valid@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -660,7 +660,7 @@ async def test_check_constraint_on_file_size_bytes_rejects_negative(
     # Create valid user first
     user = User(
         email="file-size-check@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -705,7 +705,7 @@ async def test_check_constraint_on_file_size_bytes_accepts_zero_and_positive(
     # Create valid user
     user = User(
         email="file-size-check-valid@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -753,7 +753,7 @@ async def test_nullable_fields_can_be_null(
     # Create valid user
     user = User(
         email="nullable-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -807,7 +807,7 @@ async def test_default_upload_status_is_pending(
     # Create valid user
     user = User(
         email="default-status@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.VIEWER.value,
     )
@@ -856,7 +856,7 @@ async def test_upload_user_relationship_works(
     # Create user
     user = User(
         email="relationship-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Relationship Test User",
         role=UserRole.ANALYST.value,
     )
@@ -900,7 +900,7 @@ async def test_user_uploads_relationship_works(
     # Create user
     user = User(
         email="user-uploads-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="User Uploads Test",
         role=UserRole.VIEWER.value,
     )
@@ -951,7 +951,7 @@ async def test_insert_valid_upload_succeeds(
     # Create valid user first
     user = User(
         email="insert-valid@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Insert Valid Test",
         role=UserRole.ANALYST.value,
     )
@@ -992,7 +992,7 @@ async def test_insert_multiple_uploads_for_same_user(
     # Create valid user
     user = User(
         email="multiple-uploads@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Multiple Uploads Test",
         role=UserRole.ANALYST.value,
     )
@@ -1035,7 +1035,7 @@ async def test_insert_upload_with_all_states(
     # Create valid user
     user = User(
         email="all-states@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="All States Test",
         role=UserRole.ANALYST.value,
     )
@@ -1089,7 +1089,7 @@ async def test_created_at_and_updated_at_set_by_database(
     # Create valid user first
     user = User(
         email="timestamps@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Timestamps Test",
         role=UserRole.VIEWER.value,
     )

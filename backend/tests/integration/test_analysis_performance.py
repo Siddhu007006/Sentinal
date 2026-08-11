@@ -50,7 +50,7 @@ async def test_index_asset_status_used_for_queries(
     # Create test data
     user = User(
         email="asset-status-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Asset Status Test",
         role=UserRole.ANALYST.value,
     )
@@ -139,7 +139,7 @@ async def test_partial_index_pending_used_for_queue_queries(
     # Create test data
     user = User(
         email="pending-queue@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Pending Queue",
         role=UserRole.ANALYST.value,
     )
@@ -220,7 +220,7 @@ async def test_index_user_history_used_for_queries(
     # Create test data
     user = User(
         email="user-history@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="User History",
         role=UserRole.ANALYST.value,
     )
@@ -298,7 +298,7 @@ async def test_partial_index_celery_task_used_for_queries(
     # Create test data
     user = User(
         email="celery-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Celery Test",
         role=UserRole.ANALYST.value,
     )
@@ -380,7 +380,7 @@ async def test_partial_index_severity_completed_used_for_dashboard(
     # Create test data
     user = User(
         email="severity-completed@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Severity Completed",
         role=UserRole.ANALYST.value,
     )
@@ -468,7 +468,7 @@ async def test_insert_1000_analyses_performance(
     # Create test data
     user = User(
         email="bulk-insert@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Bulk Insert",
         role=UserRole.ANALYST.value,
     )
@@ -535,7 +535,7 @@ async def test_query_asset_status_performance(
     # Create test data
     user = User(
         email="query-perf@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Query Perf",
         role=UserRole.ANALYST.value,
     )

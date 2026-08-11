@@ -5,8 +5,8 @@
 | Field | Value |
 |---|---|
 | Document | docs/22-Engineering-Backlog.md |
-| Version | 1.1.0 |
-| Status | Final |
+| Version | 1.2.0 |
+| Status | Production-Grade / Active |
 | Owner | Engineering Director |
 | Audience | Engineers, engineering managers, TPMs |
 | Dependencies | 21-Implementation-Roadmap, all approved documents (00–20), backend/openapi.yaml |
@@ -1480,15 +1480,226 @@ Given the review, here's the optimal execution sequence:
 
 ---
 
+# Production-Grade Hardening Extension (v1.2)
+
+> **Purpose:** Strengthen the existing 19-epic backlog for a startup-grade, security-conscious, AI-native production product. This extension is additive: it does **not** invalidate or silently redesign the approved architecture. Any architectural change still requires an ADR/RFC and explicit re-certification.
+
+## Cross-Cutting Engineering Controls
+
+### Global Definition of Done
+
+Every task is complete only when all applicable conditions below are satisfied:
+
+- Implementation is complete and reviewed.
+- Unit tests are added or updated.
+- Integration/API/contract/E2E tests are added where applicable.
+- Error, timeout, retry, and failure paths are explicitly handled where applicable.
+- Security and authorization implications are reviewed.
+- Sensitive data is not exposed through logs, metrics, traces, errors, or analytics.
+- Observability is added for production-critical behavior.
+- API/OpenAPI, architecture, migration, and runbook documentation is updated where applicable.
+- CI quality gates pass.
+- Acceptance criteria and verification evidence are recorded.
+- No unresolved P0/P1 defect remains for the task.
+
+### Epic Certification Standard
+
+An Epic is **CERTIFIED** only when its P0 tasks are complete, acceptance criteria pass, regression tests pass, security implications are verified, required observability exists, documentation is current, and CI evidence is attached. A certified Epic is frozen. Changes to its architecture or security boundary require an ADR/RFC and re-certification.
+
+### Change-Control Rule
+
+The backlog is an execution contract, not an architecture-design surface. New behavior, new external dependencies, schema/security-boundary changes, or changes to approved architectural decisions require an ADR/RFC before implementation. Task splitting and sequencing changes are allowed without an ADR when they do not alter behavior or architecture.
+
+---
+
+## Epic 20: Reliability & Distributed Job Semantics
+
+**Objective:** Make asynchronous processing deterministic, recoverable, idempotent, and safe under retries, worker crashes, dependency failures, and duplicate requests.
+**Dependencies:** E6, E10, E11.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E20.T1 | Define Job Reliability Contract | P0 | E6.T1 | 3h | Formal lifecycle for queued/running/retryable/failed/completed/cancelled jobs; lease/visibility timeout; ownership and terminal-state rules |
+| E20.T2 | Implement Idempotent Job Processing | P0 | E20.T1, E6.T5 | 4h | Duplicate delivery cannot create duplicate side effects; idempotency key/job identity persisted and verified |
+| E20.T3 | Implement Retry, Backoff & Dead-Letter Handling | P0 | E20.T1 | 4h | Bounded exponential backoff, retry classification, maximum attempts, dead-letter state and operator visibility |
+| E20.T4 | Implement Dependency Failure & Graceful Degradation Policies | P0 | E20.T1 | 4h | Explicit behavior for DB, Redis/queue, object storage, email, and AI-provider failures; user-visible safe failure states |
+| E20.T5 | Execute Failure-Injection / Recovery Tests | P1 | E20.T2, E20.T3, E20.T4 | 5h | Controlled tests for worker kill, queue outage, DB outage, storage outage, provider timeout/429; recovery evidence documented |
+| E20.T6 | Establish Capacity & Scaling Model | P1 | E16.T2, E16.T4 | 4h | Capacity model for users, uploads, analyses, queue depth, workers, storage, DB connections and AI calls at 100/1K/10K-user scenarios |
+
+**Epic Total: 6 tasks, ~24h**
+
+---
+
+## Epic 21: AI Quality, Safety & Reproducibility
+
+**Objective:** Treat AI quality as a continuously tested production capability rather than a one-time integration.
+**Dependencies:** E7, E14.T6, E15.T2.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E21.T1 | Build Versioned AI Evaluation Dataset | P0 | E7.T3 | 5h | Curated benchmark with normal, edge-case, ambiguous, adversarial, malformed, and prompt-injection documents plus expected outcomes |
+| E21.T2 | Implement Automated AI Evaluation Harness | P0 | E21.T1 | 6h | Measure task accuracy, structured-output validity, hallucination/error rate, latency, cost and other analyzer-specific quality metrics |
+| E21.T3 | Implement AI Regression Quality Gate | P0 | E21.T2, E19.T3 | 4h | Prompt/model/analyzer/provider changes fail CI when quality regresses beyond approved thresholds |
+| E21.T4 | Implement AI Model & Prompt Version Tracking | P0 | E7.T1, E7.T3 | 3h | Persist analyzer version, prompt version, provider, model, configuration version and execution metadata with every AI result |
+| E21.T5 | Implement AI Provider/Model Failover | P1 | E7.T1, E20.T4 | 4h | Provider timeout/429/outage policy with compatible fallback model/provider, bounded cost and schema guarantees |
+| E21.T6 | Implement Low-Confidence & AI Abuse Policy | P0 | E21.T2, E15.T2 | 4h | Low-confidence results are explicitly flagged; prompt-injection/cost-abuse cases are detected, contained and observable |
+
+**Epic Total: 6 tasks, ~26h**
+
+---
+
+## Epic 22: Security, Privacy & Data Isolation
+
+**Objective:** Close the security gaps specific to a multi-user, document-processing, AI-powered product.
+**Dependencies:** E4, E5, E7, E12, E15.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E22.T1 | Create Security Abuse-Case Matrix | P0 | E15.T2 | 4h | Abuse cases for prompt injection, SSRF, IDOR/BOLA, malicious files, archive bombs, credential stuffing, AI cost abuse and privilege escalation with mitigations and tests |
+| E22.T2 | Define Data Classification & Handling Policy | P0 | E13.T5, E13.T6 | 3h | Public/Internal/Confidential/Sensitive/Secret classes with storage, logging, AI-provider, retention, export and deletion rules |
+| E22.T3 | Define & Verify Encryption Requirements | P0 | E10.T4 | 4h | TLS in transit, encryption at rest, encrypted backups, object storage protection and key rotation requirements with verification evidence |
+| E22.T4 | Implement Cross-User Isolation Tests | P0 | E4.T7, E5.T7, E8.T4 | 5h | Prove User A cannot access User B assets, analyses, reports, exports or audit data at API/service/repository/storage boundaries |
+| E22.T5 | Harden Object Storage Security | P0 | E5.T1, E5.T5 | 4h | Private buckets, bounded signed URLs, ownership/key isolation, size/type enforcement and orphan-object protections |
+| E22.T6 | Implement Supply-Chain Security Controls | P1 | E12.T1, E15.T1 | 4h | SAST, license scanning, pinned CI actions/dependencies, container/base-image checks and SBOM change monitoring |
+
+**Epic Total: 6 tasks, ~24h**
+
+---
+
+## Epic 23: Engineering Quality & Governance
+
+**Objective:** Make quality, traceability, testing and architectural change control enforceable rather than aspirational.
+**Dependencies:** E1, E10, E19.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E23.T1 | Establish Repository-Wide Testing Strategy | P0 | E1.T6 | 3h | Defined unit/integration/API/contract/E2E/security/performance/AI-evaluation/concurrency/recovery test layers and ownership |
+| E23.T2 | Implement CI Quality Gates | P0 | E23.T1, E19.T3 | 4h | Required gates for tests, coverage threshold, type checking, linting, security scans, contracts, AI regression and build integrity |
+| E23.T3 | Establish ADR/RFC Change-Control Workflow | P0 | None | 3h | ADR template, numbering, review/approval rules, supersession policy and required triggers for architecture/security/schema changes |
+| E23.T4 | Implement Backlog Traceability & Evidence Records | P1 | E23.T3 | 3h | Every completed task links to architecture source, commit/PR, tests, CI run and verification evidence |
+| E23.T5 | Implement Epic Certification Gates | P0 | E23.T1, E23.T2, E23.T4 | 4h | Standard certification checklist and evidence package; certified epics become frozen until formally re-opened |
+
+**Epic Total: 5 tasks, ~17h**
+
+---
+
+## Epic 24: Frontend Resilience, Accessibility & Privacy
+
+**Objective:** Bring the frontend to the same production engineering standard as the backend.
+**Dependencies:** E9, E19.T5.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E24.T1 | Implement Accessibility Baseline | P1 | E9.T1 | 4h | Keyboard navigation, semantic markup, focus management, accessible forms/errors, contrast checks and documented WCAG target |
+| E24.T2 | Implement Browser & Responsive Compatibility Tests | P1 | E9.T2, E9.T7 | 4h | Automated critical-flow tests across supported browsers and desktop/mobile breakpoints |
+| E24.T3 | Implement Frontend Failure-Recovery UX | P0 | E9.T4, E9.T6, E19.T5 | 4h | Explicit UX for API timeout, expired session, upload failure, analysis failure, network interruption, stale data and maintenance mode |
+| E24.T4 | Establish Privacy & Compliance Evidence Matrix | P1 | E13.T5, E13.T6, E22.T2 | 3h | Requirement → implementation → evidence → owner matrix for export, deletion, retention, auditability and applicable privacy obligations |
+
+**Epic Total: 4 tasks, ~15h**
+
+---
+
+## Epic 25: Database, Release & Operational Resilience
+
+**Objective:** Eliminate deployment-time and operational failure modes that can turn otherwise-correct code into production incidents.
+**Dependencies:** E3, E10, E11, E13, E19.
+
+| Task ID | Title | Priority | Dependencies | Effort | Key Deliverable |
+|---|---|---|---|---|---|
+| E25.T1 | Implement Schema Compatibility Tests | P0 | E10.T5, E13.T4 | 4h | Validate required old-app/new-schema and new-app/old-schema compatibility for zero-downtime migrations; enforce expand/contract rules |
+| E25.T2 | Execute Database Failure & Recovery Tests | P0 | E13.T1, E13.T4 | 4h | Test connection exhaustion, transaction rollback, deadlocks/serialization failures, long queries, locks and restore behavior |
+| E25.T3 | Implement Automated Rollback Triggers | P0 | E19.T3, E19.T4 | 3h | Trigger rollback on failed smoke tests, health checks, error-rate/latency/SLO degradation during controlled rollout |
+| E25.T4 | Standardize Correlation & Causality IDs | P0 | E2.T4, E11.T2, E20.T1 | 3h | Propagate request_id/trace_id/job_id/analysis_id consistently across API, queue, workers, DB logs and AI calls without leaking sensitive data |
+| E25.T5 | Implement Alert Hygiene & Escalation Controls | P1 | E11.T3, E17.T4 | 3h | Severity, deduplication, suppression, cooldowns, escalation policy and runbook links; verify alert fatigue controls |
+
+**Epic Total: 5 tasks, ~17h**
+
+---
+
+## v1.2 Updated Task Summary
+
+| Epic | Task Count | Estimated Effort |
+|---|---:|---:|
+| E1–E12 | 86 | ~313h |
+| E13 | 7 | ~26h |
+| E14 | 6 | ~19h |
+| E15 | 8 | ~26h |
+| E16 | 5 | ~16h |
+| E17 | 6 | ~21h |
+| E18 | 4 | ~9h |
+| E19 | 5 | ~14h |
+| **E20 Reliability & Distributed Job Semantics** | **6** | **~24h** |
+| **E21 AI Quality, Safety & Reproducibility** | **6** | **~26h** |
+| **E22 Security, Privacy & Data Isolation** | **6** | **~24h** |
+| **E23 Engineering Quality & Governance** | **5** | **~17h** |
+| **E24 Frontend Resilience, Accessibility & Privacy** | **4** | **~15h** |
+| **E25 Database, Release & Operational Resilience** | **5** | **~17h** |
+| **TOTAL** | **149** | **~560h** |
+
+**Planning note:** ~560h is an engineering estimate, not a delivery promise. For a 1–3 engineer startup team, retain a substantial contingency for integration/debugging, reviews, infrastructure incidents and product iteration.
+
+---
+
+## v1.2 Critical Launch Gates
+
+The following are now explicit launch blockers:
+
+1. **Reliability:** E20.T1–T4
+2. **AI quality:** E21.T1–T4 and E21.T6
+3. **Security/data isolation:** E22.T1–T5
+4. **Engineering quality:** E23.T1–T3 and E23.T5
+5. **Release safety:** E25.T1–T4
+6. **Existing production gates:** E13–E17 and E19 P0 tasks
+
+No production launch should be certified while any of these P0 gates are failing or lack verification evidence.
+
+## v1.2 Recommended Execution Order
+
+**Phase A — Before expanding AI usage**
+- E23.T1–T3
+- E22.T1–T3
+- E20.T1–T3
+
+**Phase B — AI production quality**
+- E21.T1–T6
+- E14.T6
+
+**Phase C — Data and application security**
+- E22.T4–T6
+- E15 security tasks
+- E24.T4
+
+**Phase D — Reliability and release safety**
+- E20.T4–T6
+- E25.T1–T5
+- E23.T2, E23.T4–T5
+
+**Phase E — Product quality**
+- E24.T1–T3
+- E18 analytics
+- Remaining P1/P2 production-hardening work
+
+## v1.2 Final Engineering Standard
+
+Sentinel is not considered production-ready merely because the API works and tests pass. Production certification requires **functional correctness + security + AI quality + reliability + observability + recoverability + deployability + operational evidence**.
+
+The existing Epic 4 certification demonstrated that this project already follows evidence-based verification: database security, audit-log immutability, auth integration, strict typing, compilation and token concurrency were all verified before freezing the Epic. The v1.2 extension applies that same standard systematically to the rest of the product.
+
 ## 10. Final Verdict
 
-**Keep the existing 12-epic backlog exactly as written.** It's well-crafted and internally consistent.
+**Do not rewrite the existing backlog.** Preserve Epics 1–19 and their completed/certified history. v1.2 adds the missing production-grade controls as Epics 20–25 and cross-cutting governance rules.
 
-**Append Epics 13–19 as defined above.** They fill the gaps that separate "a system that works" from "a system you can operate in production."
+The backlog now covers the full engineering lifecycle: foundation → core product → AI → security → deployment → observability → reliability → AI evaluation → data isolation → operational recovery → certification.
 
-**The total effort goes from ~313h to ~448h — a 43% increase.** This is the realistic cost of production readiness. Skipping it is technical debt you will pay with interest at 3 AM when the system is down.
+**Total planned scope: ~149 tasks / ~560h.** This is intentionally larger than the original ~313h implementation estimate because a robust startup product has materially different requirements from a functional prototype.
 
-**The single most important addition is E14.T6 (AI Cost Tracking).** If you implement nothing else from the new epics, implement this. Uncontrolled AI API costs can kill a startup faster than any bug.
+The highest-risk additions are **AI evaluation/regression, distributed job reliability, security/data isolation, and release/database safety**. These should not be deferred merely because the happy-path product already works.
+
+**Production launch rule:** a green unit/integration test suite is necessary but insufficient. Launch requires all applicable P0 gates and certification evidence to pass.
+
+---
+
+*Backlog version 1.2.0 — production-grade hardening extension.*
 
 ---
 

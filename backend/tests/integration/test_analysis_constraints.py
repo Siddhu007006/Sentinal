@@ -50,7 +50,7 @@ async def test_fk_constraint_rejects_invalid_digital_asset_id(
     # Create valid user
     user = User(
         email="analysis-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Analysis Test User",
         role=UserRole.ANALYST.value,
     )
@@ -97,7 +97,7 @@ async def test_fk_constraint_accepts_valid_digital_asset_id(
     # Create valid user and asset
     user = User(
         email="valid-asset-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Valid Asset Test",
         role=UserRole.ANALYST.value,
     )
@@ -157,7 +157,7 @@ async def test_fk_constraint_rejects_invalid_requested_by(
     # Create valid asset
     user = User(
         email="owner@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Owner",
         role=UserRole.ANALYST.value,
     )
@@ -218,7 +218,7 @@ async def test_fk_on_delete_restrict_prevents_asset_deletion(
     # Create user, asset, and analysis
     user = User(
         email="restrict-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Restrict Test",
         role=UserRole.ANALYST.value,
     )
@@ -280,13 +280,13 @@ async def test_fk_on_delete_restrict_prevents_user_deletion(
     # Create user who requests analysis, separate user who owns asset
     requester = User(
         email="requester@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Requester",
         role=UserRole.ANALYST.value,
     )
     owner = User(
         email="asset-owner@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Asset Owner",
         role=UserRole.ANALYST.value,
     )
@@ -349,7 +349,7 @@ async def test_check_constraint_rejects_invalid_status(
     # Create valid user and asset
     user = User(
         email="invalid-status@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Invalid Status",
         role=UserRole.ANALYST.value,
     )
@@ -410,7 +410,7 @@ async def test_check_constraint_rejects_threat_score_out_of_range(
     # Create valid user and asset
     user = User(
         email="threat-score@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Threat Score",
         role=UserRole.ANALYST.value,
     )
@@ -469,7 +469,7 @@ async def test_check_constraint_rejects_negative_threat_score(
     # Create valid user and asset
     user = User(
         email="negative-threat@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Negative Threat",
         role=UserRole.ANALYST.value,
     )
@@ -533,7 +533,7 @@ async def test_check_constraint_rejects_confidence_out_of_range(
     # Create valid user and asset
     user = User(
         email="confidence@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Confidence",
         role=UserRole.ANALYST.value,
     )
@@ -597,7 +597,7 @@ async def test_check_constraint_rejects_invalid_severity(
     # Create valid user and asset
     user = User(
         email="severity@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Severity",
         role=UserRole.ANALYST.value,
     )
@@ -661,7 +661,7 @@ async def test_check_constraint_rejects_negative_retry_count(
     # Create valid user and asset
     user = User(
         email="retry@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Retry",
         role=UserRole.ANALYST.value,
     )
@@ -722,7 +722,7 @@ async def test_unique_index_enforces_completed_idempotency(
     # Create valid user and asset
     user = User(
         email="idempotency@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Idempotency",
         role=UserRole.ANALYST.value,
     )
@@ -801,7 +801,7 @@ async def test_partial_unique_index_allows_pending_duplicates(
     # Create valid user and asset
     user = User(
         email="pending-retry@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Pending Retry",
         role=UserRole.ANALYST.value,
     )
@@ -875,7 +875,7 @@ async def test_partial_unique_index_allows_failed_duplicates(
     # Create valid user and asset
     user = User(
         email="failed-retry@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Failed Retry",
         role=UserRole.ANALYST.value,
     )

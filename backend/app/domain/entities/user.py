@@ -44,7 +44,8 @@ class User:
     - password_hash is never plaintext
       (verified via hashing algorithm, never substring match)
     - role is one of: admin, analyst, viewer
-    - is_active controls authentication eligibility
+    - is_active controls authentication eligibility (administrative)
+    - is_verified controls email verification state
     - created_at is immutable, set at creation
     - updated_at tracks last profile change
     - deleted_at marks soft-delete timestamp
@@ -54,7 +55,8 @@ class User:
     email: str  # Unique, immutable
     password_hash: str  # Non-reversible hash, never plaintext
     role: UserRole  # Mutable (admin-only change)
-    is_active: bool  # Mutable (soft-delete when False)
+    is_active: bool  # Mutable (soft-delete when False, administrative control)
+    is_verified: bool  # Mutable (email verification state)
     created_at: datetime  # Immutable
     full_name: str | None = None  # Mutable
     updated_at: datetime | None = None  # Updated on profile changes
@@ -116,6 +118,7 @@ class User:
             password_hash=self.password_hash,
             role=self.role,
             is_active=False,
+            is_verified=self.is_verified,
             created_at=self.created_at,
             full_name=self.full_name,
             updated_at=datetime.now(tz=UTC),
@@ -138,6 +141,7 @@ class User:
             password_hash=self.password_hash,
             role=self.role,
             is_active=self.is_active,
+            is_verified=self.is_verified,
             created_at=self.created_at,
             full_name=full_name if full_name is not None else self.full_name,
             updated_at=datetime.now(tz=UTC),
@@ -162,6 +166,7 @@ class User:
             password_hash=self.password_hash,
             role=new_role,
             is_active=self.is_active,
+            is_verified=self.is_verified,
             created_at=self.created_at,
             full_name=self.full_name,
             updated_at=datetime.now(tz=UTC),

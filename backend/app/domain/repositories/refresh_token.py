@@ -318,3 +318,103 @@ class RefreshTokenRepository(BaseRepository["RefreshToken"]):
         Traces to: 04-Database-Design §5.2 (Token lifecycle)
         """
         pass
+
+    @abstractmethod
+    async def get_by_jti(self, jti: str) -> RefreshToken | None:
+        """
+        Retrieve refresh token by its JTI (JWT ID).
+
+        Looks up a refresh token by the jti claim from the JWT.
+        Used for token validation during refresh requests and revocation.
+
+        Returns None (not NotFound exception) if token not found. This prevents
+        timing attacks that could leak whether a JTI exists in the database.
+
+        Args:
+            jti: JWT ID value (unique token identifier)
+
+        Returns:
+            RefreshToken entity if found, or None if not found
+
+        Example:
+            ```python
+            # Validate token and check revocation
+            token = await token_repo.get_by_jti(payload.jti)
+            if not token or token.is_revoked:
+                raise Unauthorized("Token has been revoked")
+            ```
+
+        Traces to: 08-Security-Architecture §5 (Token validation)
+        """
+        pass
+
+    @abstractmethod
+    async def revoke_all_for_user(self, user_id: UUID) -> int:
+        """
+        Revoke all active refresh tokens for a user (logout all sessions).
+
+        Sets is_revoked=True and revoked_at=now() for all active tokens
+        belonging to the specified user. This is the mechanism for:
+        - User logout from all devices
+        - Force logout after password change
+        - Security event response (compromised account)
+
+        Args:
+            user_id: UUID of the user whose tokens should be revoked
+
+        Returns:
+            Number of tokens revoked
+
+        Example:
+            ```python
+            # User deactivated: revoke all sessions
+            revoked_count = await token_repo.revoke_all_for_user(user_id)
+            logger.info(f"Revoked {revoked_count} sessions for user {user_id}")
+            ```
+
+        Traces to: 08-Security-Architecture §5 (Token revocation)
+        """
+        pass
+
+    @abstractmethod
+    async def atomic_revoke_by_jti(self, jti: str) -> bool:
+        """
+        Atomically revoke a token by JTI with concurrency detection.
+
+        Single atomic database operation for secure token rotation in concurrent
+        scenarios. Prevents race condition where two requests simultaneously
+        refresh the same token and both create new replacement tokens.
+
+        Atomic UPDATE statement:
+            UPDATE user_refresh_tokens
+            SET is_revoked=TRUE, revoked_at=now()
+            WHERE jti=$1 AND is_revoked=FALSE
+            RETURNING *
+
+        Returns True if this request successfully revoked the token (was not yet
+        revoked). Returns False if another concurrent request already revoked it.
+
+        Used by AuthService.refresh() for token rotation. If False, caller should
+        raise TokenAlreadyRotatedException (409 Conflict) to client.
+
+        Args:
+            jti: JWT ID of token to revoke
+
+        Returns:
+            True if successfully revoked (this request won the race)
+            False if already revoked (concurrent request won the race)
+
+        Example:
+            ```python
+            # Token rotation with concurrency handling
+            revoked = await token_repo.atomic_revoke_by_jti(payload.jti)
+            if not revoked:
+                # Another request already revoked this token
+                raise TokenAlreadyRotatedException("Token was concurrently rotated")
+            # Continue with new token creation
+            ```
+
+        Traces to: E4V.T5-R1 Specification (Atomic Refresh Token Rotation)
+        Traces to: 08-Security-Architecture §5 (Token revocation)
+        """
+        pass

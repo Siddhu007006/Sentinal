@@ -38,7 +38,6 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
-from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 
 # revision identifiers, used by Alembic.

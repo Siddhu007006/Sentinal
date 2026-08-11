@@ -31,14 +31,14 @@ def test_instantiate_user_with_all_fields() -> None:
     """
     user = User(
         email="jane@example.com",
-        password_hash="$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ",  # noqa: S106
+        password_hash="$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ",
         full_name="Jane Doe",
         role=UserRole.ANALYST.value,
     )
 
     assert user.email == "jane@example.com"
     assert (
-        user.password_hash == "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ"  # noqa: S105 - test password hash
+        user.password_hash == "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ"
     )
     assert user.full_name == "Jane Doe"
     assert user.role == UserRole.ANALYST.value
@@ -59,13 +59,13 @@ def test_instantiate_user_with_minimal_fields() -> None:
     """
     user = User(
         email="bob@example.com",
-        password_hash="$2b$12$xyz123xyz123xyz123xyz123xyz123xyz123xyz123",  # noqa: S106
+        password_hash="$2b$12$xyz123xyz123xyz123xyz123xyz123xyz123xyz123",
         full_name="Bob Smith",
     )
 
     assert user.email == "bob@example.com"
     assert (
-        user.password_hash == "$2b$12$xyz123xyz123xyz123xyz123xyz123xyz123xyz123"  # noqa: S105 - test password hash
+        user.password_hash == "$2b$12$xyz123xyz123xyz123xyz123xyz123xyz123xyz123"
     )
     assert user.full_name == "Bob Smith"
 
@@ -86,7 +86,7 @@ def test_default_values_are_correct() -> None:
     """
     user = User(
         email="alice@example.com",
-        password_hash="$2b$12$hash123hash123hash123hash123hash123hash123",  # noqa: S106
+        password_hash="$2b$12$hash123hash123hash123hash123hash123hash123",
         full_name="Alice Wonder",
         role=UserRole.VIEWER.value,
         is_active=True,
@@ -111,7 +111,7 @@ def test_role_default_is_viewer() -> None:
     """
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test User",
         role=UserRole.VIEWER.value,
     )
@@ -128,7 +128,7 @@ def test_is_active_default_is_true() -> None:
     """
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test User",
         is_active=True,
     )
@@ -145,7 +145,7 @@ def test_is_verified_default_is_false() -> None:
     """
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test User",
         is_verified=False,
     )
@@ -168,7 +168,7 @@ def test_field_types_are_correct() -> None:
     """
     user = User(
         email="type-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Type Tester",
         role=UserRole.ANALYST.value,
         is_active=True,
@@ -193,7 +193,7 @@ def test_email_is_string_type() -> None:
     """Test: email field is string type."""
     user = User(
         email="string-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
     )
 
@@ -204,7 +204,7 @@ def test_password_hash_is_string_type() -> None:
     """Test: password_hash field is string type."""
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$thisisastringtype123456789",  # noqa: S106
+        password_hash="$2b$12$thisisastringtype123456789",
         full_name="Test",
     )
 
@@ -215,7 +215,7 @@ def test_is_active_is_boolean_type() -> None:
     """Test: is_active field is boolean type."""
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         is_active=True,
     )
@@ -227,7 +227,7 @@ def test_is_verified_is_boolean_type() -> None:
     """Test: is_verified field is boolean type."""
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         is_verified=False,
     )
@@ -250,7 +250,7 @@ def test_repr_returns_useful_string() -> None:
     """
     user = User(
         email="repr-test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Repr Tester",
         role=UserRole.ADMIN.value,
         is_active=True,
@@ -279,7 +279,7 @@ def test_repr_does_not_expose_password_hash() -> None:
     Verifies that the password hash is never included in string representation
     to prevent accidental log exposure.
     """
-    password_hash = "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ"  # noqa: S105 - test password hash
+    password_hash = "$2b$12$abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ"
     user = User(
         email="security@example.com",
         password_hash=password_hash,
@@ -299,7 +299,7 @@ def test_repr_includes_email() -> None:
     """Test: __repr__() includes email."""
     user = User(
         email="email-in-repr@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
     )
 
@@ -311,7 +311,7 @@ def test_repr_includes_role() -> None:
     """Test: __repr__() includes role."""
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         role=UserRole.ANALYST.value,
     )
@@ -324,7 +324,7 @@ def test_repr_includes_active_status() -> None:
     """Test: __repr__() includes active status."""
     user = User(
         email="test@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
         is_active=False,
     )
@@ -349,7 +349,7 @@ def test_created_at_is_datetime() -> None:
     """
     user = User(
         email="timestamp@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
     )
 
@@ -366,7 +366,7 @@ def test_updated_at_is_datetime() -> None:
     """
     user = User(
         email="timestamp@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Test",
     )
 
@@ -388,7 +388,7 @@ def test_deleted_at_is_none_for_active_user() -> None:
     """
     user = User(
         email="active@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Active User",
     )
 
@@ -407,7 +407,7 @@ def test_deleted_at_can_be_set() -> None:
     now = datetime.now(UTC)
     user = User(
         email="deleted@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Deleted User",
         deleted_at=now,
     )
@@ -484,7 +484,7 @@ def test_user_with_admin_role() -> None:
     """Test: User can be created with admin role."""
     user = User(
         email="admin@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Admin User",
         role=UserRole.ADMIN.value,
     )
@@ -496,7 +496,7 @@ def test_user_with_analyst_role() -> None:
     """Test: User can be created with analyst role."""
     user = User(
         email="analyst@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Analyst User",
         role=UserRole.ANALYST.value,
     )
@@ -508,7 +508,7 @@ def test_user_with_viewer_role() -> None:
     """Test: User can be created with viewer role."""
     user = User(
         email="viewer@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Viewer User",
         role=UserRole.VIEWER.value,
     )
@@ -525,7 +525,7 @@ def test_user_active_and_verified() -> None:
     """Test: User can be created with is_active=True and is_verified=True."""
     user = User(
         email="active-verified@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Active Verified",
         is_active=True,
         is_verified=True,
@@ -539,7 +539,7 @@ def test_user_active_but_not_verified() -> None:
     """Test: User can be active but unverified (email not confirmed yet)."""
     user = User(
         email="active-unverified@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Active Unverified",
         is_active=True,
         is_verified=False,
@@ -556,7 +556,7 @@ def test_user_inactive_but_verified() -> None:
     """
     user = User(
         email="inactive-verified@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Inactive Verified",
         is_active=False,
         is_verified=True,
@@ -570,7 +570,7 @@ def test_user_inactive_and_not_verified() -> None:
     """Test: User can be inactive and unverified."""
     user = User(
         email="inactive-unverified@example.com",
-        password_hash="$2b$12$hash",  # noqa: S106
+        password_hash="$2b$12$hash",
         full_name="Inactive Unverified",
         is_active=False,
         is_verified=False,

@@ -54,7 +54,7 @@ class TestUserRepositoryCRUD:
         user_orm = UserORM(
             id=uuid4(),
             email="alice@example.com",
-            password_hash="test_hash_alice",  # noqa: S106
+            password_hash="test_hash_alice",
             is_active=True,
             is_verified=False,
         )
@@ -78,7 +78,7 @@ class TestUserRepositoryCRUD:
         user_orm = UserORM(
             id=user_id,
             email="bob@example.com",
-            password_hash="test_hash_bob",  # noqa: S106
+            password_hash="test_hash_bob",
             is_active=True,
             is_verified=False,
         )
@@ -113,7 +113,7 @@ class TestUserRepositoryCRUD:
             user_orm = UserORM(
                 id=uuid4(),
                 email=f"user{i}@example.com",
-                password_hash="test_hash_user",  # noqa: S106
+                password_hash="test_hash_user",
                 is_active=True,
                 is_verified=False,
             )
@@ -138,7 +138,7 @@ class TestUserRepositoryCRUD:
             user_orm = UserORM(
                 id=uuid4(),
                 email=f"page{i}@example.com",
-                password_hash="test_hash_page",  # noqa: S106
+                password_hash="test_hash_page",
                 is_active=True,
                 is_verified=False,
             )
@@ -171,7 +171,7 @@ class TestUserRepositoryCRUD:
         user_orm = UserORM(
             id=user_id,
             email="charlie@example.com",
-            password_hash="test_hash_charlie",  # noqa: S106
+            password_hash="test_hash_charlie",
             is_active=True,
             is_verified=False,
         )
@@ -194,7 +194,7 @@ class TestUserRepositoryCRUD:
         user_orm = UserORM(
             id=user_id,
             email="delete@example.com",
-            password_hash="test_hash_delete",  # noqa: S106
+            password_hash="test_hash_delete",
             is_active=True,
             is_verified=False,
         )
@@ -244,7 +244,7 @@ class TestUserRepositorySoftDelete:
         active_user = UserORM(
             id=uuid4(),
             email="active@example.com",
-            password_hash="test_hash_active",  # noqa: S106
+            password_hash="test_hash_active",
             is_active=True,
             is_verified=False,
         )
@@ -252,7 +252,7 @@ class TestUserRepositorySoftDelete:
         deleted_user = UserORM(
             id=uuid4(),
             email="deleted@example.com",
-            password_hash="test_hash_deleted",  # noqa: S106
+            password_hash="test_hash_deleted",
             is_active=True,
             is_verified=False,
             deleted_at=datetime.now(UTC),
@@ -280,7 +280,7 @@ class TestUserRepositorySoftDelete:
         user_orm = UserORM(
             id=uuid4(),
             email="softdeleted@example.com",
-            password_hash="test_hash_softdel",  # noqa: S106
+            password_hash="test_hash_softdel",
             is_active=True,
             is_verified=False,
             deleted_at=datetime.now(UTC),
@@ -306,7 +306,7 @@ class TestUserRepositorySoftDelete:
         active = UserORM(
             id=uuid4(),
             email="actve@example.com",
-            password_hash="test_hash_active2",  # noqa: S106
+            password_hash="test_hash_active2",
             is_active=True,
             is_verified=False,
         )
@@ -314,7 +314,7 @@ class TestUserRepositorySoftDelete:
         inactive = UserORM(
             id=uuid4(),
             email="inactive@example.com",
-            password_hash="test_hash_inactive",  # noqa: S106
+            password_hash="test_hash_inactive",
             is_active=False,
             is_verified=False,
         )
@@ -350,7 +350,7 @@ class TestUserRepositoryEmailQuery:
         user_orm = UserORM(
             id=uuid4(),
             email="CaseSensitive@Example.COM",
-            password_hash="test_hash_case",  # noqa: S106
+            password_hash="test_hash_case",
             is_active=True,
             is_verified=False,
         )
@@ -400,7 +400,7 @@ class TestUserRepositoryErrorMapping:
         user1_orm = UserORM(
             id=uuid4(),
             email="duplicate@example.com",
-            password_hash="test_hash_dup1",  # noqa: S106
+            password_hash="test_hash_dup1",
             is_active=True,
             is_verified=False,
         )
@@ -411,7 +411,7 @@ class TestUserRepositoryErrorMapping:
         user2_orm = UserORM(
             id=uuid4(),
             email="duplicate@example.com",
-            password_hash="test_hash_dup2",  # noqa: S106
+            password_hash="test_hash_dup2",
             is_active=True,
             is_verified=False,
         )
@@ -445,7 +445,7 @@ class TestUserRepositoryTransactions:
         user_orm = UserORM(
             id=uuid4(),
             email="rollback@example.com",
-            password_hash="test_hash_rollback",  # noqa: S106
+            password_hash="test_hash_rollback",
             is_active=True,
             is_verified=False,
         )
@@ -473,7 +473,7 @@ class TestUserRepositoryTransactions:
         user_orm = UserORM(
             id=uuid4(),
             email="txn@example.com",
-            password_hash="test_hash_txn",  # noqa: S106
+            password_hash="test_hash_txn",
             is_active=True,
             is_verified=False,
         )

@@ -33,7 +33,7 @@ async def test_user(db_session: AsyncSession) -> User:
     """Create a test user for refresh token tests."""
     user = User(
         email="refresh_token_test@example.com",
-        password_hash="$2b$12$test_hash_for_refresh_token_tests",  # noqa: S106
+        password_hash="$2b$12$test_hash_for_refresh_token_tests",
         full_name="RefreshToken Test User",
     )
     db_session.add(user)
@@ -47,7 +47,7 @@ async def another_test_user(db_session: AsyncSession) -> User:
     """Create another test user for multi-user tests."""
     user = User(
         email="another_refresh_test@example.com",
-        password_hash="$2b$12$another_hash_for_refresh_tests",  # noqa: S106
+        password_hash="$2b$12$another_hash_for_refresh_tests",
         full_name="Another RefreshToken Test User",
     )
     db_session.add(user)
@@ -144,7 +144,7 @@ async def test_user_deletion_cascades_to_tokens(db_session: AsyncSession) -> Non
     # Create user
     user = User(
         email="cascade_test@example.com",
-        password_hash="$2b$12$cascade_test_hash",  # noqa: S106
+        password_hash="$2b$12$cascade_test_hash",
         full_name="Cascade Test User",
     )
     db_session.add(user)

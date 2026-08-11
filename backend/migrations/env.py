@@ -54,11 +54,22 @@ target_metadata = Base.metadata
 # This overrides the placeholder in alembic.ini, ensuring migrations use
 # the correct database connection without hardcoded credentials.
 #
+# CRITICAL: Role Identity
+#   Database URL connects as 'schema_owner' role (DDL/migration identity).
+#   - schema_owner: LOGIN, CREATEDB, CREATEROLE; owns all application tables
+#   - Used ONLY by Alembic migrations; NEVER by application runtime
+#   - Password sourced from POSTGRESQL_SCHEMA_OWNER_PASSWORD environment variable
+#
 # DATABASE_MIGRATION_URL should have DDL privileges (CREATE TABLE, ALTER TABLE)
 # while DATABASE_URL (used by the application) may have restricted privileges
 # (SELECT, INSERT, UPDATE, DELETE only).
 #
+# All DDL operations (CREATE TABLE, CREATE INDEX, etc.) execute as schema_owner.
+# Resulting tables are owned by schema_owner. Application runtime connects as
+# sentinel_api role with restricted privileges per 04-Database-Design §11.1.
+#
 # Traces to: 08-Security-Architecture §9 (least privilege)
+# Traces to: ROLE_PROVISIONING_IMPLEMENTATION.md §4 (Alembic Configuration)
 database_url = os.environ.get("DATABASE_MIGRATION_URL")
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)

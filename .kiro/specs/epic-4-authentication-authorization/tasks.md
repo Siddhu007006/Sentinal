@@ -67,8 +67,8 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 **Subtasks:**
 
 - [x] Create user.py with UserRole enum and User class
-- [~] Write unit tests for User entity
-- [~] Verify design.md constraints
+- [x] Write unit tests for User entity
+- [x] Verify design.md constraints
 
 ---
 
@@ -108,11 +108,11 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Create password.py with PasswordHasherInterface
-- [~] Implement ArgonPasswordHasher
-- [~] Implement BcryptPasswordHasher
-- [~] Write unit tests for password hashing
-- [~] Verify constant-time comparison logic
+- [x] Create password.py with PasswordHasherInterface
+- [x] Implement ArgonPasswordHasher
+- [x] Implement BcryptPasswordHasher
+- [x] Write unit tests for password hashing
+- [x] Verify constant-time comparison logic
 
 ---
 
@@ -155,11 +155,11 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Create jwt.py with TokenPayload and TokenService
-- [~] Implement token creation with correct lifetimes
-- [~] Implement token decoding with claim validation
-- [~] Write unit tests for token lifecycle
-- [~] Verify algorithm and key configuration
+- [x] Create jwt.py with TokenPayload and TokenService
+- [x] Implement token creation with correct lifetimes
+- [x] Implement token decoding with claim validation
+- [x] Write unit tests for token lifecycle
+- [x] Verify algorithm and key configuration
 
 ---
 
@@ -202,12 +202,12 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Create auth_service.py with core methods
-- [~] Implement register with validations
-- [~] Implement login with constant-time verification
-- [~] Implement refresh with token rotation
-- [~] Implement logout with revocation
-- [~] Write unit tests for all paths
+- [x] Create auth_service.py with core methods
+- [x] Implement register with validations
+- [x] Implement login with constant-time verification
+- [x] Implement refresh with token rotation
+- [x] Implement logout with revocation
+- [x] Write unit tests for all paths
 
 ---
 
@@ -245,11 +245,11 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Create dependencies/auth.py with core dependencies
-- [~] Implement get_current_user with header parsing and token validation
-- [~] Implement require_role factory
-- [~] Write unit tests for dependencies
-- [~] Test error cases (missing token, invalid sig, user not found)
+- [x] Create dependencies/auth.py with core dependencies
+- [x] Implement get_current_user with header parsing and token validation
+- [x] Implement require_role factory
+- [x] Write unit tests for dependencies
+- [x] Test error cases (missing token, invalid sig, user not found)
 
 ---
 
@@ -296,13 +296,13 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Create auth.py routes file
-- [~] Implement register endpoint
-- [~] Implement login endpoint
-- [~] Implement refresh endpoint
-- [~] Implement logout endpoint
-- [~] Implement /auth/me endpoint
-- [~] Write integration tests
+- [x] Create auth.py routes file
+- [x] Implement register endpoint
+- [x] Implement login endpoint
+- [x] Implement refresh endpoint
+- [x] Implement logout endpoint
+- [x] Implement /auth/me endpoint
+- [x] Write integration tests
 
 ---
 
@@ -347,11 +347,11 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Create users.py routes file
-- [~] Implement GET /users (admin-only, paginated)
-- [~] Implement GET /users/{userId} (ownership check, 404 on forbidden)
-- [~] Implement PATCH /users/{userId} (role change with RBAC)
-- [~] Implement DELETE /users/{userId} (soft-delete)
+- [x] Create users.py routes file
+- [x] Implement GET /users (admin-only, paginated)
+- [x] Implement GET /users/{userId} (ownership check, 404 on forbidden)
+- [x] Implement PATCH /users/{userId} (role change with RBAC)
+- [x] Implement DELETE /users/{userId} (soft-delete)
 - [ ] Write integration tests
 
 ---
@@ -391,11 +391,11 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Document RBAC matrix per requirements
-- [~] Audit E4.T6-E4.T7 route role decorators
-- [~] Add X-Request-ID to error responses
-- [~] Write comprehensive RBAC tests
-- [~] Verify role is never client-supplied
+- [x] Document RBAC matrix per requirements
+- [x] Audit E4.T6-E4.T7 route role decorators
+- [x] Add X-Request-ID to error responses
+- [x] Write comprehensive RBAC tests
+- [x] Verify role is never client-supplied
 
 ---
 
@@ -438,12 +438,12 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Verify E3.T8 AuditLog model is immutable
-- [~] Integrate AuditService logging into AuthService
-- [~] Add audit logging to user management routes
-- [~] Implement GET /audit-logs endpoints
-- [~] Write integration tests for audit logging
-- [~] Test fail-safe behavior
+- [x] Verify E3.T8 AuditLog model is immutable
+- [x] Integrate AuditService logging into AuthService
+- [x] Add audit logging to user management routes
+- [x] Implement GET /audit-logs endpoints
+- [x] Write integration tests for audit logging
+- [x] Test fail-safe behavior
 
 ---
 
@@ -481,12 +481,12 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Verify RefreshTokenRepository per-device revocation
-- [~] Verify logout-specific and logout-all logic
-- [~] Verify user deactivation revokes all tokens
-- [~] Write multi-device session tests
-- [~] Test all-sessions logout
-- [~] Test deactivation revokes tokens
+- [x] Verify RefreshTokenRepository per-device revocation
+- [x] Verify logout-specific and logout-all logic
+- [x] Verify user deactivation revokes all tokens
+- [x] Write multi-device session tests
+- [x] Test all-sessions logout
+- [x] Test deactivation revokes tokens
 
 ---
 
@@ -533,14 +533,14 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 
 **Subtasks:**
 
-- [~] Run full unit test suite and fix failures
-- [~] Run full integration test suite and fix failures
-- [~] Run Ruff check and fix violations
-- [~] Run MyPy --strict and fix errors
-- [~] Run compileall and verify success
-- [~] Measure and verify coverage >= 85%
-- [~] Perform security review and verification
-- [~] Create final verification report
+- [x] Run full unit test suite and fix failures
+- [x] Run full integration test suite and fix failures
+- [x] Run Ruff check and fix violations
+- [x] Run MyPy --strict and fix errors
+- [x] Run compileall and verify success
+- [x] Measure and verify coverage >= 85%
+- [x] Perform security review and verification
+- [x] Create final verification report
 
 ---
 

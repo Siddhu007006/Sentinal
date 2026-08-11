@@ -274,6 +274,18 @@ class RefreshToken(BaseModel):
         comment="FK to users table; ON DELETE CASCADE",
     )
 
+    # JWT ID (jti) - Unique identifier from JWT payload for revocation tracking
+    # UNIQUE constraint: ensures each token has unique jti
+    # Indexed for efficient lookup during token validation
+    # NOT nullable (required for revocation tracking)
+    jti: Mapped[str] = mapped_column(
+        String(256),  # JWT IDs are typically UUIDs or base64-encoded values
+        unique=True,
+        nullable=False,
+        index=True,
+        comment="JWT ID from token payload; unique constraint for revocation",
+    )
+
     # Token Hash - SHA-256 hash of the opaque token value
     # NEVER the raw token (security: hash, never plaintext)
     # UNIQUE constraint: prevents duplicate hashes in database

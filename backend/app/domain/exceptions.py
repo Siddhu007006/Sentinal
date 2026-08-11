@@ -106,3 +106,30 @@ class ConflictError(RepositoryException):
     """
 
     pass
+
+
+class TokenAlreadyRotatedError(Exception):
+    """Raised when a token has been concurrently rotated (race condition handled).
+
+    Occurs when two requests attempt to refresh the same refresh token
+    simultaneously. The database-level atomic UPDATE ensures exactly one
+    succeeds. The other request gets this exception, indicating the token
+    was already revoked by a concurrent request.
+
+    This is a normal, expected condition in concurrent scenarios and should
+    result in HTTP 409 Conflict to the client. The client can retry with
+    the new tokens from the successful concurrent request (if available).
+
+    Usage:
+        >>> await auth_service.refresh(refresh_token)
+        TokenAlreadyRotatedException: Token was concurrently rotated by another request
+
+    Lifecycle:
+        1. Request A: decode token → atomic_revoke_by_jti() → SUCCESS (True)
+        2. Request B: decode token → atomic_revoke_by_jti() → FAIL (False, raise this)
+        3. Request A: create new tokens → return to client
+        4. Request B: raise this exception → handler returns 409 → client sees
+           token was rotated
+    """
+
+    pass

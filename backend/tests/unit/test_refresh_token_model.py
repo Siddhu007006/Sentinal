@@ -88,18 +88,21 @@ def test_refresh_token_default_values() -> None:
     **Validates: R5 AC #3**
 
     Verifies that default values are set when not explicitly provided.
-    
+
     NOTE: SQLAlchemy 2.0 only applies column defaults when adding to session.
     This test verifies the defaults are configured in the schema, not in-memory values.
     Integration tests will verify in-database defaults work correctly.
     """
     from sqlalchemy import inspect
-    
+
     mapper = inspect(RefreshToken)
     columns = {c.name: c for c in mapper.columns}
-    
+
     # Verify column defaults are configured
-    assert columns["is_revoked"].default is not None or columns["is_revoked"].server_default is not None
+    assert (
+        columns["is_revoked"].default is not None
+        or columns["is_revoked"].server_default is not None
+    )
     assert columns["revoked_at"].default is None  # revoked_at should start as None
     assert columns["user_agent"].default is None  # user_agent should start as None
     assert columns["ip_address"].default is None  # ip_address should start as None
@@ -151,7 +154,7 @@ def test_refresh_token_repr_includes_key_fields() -> None:
 
     Verifies that the string representation includes id, user_id, revoked
     status, and expiry timestamp for debugging.
-    
+
     NOTE: SQLAlchemy 2.0 doesn't apply defaults to in-memory instances.
     Set id explicitly for this test.
     """
@@ -172,7 +175,8 @@ def test_refresh_token_repr_includes_key_fields() -> None:
     # Verify key fields are present
     assert str(token_id) in repr_str
     assert str(user_id) in repr_str
-    # revoked status should show (either explicit False or None depending on SQLAlchemy behavior)
+    # revoked status should show (either explicit False or None depending
+    # on SQLAlchemy behavior)
     assert "revoked" in repr_str.lower()
 
 
@@ -300,7 +304,7 @@ def test_refresh_token_constraints() -> None:
     assert "id" in pk_columns
 
     # Verify foreign key exists (check through table args or relationships)
-    table = mapper.mapped_table
+    table = mapper.persist_selectable
     fk_found = False
     for constraint in table.foreign_keys:
         if constraint.parent.name == "user_id":
@@ -310,14 +314,11 @@ def test_refresh_token_constraints() -> None:
     assert fk_found, "Foreign key on user_id not found"
 
     # Verify unique constraint on token_hash
-    uq_found = False
-    for constraint in table.constraints:
-        if hasattr(constraint, "columns"):
-            col_names = [c.name for c in constraint.columns]
-            if "token_hash" in col_names and "unique" in str(type(constraint)).lower():
-                uq_found = True
-                break
-    assert uq_found, "Unique constraint on token_hash not found"
+    # Check both table-level constraints and column-level unique property
+    columns = {c.name: c for c in mapper.columns}
+    token_hash_col = columns.get("token_hash")
+    assert token_hash_col is not None, "token_hash column not found"
+    assert token_hash_col.unique is True, "token_hash should have unique constraint"
 
 
 # ===========================================================================
@@ -331,7 +332,7 @@ def test_refresh_token_revocation_fields() -> None:
     **Validates: R1 AC #3**
 
     Verifies that is_revoked and revoked_at can be set.
-    
+
     NOTE: SQLAlchemy 2.0 doesn't set is_revoked=False in-memory by default.
     Set it explicitly and then verify it can be changed.
     """
@@ -370,12 +371,12 @@ def test_refresh_token_indexes() -> None:
     **Validates: R2 AC #5-7**
 
     Verifies that indexes for user_id and partial expires_at are present.
-    
+
     NOTE: Integration test verifies indexes exist in actual database.
     This test verifies they're defined in the model schema.
     """
     mapper = inspect(RefreshToken)
-    table = mapper.mapped_table
+    table = mapper.persist_selectable
 
     # Get index names
     index_names = [idx.name for idx in table.indexes]
@@ -384,7 +385,7 @@ def test_refresh_token_indexes() -> None:
     user_id_index_found = any("user_id" in name for name in index_names)
     assert user_id_index_found, f"user_id index not found in {index_names}"
 
-    # Verify expires_at index is defined  
+    # Verify expires_at index is defined
     expires_at_index_found = any("expires_at" in name for name in index_names)
     assert expires_at_index_found, f"expires_at index not found in {index_names}"
 
@@ -447,16 +448,16 @@ def test_refresh_token_has_timestamp_fields() -> None:
     **Validates: R1 AC #3**
 
     Verifies that created_at and updated_at are inherited.
-    
+
     NOTE: SQLAlchemy 2.0 only applies defaults when adding to session.
     This test verifies fields exist and are configured with defaults.
     """
     mapper = inspect(RefreshToken)
-    
+
     # Verify timestamp fields exist in the mapper
     assert "created_at" in [c.name for c in mapper.columns]
     assert "updated_at" in [c.name for c in mapper.columns]
-    
+
     # Verify they are timestamp type
     columns = {c.name: c for c in mapper.columns}
     assert "TIMESTAMP" in str(columns["created_at"].type).upper()

@@ -118,27 +118,23 @@ class User(BaseModel):
     __tablename__ = "users"
 
     # Uploads relationship - One-to-many: a user has many uploads
-    # Lazy loading strategy: "selectin" (separate SELECT IN query)
-    # Rationale: Collection may be large; joined load causes Cartesian product
-    #           (row count = cartesian product of users x uploads). Selectin
-    #           issues second query with WHERE uploads.user_id IN (...),
-    #           returning full result set efficiently. Application layer
-    #           handles pagination if needed.
+    # Lazy loading strategy: "select" (separate query, default SQLAlchemy behavior)
+    # Rationale: Collection may be large; selectin and joined both cause issues.
+    #           Use default lazy="select" to load on explicit access only.
     uploads: Mapped[list[Upload]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Upload",
         back_populates="user",
-        lazy="selectin",
+        lazy="select",
     )
 
     # Analyses relationship - One-to-many: a user has many analyses they requested
-    # Lazy loading strategy: "selectin" (separate SELECT IN query)
-    # Rationale: Same as uploads - collection may be large, selectin avoids
-    #           Cartesian product and efficiently retrieves all analyses
-    #           requested by a user.
+    # Lazy loading strategy: "select" (separate query, default SQLAlchemy behavior)
+    # Rationale: Collection may be large; avoid eager loading strategies that
+    #           attempt to filter on deleted_at when related table doesn't support it.
     analyses_requested: Mapped[list[Analysis]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Analysis",
         back_populates="user",
-        lazy="selectin",
+        lazy="select",
         foreign_keys="Analysis.requested_by",
     )
 
@@ -153,23 +149,26 @@ class User(BaseModel):
         comment="Primary login credential (lowercased, normalized)",
     )
 
-    # Password hash - bcrypt with cost=12
+    # Password hash - Argon2id or bcrypt
     # NEVER expose this field in API responses.
     # NEVER log this field.
-    # Application layer handles hashing via passlib/bcrypt.
+    # Application layer handles hashing via infrastructure/security/password.py.
+    # Argon2id output can be 92+ characters; bcrypt is 60 characters.
+    # Column sized to accommodate Argon2id hashes.
     password_hash: Mapped[str] = mapped_column(
-        String(60),  # bcrypt output is exactly 60 chars
+        String(255),  # Argon2id output (~92 chars), bcrypt (60 chars)
         nullable=False,
-        comment="bcrypt hash (cost=12), never plaintext",
+        comment="Password hash (Argon2id or bcrypt), never plaintext",
     )
 
     # Full name - Display name for UI
     # Not used for authentication.
     # User can update this via profile endpoints.
-    full_name: Mapped[str] = mapped_column(
+    # Optional - can be null if not provided at registration
+    full_name: Mapped[str | None] = mapped_column(
         String(255),
-        nullable=False,
-        comment="Display name for UI and reports",
+        nullable=True,
+        comment="Display name for UI and reports (optional)",
     )
 
     # Role - RBAC authorization level

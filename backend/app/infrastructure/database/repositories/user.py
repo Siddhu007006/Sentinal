@@ -40,7 +40,7 @@ class PostgreSQLUserRepository(PostgreSQLRepository[User], UserRepository):
             email=entity.email,
             password_hash=entity.password_hash,
             full_name=entity.full_name,
-            role=entity.role,
+            role=entity.role.value,  # Convert enum to string value
             is_active=entity.is_active,
             is_verified=entity.is_verified,
             deleted_at=entity.deleted_at,
@@ -56,12 +56,14 @@ class PostgreSQLUserRepository(PostgreSQLRepository[User], UserRepository):
         Returns:
             Domain User entity
         """
+        from app.domain.entities.user import UserRole
+
         return User(
             id=orm_obj.id,
             email=orm_obj.email,
             password_hash=orm_obj.password_hash,
             full_name=orm_obj.full_name,
-            role=orm_obj.role,
+            role=UserRole(orm_obj.role),  # Convert string to enum
             is_active=orm_obj.is_active,
             is_verified=orm_obj.is_verified,
             created_at=orm_obj.created_at,

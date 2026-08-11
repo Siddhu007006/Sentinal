@@ -245,6 +245,11 @@ class SecuritySettings(BaseSettings):
         alias="JWT_REFRESH_TOKEN_EXPIRE_DAYS",
         description="Refresh token lifetime in days (default: 7 days)",
     )
+    password_hashing_algorithm: str = Field(
+        default="argon2id",
+        alias="PASSWORD_HASHING_ALGORITHM",
+        description="Password hashing algorithm (argon2id or bcrypt)",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -259,6 +264,16 @@ class SecuritySettings(BaseSettings):
         """Ensure JWT algorithm is one of the supported options."""
         if v not in ("HS256", "RS256"):
             raise ValueError(f"jwt_algorithm must be HS256 or RS256, got {v}")
+        return v
+
+    @field_validator("password_hashing_algorithm")
+    @classmethod
+    def validate_password_hashing_algorithm(cls, v: str) -> str:
+        """Ensure password hashing algorithm is one of the supported options."""
+        if v not in ("argon2id", "bcrypt"):
+            raise ValueError(
+                f"password_hashing_algorithm must be argon2id or bcrypt, got {v}"
+            )
         return v
 
 

@@ -17,8 +17,8 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.audit_log import AuditLog
 from app.infrastructure.database.base import BaseModel
+from app.models.audit_log import AuditLog
 
 
 # ===========================================================================
@@ -106,7 +106,7 @@ def test_instantiate_audit_log_with_required_fields() -> None:
     assert audit_log.ip_address is None
     assert audit_log.request_id is None
     assert audit_log.user_agent is None
-    # Note: success and occurred_at may be None or have defaults depending on 
+    # Note: success and occurred_at may be None or have defaults depending on
     # ORM state; these are set by database on INSERT
 
 
@@ -792,7 +792,6 @@ async def test_update_audit_logs_fails_with_permission_error(
 
     from sqlalchemy import update
     from sqlalchemy.exc import OperationalError
-    import psycopg2.errors
 
     # Insert a record first
     audit_log = AuditLog(
@@ -834,7 +833,6 @@ async def test_delete_audit_logs_fails_with_permission_error(
 
     from sqlalchemy import delete
     from sqlalchemy.exc import OperationalError
-    import psycopg2.errors
 
     # Insert a record first
     audit_log = AuditLog(

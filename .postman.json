@@ -1,48 +1,598 @@
 {
   "info": {
-    "_postman_id": "sentinel-api-collection",
-    "name": "Sentinel API",
-    "description": "Digital Asset Trust Verification Platform API Collection",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "name": "Sentinel API - Authentication & Authorization (E4)",
+    "description": "Complete API testing collection for Sentinel authentication, authorization, and user management endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
   },
   "item": [
     {
-      "name": "Health",
+      "name": "Auth",
       "item": [
         {
-          "name": "Get Health Status",
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test('Response has user ID', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('userId');",
+                  "    pm.expect(jsonData).to.have.property('email');",
+                  "    pm.expect(jsonData).to.have.property('role');",
+                  "    pm.collectionVariables.set('userId', jsonData.userId);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"{{$randomEmail}}\", \"password\": \"SecurePassword123!\", \"full_name\": \"Test User\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has tokens', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('accessToken');",
+                  "    pm.expect(jsonData).to.have.property('refreshToken');",
+                  "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"testuser@sentinel.local\", \"password\": \"SecurePassword123!\"}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Me (Authenticated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has user profile', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('userId');",
+                  "    pm.expect(jsonData).to.have.property('email');",
+                  "    pm.expect(jsonData).to.have.property('role');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
           "request": {
             "method": "GET",
             "header": [
               {
-                "key": "Accept",
-                "value": "application/json",
-                "type": "text"
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/v1/health",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "api",
-                "v1",
-                "health"
-              ]
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response has new tokens', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('accessToken');",
+                  "    pm.expect(jsonData).to.have.property('refreshToken');",
+                  "    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"refresh_token\": \"{{refreshToken}}\"}"
             },
-            "description": "Returns basic service liveness status"
-          },
-          "response": []
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 204', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/{{apiVersion}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "{{apiVersion}}", "auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is healthy', function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          }
         }
       ]
     }
   ],
   "variable": [
     {
-      "key": "base_url",
+      "key": "baseUrl",
       "value": "http://localhost:8000",
       "type": "string"
+    },
+    {
+      "key": "apiVersion",
+      "value": "v1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "workspaceId": null,
+  "collectionId": null,
+  "environmentId": null,
+  "baseUrl": "http://localhost:8000",
+  "apiVersion": "v1",
+  "apiEndpoint": "/api/v1",
+  "metadata": {
+    "projectName": "Sentinel - Digital Asset Trust Verification Platform",
+    "description": "API testing collection for Sentinel authentication and authorization endpoints",
+    "createdAt": "2025-01-29",
+    "epic": "E4 - Authentication & Authorization",
+    "status": "ready-for-execution"
+  },
+  "endpoints": {
+    "auth": {
+      "register": {
+        "method": "POST",
+        "path": "/auth/register",
+        "description": "Register new user with email, password, and full_name",
+        "authenticated": false,
+        "testCases": [
+          {
+            "name": "Valid registration",
+            "body": {
+              "email": "user@example.com",
+              "password": "SecurePassword123!",
+              "full_name": "Test User"
+            },
+            "expectedStatus": 201
+          },
+          {
+            "name": "Duplicate email",
+            "body": {
+              "email": "existing@example.com",
+              "password": "SecurePassword123!",
+              "full_name": "Test User"
+            },
+            "expectedStatus": 409
+          },
+          {
+            "name": "Weak password (< 12 chars)",
+            "body": {
+              "email": "weak@example.com",
+              "password": "Short1!",
+              "full_name": "Test User"
+            },
+            "expectedStatus": 422
+          }
+        ]
+      },
+      "login": {
+        "method": "POST",
+        "path": "/auth/login",
+        "description": "Authenticate user and receive access/refresh tokens",
+        "authenticated": false,
+        "testCases": [
+          {
+            "name": "Valid login",
+            "body": {
+              "email": "user@example.com",
+              "password": "SecurePassword123!"
+            },
+            "expectedStatus": 200,
+            "expectsTokenPair": true
+          },
+          {
+            "name": "Invalid credentials",
+            "body": {
+              "email": "user@example.com",
+              "password": "WrongPassword"
+            },
+            "expectedStatus": 401
+          }
+        ]
+      },
+      "refresh": {
+        "method": "POST",
+        "path": "/auth/refresh",
+        "description": "Refresh access token using refresh token (token rotation)",
+        "authenticated": "refresh_token",
+        "testCases": [
+          {
+            "name": "Valid refresh",
+            "expectedStatus": 200,
+            "expectsNewTokenPair": true
+          },
+          {
+            "name": "Revoked refresh token",
+            "expectedStatus": 401
+          }
+        ]
+      },
+      "logout": {
+        "method": "POST",
+        "path": "/auth/logout",
+        "description": "Revoke refresh token(s) and end session",
+        "authenticated": "access_token",
+        "testCases": [
+          {
+            "name": "Logout single session",
+            "expectedStatus": 204
+          },
+          {
+            "name": "Logout all sessions",
+            "body": {
+              "logoutAll": true
+            },
+            "expectedStatus": 204
+          }
+        ]
+      },
+      "me": {
+        "method": "GET",
+        "path": "/auth/me",
+        "description": "Get current authenticated user profile",
+        "authenticated": "access_token",
+        "testCases": [
+          {
+            "name": "Get authenticated user",
+            "expectedStatus": 200
+          },
+          {
+            "name": "No authentication",
+            "authenticated": false,
+            "expectedStatus": 401
+          }
+        ]
+      }
+    },
+    "users": {
+      "list": {
+        "method": "GET",
+        "path": "/users",
+        "description": "List all users (admin-only, paginated)",
+        "authenticated": "access_token",
+        "requiredRole": "admin",
+        "testCases": [
+          {
+            "name": "Admin list users",
+            "expectedStatus": 200,
+            "expectsPaginated": true
+          },
+          {
+            "name": "Non-admin access denied",
+            "expectedStatus": 403
+          }
+        ]
+      },
+      "get": {
+        "method": "GET",
+        "path": "/users/{userId}",
+        "description": "Get user profile (admin or owner)",
+        "authenticated": "access_token",
+        "testCases": [
+          {
+            "name": "Get own profile",
+            "expectedStatus": 200
+          },
+          {
+            "name": "Admin get other user",
+            "expectedStatus": 200
+          },
+          {
+            "name": "Non-owner, non-admin",
+            "expectedStatus": 404
+          }
+        ]
+      },
+      "update": {
+        "method": "PATCH",
+        "path": "/users/{userId}",
+        "description": "Update user profile or role (admin)",
+        "authenticated": "access_token",
+        "testCases": [
+          {
+            "name": "User update own profile",
+            "body": {
+              "full_name": "Updated Name"
+            },
+            "expectedStatus": 200
+          },
+          {
+            "name": "Admin change role",
+            "body": {
+              "role": "analyst"
+            },
+            "expectedStatus": 200
+          },
+          {
+            "name": "Non-admin cannot change role",
+            "body": {
+              "role": "admin"
+            },
+            "expectedStatus": 403
+          }
+        ]
+      },
+      "delete": {
+        "method": "DELETE",
+        "path": "/users/{userId}",
+        "description": "Soft-delete user (admin-only)",
+        "authenticated": "access_token",
+        "requiredRole": "admin",
+        "testCases": [
+          {
+            "name": "Admin soft-delete user",
+            "expectedStatus": 204
+          },
+          {
+            "name": "Non-admin cannot delete",
+            "expectedStatus": 403
+          }
+        ]
+      }
+    },
+    "auditLogs": {
+      "list": {
+        "method": "GET",
+        "path": "/audit-logs",
+        "description": "List audit logs (admin-only, paginated)",
+        "authenticated": "access_token",
+        "requiredRole": "admin",
+        "testCases": [
+          {
+            "name": "Admin list audit logs",
+            "expectedStatus": 200,
+            "expectsPaginated": true
+          },
+          {
+            "name": "Non-admin access denied",
+            "expectedStatus": 403
+          }
+        ]
+      },
+      "get": {
+        "method": "GET",
+        "path": "/audit-logs/{auditLogId}",
+        "description": "Get single audit log entry (admin-only)",
+        "authenticated": "access_token",
+        "requiredRole": "admin",
+        "testCases": [
+          {
+            "name": "Get audit log entry",
+            "expectedStatus": 200
+          }
+        ]
+      }
+    },
+    "health": {
+      "check": {
+        "method": "GET",
+        "path": "/health",
+        "description": "Health check endpoint (no authentication required)",
+        "authenticated": false,
+        "testCases": [
+          {
+            "name": "Health check",
+            "expectedStatus": 200
+          }
+        ]
+      }
+    }
+  },
+  "environmentVariables": {
+    "baseUrl": "http://localhost:8000",
+    "apiVersion": "v1",
+    "accessToken": "{{accessToken}}",
+    "refreshToken": "{{refreshToken}}",
+    "userId": "{{userId}}",
+    "adminUserId": "{{adminUserId}}",
+    "testEmail": "test@example.com",
+    "testPassword": "SecurePassword123!"
+  },
+  "testScenarios": [
+    {
+      "name": "Authentication Flow",
+      "description": "Complete authentication lifecycle: register → login → use tokens → refresh → logout",
+      "steps": [
+        "POST /auth/register with new credentials",
+        "POST /auth/login with those credentials",
+        "Store access_token and refresh_token",
+        "GET /auth/me with access_token",
+        "POST /auth/refresh with refresh_token",
+        "POST /auth/logout with access_token"
+      ]
+    },
+    {
+      "name": "RBAC Enforcement",
+      "description": "Verify role-based access control across roles (admin, analyst, viewer)",
+      "steps": [
+        "Login as admin",
+        "GET /users (should succeed)",
+        "Logout",
+        "Login as viewer",
+        "GET /users (should fail with 403)",
+        "GET /audit-logs (should fail with 403)"
+      ]
+    },
+    {
+      "name": "User Management",
+      "description": "Verify user CRUD operations with authorization",
+      "steps": [
+        "POST /auth/register new user",
+        "Login as admin",
+        "GET /users (verify new user listed)",
+        "PATCH /users/{userId} update profile",
+        "DELETE /users/{userId} soft-delete",
+        "GET /users/{userId} (should return 404 after soft-delete)"
+      ]
+    },
+    {
+      "name": "Token Lifecycle",
+      "description": "Verify token creation, expiry, revocation, and rotation",
+      "steps": [
+        "Login and receive tokens with correct lifetimes",
+        "Verify access_token exp = 15 minutes from iat",
+        "Verify refresh_token exp = 30 days from iat",
+        "POST /auth/refresh rotates tokens",
+        "Old refresh_token becomes invalid",
+        "POST /auth/logout revokes refresh_token"
+      ]
+    },
+    {
+      "name": "Error Handling",
+      "description": "Verify error responses use RFC 7807 format",
+      "steps": [
+        "POST /auth/register with invalid email",
+        "POST /auth/login with non-existent user",
+        "GET /protected without authorization",
+        "POST /auth/refresh with expired token",
+        "Verify all responses have RFC 7807 format"
+      ]
     }
   ]
 }

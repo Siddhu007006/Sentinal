@@ -76,7 +76,6 @@ class PostgreSQLAuditLogRepository(
             success=orm_obj.success,
             failure_reason=orm_obj.failure_reason,
             created_at=orm_obj.created_at,
-            updated_at=orm_obj.updated_at,
             occurred_at=orm_obj.occurred_at,
         )
 

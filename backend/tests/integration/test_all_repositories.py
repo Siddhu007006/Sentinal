@@ -71,7 +71,7 @@ class TestAllRepositoriesUserCRUD:
         user_orm = UserORM(
             id=uuid4(),
             email="crud@example.com",
-            password_hash="test_hash_crud",  # noqa: S106
+            password_hash="test_hash_crud",
             is_active=True,
             is_verified=False,
         )
@@ -105,7 +105,7 @@ class TestAllRepositoriesUserCRUD:
         user_orm = UserORM(
             id=uuid4(),
             email="softdel@example.com",
-            password_hash="test_hash_softdel",  # noqa: S106
+            password_hash="test_hash_softdel",
             is_active=True,
             is_verified=False,
         )
@@ -402,7 +402,7 @@ class TestAllRepositoriesConsistency:
         user_orm = UserORM(
             id=uuid4(),
             email="multi@example.com",
-            password_hash="test_hash_multi",  # noqa: S106
+            password_hash="test_hash_multi",
             is_active=True,
             is_verified=False,
         )
@@ -485,7 +485,7 @@ class TestAllRepositoriesPagination:
             user_orm = UserORM(
                 id=uuid4(),
                 email=f"page_user{i}@example.com",
-                password_hash="test_hash_page",  # noqa: S106
+                password_hash="test_hash_page",
                 is_active=True,
                 is_verified=False,
             )

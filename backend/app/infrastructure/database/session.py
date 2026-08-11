@@ -127,9 +127,7 @@ def _get_session_factory(settings: Settings) -> async_sessionmaker[AsyncSession]
     return _session_factory
 
 
-async def get_db_session(
-    settings: Settings,
-) -> AsyncGenerator[AsyncSession]:
+async def get_db_session() -> AsyncGenerator[AsyncSession]:
     """
     FastAPI dependency providing request-scoped database session.
 
@@ -177,9 +175,6 @@ async def get_db_session(
                 # Service doesn't commit — request handler commits
         ```
 
-    Args:
-        settings: Application settings (injected by FastAPI)
-
     Yields:
         AsyncSession: Request-scoped database session
 
@@ -197,6 +192,10 @@ async def get_db_session(
         - expire_on_commit=False reduces post-commit query load
         - Explicit session.close() returns connection to pool immediately
     """
+    # Import here to avoid circular import at module level
+    from app.core.dependencies import get_settings as _get_settings_func
+
+    settings = _get_settings_func()
     session_factory = _get_session_factory(settings)
     session = session_factory()
 
