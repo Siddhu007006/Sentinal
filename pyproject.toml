@@ -1,4 +1,4 @@
-[build-system]
+﻿[build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
@@ -12,7 +12,7 @@ packages = ["app"]
 [project]
 name = "sentinel-backend"
 version = "0.1.0"
-description = "Sentinel — Digital Asset Analysis Platform backend service"
+description = "Sentinel â€” Digital Asset Analysis Platform backend service"
 readme = "README.md"
 license = { text = "Proprietary" }
 requires-python = ">=3.12"
@@ -33,17 +33,17 @@ classifiers = [
 #
 # Each dependency traces to a specific architectural decision:
 #
-#   FastAPI + uvicorn     → 03-Architecture §4 (Presentation layer)
-#   SQLAlchemy + asyncpg  → 03-Architecture §4, 04-Database-Design
-#   Alembic               → 04-Database-Design, 06-Repository-Structure §3
-#   Celery + Redis        → 03-Architecture §4, 00-Project-Context §5
-#   Pydantic              → 03-Architecture §4, 07-Backend-Standards §3
-#   pydantic-settings     → 07-Backend-Standards §11, 06-Repository-Structure
-#   python-jose           → 08-Security-Architecture §4 (JWT)
-#   passlib               → 08-Security-Architecture §4 (password hashing)
-#   python-multipart      → 05-API-Specification (file uploads)
-#   httpx                 → 03-Architecture §4 (external API adapters)
-#   boto3                 → 03-Architecture §4, 06-Repository-Structure §7
+#   FastAPI + uvicorn     â†’ 03-Architecture Â§4 (Presentation layer)
+#   SQLAlchemy + asyncpg  â†’ 03-Architecture Â§4, 04-Database-Design
+#   Alembic               â†’ 04-Database-Design, 06-Repository-Structure Â§3
+#   Celery + Redis        â†’ 03-Architecture Â§4, 00-Project-Context Â§5
+#   Pydantic              â†’ 03-Architecture Â§4, 07-Backend-Standards Â§3
+#   pydantic-settings     â†’ 07-Backend-Standards Â§11, 06-Repository-Structure
+#   python-jose           â†’ 08-Security-Architecture Â§4 (JWT)
+#   passlib               â†’ 08-Security-Architecture Â§4 (password hashing)
+#   python-multipart      â†’ 05-API-Specification (file uploads)
+#   httpx                 â†’ 03-Architecture Â§4 (external API adapters)
+#   boto3                 â†’ 03-Architecture Â§4, 06-Repository-Structure Â§7
 # ===========================================================================
 
 dependencies = [
@@ -69,11 +69,11 @@ dependencies = [
 # ===========================================================================
 # Development Dependencies
 #
-#   pytest + pytest-asyncio + pytest-cov → 11-Testing-Strategy
-#   ruff                                 → 07-Backend-Standards §3 (linting)
-#   mypy                                 → 07-Backend-Standards §3 (typing)
-#   pre-commit                           → 07-Backend-Standards §3 (CI gates)
-#   factory-boy                          → 11-Testing-Strategy §6 (fixtures)
+#   pytest + pytest-asyncio + pytest-cov â†’ 11-Testing-Strategy
+#   ruff                                 â†’ 07-Backend-Standards Â§3 (linting)
+#   mypy                                 â†’ 07-Backend-Standards Â§3 (typing)
+#   pre-commit                           â†’ 07-Backend-Standards Â§3 (CI gates)
+#   factory-boy                          â†’ 11-Testing-Strategy Â§6 (fixtures)
 # ===========================================================================
 
 [project.optional-dependencies]
@@ -94,15 +94,15 @@ dev = [
 
 
 # ===========================================================================
-# Ruff — Linting + Formatting + Import Sorting
+# Ruff â€” Linting + Formatting + Import Sorting
 #
 # Replaces Black (formatter) + isort (import sorting) + flake8 (linter)
-# in a single tool. Per 07-Backend-Development-Standards §3:
+# in a single tool. Per 07-Backend-Development-Standards Â§3:
 #   - "Ruff or equivalent" for linting
 #   - "Black" for formatting (Ruff's formatter is Black-compatible)
-#   - Imports grouped: stdlib → third-party → first-party (§3 line 118)
-#   - Wildcard imports prohibited (§3 line 120)
-#   - Linter warnings treated as build failures (§3 line 114)
+#   - Imports grouped: stdlib â†’ third-party â†’ first-party (Â§3 line 118)
+#   - Wildcard imports prohibited (Â§3 line 120)
+#   - Linter warnings treated as build failures (Â§3 line 114)
 # ===========================================================================
 
 [tool.ruff]
@@ -112,23 +112,23 @@ src = ["backend/app", "backend/tests"]
 
 [tool.ruff.lint]
 select = [
-    "F",      # pyflakes — unused imports, undefined names
+    "F",      # pyflakes â€” unused imports, undefined names
     "E",      # pycodestyle errors
     "W",      # pycodestyle warnings
-    "I",      # isort — import sorting (stdlib → third-party → first-party)
-    "N",      # pep8-naming — class, function, variable naming conventions
-    "UP",     # pyupgrade — modern Python syntax (3.12+)
-    "B",      # flake8-bugbear — common correctness issues
-    "A",      # flake8-builtins — shadowing built-in names
-    "C4",     # flake8-comprehensions — unnecessary list/dict/set calls
-    "DTZ",    # flake8-datetimez — naive datetime prevention (Doc 07 §3)
-    "T20",    # flake8-print — no print() in production code
-    "SIM",    # flake8-simplify — simplifiable constructs
-    "TCH",    # flake8-type-checking — imports only needed for type checking
+    "I",      # isort â€” import sorting (stdlib â†’ third-party â†’ first-party)
+    "N",      # pep8-naming â€” class, function, variable naming conventions
+    "UP",     # pyupgrade â€” modern Python syntax (3.12+)
+    "B",      # flake8-bugbear â€” common correctness issues
+    "A",      # flake8-builtins â€” shadowing built-in names
+    "C4",     # flake8-comprehensions â€” unnecessary list/dict/set calls
+    "DTZ",    # flake8-datetimez â€” naive datetime prevention (Doc 07 Â§3)
+    "T20",    # flake8-print â€” no print() in production code
+    "SIM",    # flake8-simplify â€” simplifiable constructs
+    "TCH",    # flake8-type-checking â€” imports only needed for type checking
     "RUF",    # Ruff-specific rules
-    "PT",     # flake8-pytest-style — pytest best practices
-    "S",      # flake8-bandit — security issues
-    "ANN",    # flake8-annotations — enforce type annotations (Doc 07 §3)
+    "PT",     # flake8-pytest-style â€” pytest best practices
+    "S",      # flake8-bandit â€” security issues
+    "ANN",    # flake8-annotations â€” enforce type annotations (Doc 07 Â§3)
 ]
 ignore = [
     "S101",    # allow assert in tests (pytest requires it)
@@ -143,13 +143,14 @@ ignore = [
     "ANN",     # test functions don't need full annotation
     "T20",     # print can be useful in test debugging
 ]
-"backend/verify_epics.py" = ["T201", "W293", "UP006", "E501"]
-"backend/verify_migration.py" = ["T201", "W293"]
-"backend/check_migration.py" = ["T201", "W293"]
+"backend/scripts/verify_epics.py" = ["T201", "W293", "UP006", "E501"]
+"backend/scripts/verify_migration.py" = ["T201", "W293"]
+"backend/scripts/check_migration.py" = ["T201", "W293"]
 "backend/check_tests.py" = ["T201", "W293"]
 "backend/run_test.py" = ["T201", "W293"]
 "backend/run_tests_simple.py" = ["T201", "W293"]
-"backend/run_e4v_tests.py" = ["T201", "W293"]
+"backend/scripts/run_e4v_tests.py" = ["T201", "W293"]
+"scripts/test_gates.py" = ["T201", "W293"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
@@ -163,9 +164,9 @@ skip-magic-trailing-comma = false
 line-ending = "auto"
 
 # ===========================================================================
-# mypy — Static Type Checking
+# mypy â€” Static Type Checking
 #
-# Per 07-Backend-Development-Standards §3:
+# Per 07-Backend-Development-Standards Â§3:
 #   - "Every function signature must be fully type-annotated"
 #   - "Static type checking runs in CI and is a merge blocker"
 #   - "Any is permitted only at genuine integration boundaries"
@@ -214,12 +215,12 @@ warn_required_dynamic_aliases = true
 warn_untyped_fields = true
 
 # ===========================================================================
-# pytest — Test Runner
+# pytest â€” Test Runner
 #
 # Per 11-Testing-Strategy:
 #   - Test pyramid: most unit, fewer integration, fewest E2E
-#   - "Confidence over coverage percentage" — coverage is a floor, not target
-#   - Fixtures through factory-boy (§6)
+#   - "Confidence over coverage percentage" â€” coverage is a floor, not target
+#   - Fixtures through factory-boy (Â§6)
 #   - asyncio mode for FastAPI/SQLAlchemy async tests
 # ===========================================================================
 
@@ -232,9 +233,9 @@ python_classes = ["Test*"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "unit: Unit tests — no I/O, no external dependencies",
-    "integration: Integration tests — real database, real services",
-    "api: API-level tests — HTTP request/response validation",
+    "unit: Unit tests â€” no I/O, no external dependencies",
+    "integration: Integration tests â€” real database, real services",
+    "api: API-level tests â€” HTTP request/response validation",
     "slow: Tests that take >1s to execute",
     "asyncio: Async test using pytest-asyncio",
 ]
@@ -263,9 +264,9 @@ asyncio_default_fixture_loop_scope = "function"
 loop_factory = "asyncio.new_event_loop"
 
 # ===========================================================================
-# Coverage — Floor and Regression Signal
+# Coverage â€” Floor and Regression Signal
 #
-# Per 11-Testing-Strategy §2:
+# Per 11-Testing-Strategy Â§2:
 #   - Coverage "treated as a floor and a regression signal, not a target"
 #   - "A meaningful drop on touched code blocks merge"
 # ===========================================================================
@@ -288,3 +289,4 @@ exclude_lines = [
     "@overload",
     "raise NotImplementedError",
 ]
+
