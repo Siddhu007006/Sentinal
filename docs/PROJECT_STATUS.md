@@ -14,7 +14,7 @@
 | **E2** | Backend Core (9/9) | ✅ COMPLETE | ✅ | 120+ passing | ✅ Verified |
 | **E3** | Database Foundation (11/11) | ✅ COMPLETE | ✅ | 600+ passing | ✅ Verified |
 | **E4** | Authentication & Authorization (11/11) | ✅ **COMPLETE & VERIFIED** | ✅ | 640 unit + 42 integration | ✅ Verified |
-| **E5** | Asset Upload & Management (0/8) | 🟡 STARTING (E5.T1) | - | - | - |
+| **E5** | Asset Upload & Management (1/8) | 🟡 **IN PROGRESS** | ✅ | 18 storage tests | ✅ T1 verified |
 | **E6-E25** | Remaining Epics (0/xxx) | ❌ NOT STARTED | ❌ | - | - |
 
 **Project Completion:** ~30% (4 complete epics, Epic 5 starting)
@@ -114,17 +114,25 @@
 
 ---
 
-## 🟡 STARTING: EPIC 5 - Asset Upload & Management
+## 🟡 IN PROGRESS: EPIC 5 - Asset Upload & Management
 
-**Next Task:** E5.T1 — Object Storage Adapter
+**Status:** 1/8 TASKS COMPLETE
+
+- ✅ E5.T1: Object Storage Adapter — abstract `StorageAdapter` interface
+  (domain layer) + `S3StorageAdapter` (aioboto3, S3-compatible/MinIO).
+  Five operations verified against real MinIO (upload/download/delete/
+  presigned URL/exists) with structured, secret-free error translation
+  (StorageConnectionError / StorageObjectNotFoundError / StorageError).
+  Routes and services depend only on the abstraction; the SDK never
+  leaks past the infrastructure layer.
 
 Architecture boundary: routes/services depend only on the abstract
 `StorageAdapter` interface (domain layer); the concrete S3/MinIO
 implementation (aioboto3) stays in infrastructure.
 
-Planned tasks: E5.T1 storage adapter, E5.T2 digital asset entity,
-E5.T3 upload entity, E5.T4 upload service, E5.T5 file validation,
-E5.T6 upload routes, E5.T7 asset routes, E5.T8 cleanup job.
+Remaining tasks: E5.T2 digital asset entity, E5.T3 upload entity,
+E5.T4 upload service, E5.T5 file validation, E5.T6 upload routes,
+E5.T7 asset routes, E5.T8 cleanup job.
 
 ---
 

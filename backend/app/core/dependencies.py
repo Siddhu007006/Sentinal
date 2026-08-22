@@ -38,6 +38,7 @@ from app.domain.repositories import (
     UploadRepository,
     UserRepository,
 )
+from app.domain.services.storage_adapter import StorageAdapter
 from app.infrastructure.database.repositories.analysis import (
     PostgreSQLAnalysisRepository,
 )
@@ -53,6 +54,7 @@ from app.infrastructure.database.repositories.refresh_token import (
 from app.infrastructure.database.repositories.upload import PostgreSQLUploadRepository
 from app.infrastructure.database.repositories.user import PostgreSQLUserRepository
 from app.infrastructure.database.session import get_db_session
+from app.infrastructure.storage.s3_adapter import S3StorageAdapter
 
 
 # Re-exports for DI interface
@@ -67,6 +69,7 @@ __all__ = [
     "get_request_context",
     "get_request_context_dict",
     "get_settings",
+    "get_storage_adapter",
     "get_upload_repository",
     "get_user_repository",
 ]
@@ -482,3 +485,46 @@ async def get_refresh_token_repository(
     See: 22-Engineering-Backlog E3.T9 (Refresh Tokens ORM Model & Migration).
     """
     return PostgreSQLRefreshTokenRepository(session)
+
+
+# ===========================================================================
+# Object Storage Adapter
+# ===========================================================================
+# StorageAdapter provider for the upload pipeline (Epic 5).
+#
+# Consumers depend on the StorageAdapter interface in the Domain layer;
+# this provider wires the concrete S3-compatible implementation. The
+# SDK (aioboto3) never leaks past this boundary.
+#
+# See: 03-Architecture §3 (dependency injection).
+# See: 22-Engineering-Backlog E5.T1 (Object Storage Adapter).
+# ===========================================================================
+
+
+def get_storage_adapter(
+    settings: Settings = Depends(get_settings),  # noqa: B008
+) -> StorageAdapter:
+    """Get StorageAdapter dependency for use in services.
+
+    Provides the S3-compatible object storage adapter configured from
+    application settings (endpoint, bucket, credentials).
+
+    Args:
+        settings: Application settings (injected singleton).
+
+    Returns:
+        StorageAdapter: Concrete S3 implementation ready for use.
+
+    Usage in services:
+        ```python
+        @router.post("/uploads")
+        async def upload(
+            storage: StorageAdapter = Depends(get_storage_adapter),
+        ) -> UploadResponse:
+            key = await storage.upload_stream(key, stream, content_type)
+            ...
+        ```
+
+    See: 22-Engineering-Backlog E5.T1.
+    """
+    return S3StorageAdapter(settings.storage)

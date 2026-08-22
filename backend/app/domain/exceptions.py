@@ -133,3 +133,31 @@ class TokenAlreadyRotatedError(Exception):
     """
 
     pass
+
+
+class StorageError(Exception):
+    """Base exception for object storage operations.
+
+    Raised by StorageAdapter implementations when an operation against the
+    object store fails. Infrastructure implementations convert SDK-specific
+    errors (botocore, aioboto3) into these domain exceptions so upper layers
+    never see SDK types.
+    """
+
+    pass
+
+
+class StorageConnectionError(StorageError):
+    """Object storage is unreachable or the request timed out.
+
+    Structured, secret-free error carrying the endpoint so operators can
+    diagnose connectivity without leaking credentials.
+    """
+
+    pass
+
+
+class StorageObjectNotFoundError(StorageError):
+    """The requested object key does not exist in the bucket."""
+
+    pass
