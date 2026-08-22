@@ -24,35 +24,59 @@ Traces to: 08-Security-Architecture §5 (Token lifecycle, atomicity)
 """
 
 from __future__ import annotations
-
 import asyncio
 from typing import TYPE_CHECKING, AsyncGenerator
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.infrastructure.database.session import get_db_session
 from app.main import create_app
+from tests.conftest import get_session_engine
 
 
 if TYPE_CHECKING:
     pass
 
-
 @pytest_asyncio.fixture
 async def client() -> AsyncGenerator[AsyncClient, None]:
-    """Provide AsyncClient for concurrent tests.
-    
-    Creates a fresh app instance for each test to ensure clean database state.
-    Uses ASGITransport for proper async/await support.
-    
-    Yields:
-        AsyncClient: Async HTTP client connected to test app
-    """
+    """Provide AsyncClient using the session-scoped test database engine."""
     app = create_app()
+
+    engine = get_session_engine()
+    if engine is None:
+        pytest.skip("Database not available")
+
+    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+        session_factory = async_sessionmaker(
+            engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
+        session = session_factory()
+
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
+
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+
+    async with AsyncClient(
+        transport=transport,
+        base_url="http://test",
+    ) as async_client:
         yield async_client
+
+    app.dependency_overrides.clear()
 
 
 class TestConcurrentTokenRefresh:

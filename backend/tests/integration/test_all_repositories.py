@@ -43,7 +43,7 @@ from app.models.analysis import Analysis as AnalysisORM
 from app.models.analysis import AnalysisStatus
 from app.models.digital_asset import AssetType
 from app.models.digital_asset import DigitalAsset as DigitalAssetORM
-from app.models.upload import Upload as UploadORM
+from app.models.upload import Upload as UploadORM, UploadStatus
 from app.models.user import User as UserORM
 
 
@@ -138,13 +138,24 @@ class TestAllRepositoriesUploadCRUD:
         repo = PostgreSQLUploadRepository(db_session)
 
         # Create
-        user_id = uuid4()
+        # Create user first because uploads.user_id is a foreign key.
+        user_orm = UserORM(
+            id=uuid4(),
+            email="upload-crud@example.com",
+            password_hash="test_hash_upload_crud",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         upload_orm = UploadORM(
             id=uuid4(),
-            user_id=user_id,
-            file_name="test.txt",
+            user_id=user_orm.id,
+            original_filename="test.txt",
+            content_type="text/plain",
             file_size_bytes=1024,
-            status="completed",
+            upload_status=UploadStatus.COMPLETED,
             storage_key="s3://bucket/key",
         )
         db_session.add(upload_orm)
@@ -152,11 +163,14 @@ class TestAllRepositoriesUploadCRUD:
 
         # Read
         created = await repo.get_by_id(upload_orm.id)
-        assert created.file_name == "test.txt"
+        assert created.original_filename == "test.txt"
 
         # Update
-        updated = await repo.update(upload_orm.id, {"status": "archived"})
-        assert updated.status == "archived"
+        updated = await repo.update(
+            upload_orm.id,
+            {"upload_status": UploadStatus.FAILED},
+        )
+        assert updated.upload_status == UploadStatus.FAILED
 
         # Delete
         await repo.delete(upload_orm.id)
@@ -171,15 +185,26 @@ class TestAllRepositoriesUploadCRUD:
 
         repo = PostgreSQLUploadRepository(db_session)
 
-        user_id = uuid4()
+        user_orm = UserORM(
+            id=uuid4(),
+            email="upload-list@example.com",
+            password_hash="test_hash_upload_list",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
+        user_id = user_orm.id
         # Create 2 uploads for user
         for i in range(2):
             upload_orm = UploadORM(
                 id=uuid4(),
                 user_id=user_id,
-                file_name=f"file{i}.txt",
+                original_filename=f"file{i}.txt",
+                content_type="text/plain",
                 file_size_bytes=1024 * (i + 1),
-                status="completed",
+                upload_status=UploadStatus.COMPLETED,
                 storage_key=f"s3://bucket/key{i}",
             )
             db_session.add(upload_orm)
@@ -208,12 +233,22 @@ class TestAllRepositoriesDigitalAssetCRUD:
         repo = PostgreSQLDigitalAssetRepository(db_session)
 
         # Create
+        user_orm = UserORM(
+            id=uuid4(),
+            email="asset-crud@example.com",
+            password_hash="test_hash_asset_crud",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         asset_orm = DigitalAssetORM(
             id=uuid4(),
-            user_id=uuid4(),
+            user_id=user_orm.id,
             asset_type=AssetType.URL,
+            raw_value="https://example.com",
             normalized_value="https://example.com",
-            sha256_hash="abc123def456",
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -223,8 +258,8 @@ class TestAllRepositoriesDigitalAssetCRUD:
         assert created.asset_type == AssetType.URL
 
         # Update
-        updated = await repo.update(asset_orm.id, {"asset_type": AssetType.IP})
-        assert updated.asset_type == AssetType.IP
+        updated = await repo.update(asset_orm.id, {"asset_type": AssetType.IP_ADDRESS})
+        assert updated.asset_type == AssetType.IP_ADDRESS
 
         # Delete
         await repo.delete(asset_orm.id)
@@ -242,12 +277,22 @@ class TestAllRepositoriesDigitalAssetCRUD:
         repo = PostgreSQLDigitalAssetRepository(db_session)
 
         # Create asset
+        user_orm = UserORM(
+            id=uuid4(),
+            email="asset-crud@example.com",
+            password_hash="test_hash_asset_crud",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         asset_orm = DigitalAssetORM(
             id=uuid4(),
-            user_id=uuid4(),
+            user_id=user_orm.id,
             asset_type=AssetType.URL,
+            raw_value="https://example.com",
             normalized_value="https://example.com",
-            sha256_hash="abc123def456",
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -268,15 +313,27 @@ class TestAllRepositoriesDigitalAssetCRUD:
 
         repo = PostgreSQLDigitalAssetRepository(db_session)
 
-        user_id = uuid4()
+        user_orm = UserORM(
+            id=uuid4(),
+            email="asset-list@example.com",
+            password_hash="test_hash_asset_list",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
+        user_id = user_orm.id
+
         # Create 2 assets for user
         for i in range(2):
             asset_orm = DigitalAssetORM(
                 id=uuid4(),
                 user_id=user_id,
                 asset_type=AssetType.URL,
+                raw_value=f"https://example{i}.com",
                 normalized_value=f"https://example{i}.com",
-                sha256_hash=f"hash{i}",
+               
             )
             db_session.add(asset_orm)
         await db_session.flush()
@@ -304,12 +361,23 @@ class TestAllRepositoriesAnalysisCRUD:
         repo = PostgreSQLAnalysisRepository(db_session)
 
         # Create asset first
+        user_orm = UserORM(
+            id=uuid4(),
+            email="analysis-crud@example.com",
+            password_hash="test_hash_analysis_crud",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         asset_orm = DigitalAssetORM(
             id=uuid4(),
-            user_id=uuid4(),
+            user_id=user_orm.id,
             asset_type=AssetType.URL,
+            raw_value="https://example.com",
             normalized_value="https://example.com",
-            sha256_hash="abc123def456",
+            
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -318,9 +386,11 @@ class TestAllRepositoriesAnalysisCRUD:
         analysis_orm = AnalysisORM(
             id=uuid4(),
             digital_asset_id=asset_orm.id,
+            requested_by=user_orm.id,
             analyzer_key="virustotal",
             analyzer_version="1.0.0",
             status=AnalysisStatus.PENDING,
+            analyzer_slugs=["virustotal"],
         )
         db_session.add(analysis_orm)
         await db_session.flush()
@@ -351,12 +421,23 @@ class TestAllRepositoriesAnalysisCRUD:
         repo = PostgreSQLAnalysisRepository(db_session)
 
         # Create asset
+        user_orm = UserORM(
+            id=uuid4(),
+            email="analysis-list@example.com",
+            password_hash="test_hash_analysis_list",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         asset_orm = DigitalAssetORM(
             id=uuid4(),
-            user_id=uuid4(),
+            user_id=user_orm.id,
             asset_type=AssetType.URL,
+            raw_value="https://example.com",
             normalized_value="https://example.com",
-            sha256_hash="abc123def456",
+            
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -366,9 +447,11 @@ class TestAllRepositoriesAnalysisCRUD:
             analysis_orm = AnalysisORM(
                 id=uuid4(),
                 digital_asset_id=asset_orm.id,
+                requested_by=user_orm.id,
                 analyzer_key=f"analyzer{i}",
                 analyzer_version="1.0.0",
                 status=AnalysisStatus.PENDING,
+                analyzer_slugs=[f"analyzer{i}"],
             )
             db_session.add(analysis_orm)
         await db_session.flush()
@@ -409,14 +492,17 @@ class TestAllRepositoriesConsistency:
         db_session.add(user_orm)
         await db_session.flush()
 
+      
+
         # Create 2 assets for user
         for i in range(2):
             asset_orm = DigitalAssetORM(
                 id=uuid4(),
                 user_id=user_orm.id,
                 asset_type=AssetType.URL,
+                raw_value=f"https://example{i}.com",
                 normalized_value=f"https://example{i}.com",
-                sha256_hash=f"hash{i}",
+                
             )
             db_session.add(asset_orm)
         await db_session.flush()
@@ -437,12 +523,23 @@ class TestAllRepositoriesConsistency:
         analysis_repo = PostgreSQLAnalysisRepository(db_session)
 
         # Create asset
+        user_orm = UserORM(
+            id=uuid4(),
+            email="multi-analysis@example.com",
+            password_hash="test_hash_multi_analysis",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         asset_orm = DigitalAssetORM(
             id=uuid4(),
-            user_id=uuid4(),
+            user_id=user_orm.id,
             asset_type=AssetType.URL,
+            raw_value="https://example.com",
             normalized_value="https://example.com",
-            sha256_hash="abc123def456",
+            
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -452,9 +549,13 @@ class TestAllRepositoriesConsistency:
             analysis_orm = AnalysisORM(
                 id=uuid4(),
                 digital_asset_id=asset_orm.id,
+                
+                requested_by=user_orm.id,
                 analyzer_key=f"analyzer{i}",
                 analyzer_version="1.0.0",
                 status=AnalysisStatus.PENDING,
+                analyzer_slugs=[f"analyzer{i}"],
+
             )
             db_session.add(analysis_orm)
         await db_session.flush()
@@ -515,12 +616,23 @@ class TestAllRepositoriesPagination:
         repo = PostgreSQLAnalysisRepository(db_session)
 
         # Create asset
+        user_orm = UserORM(
+            id=uuid4(),
+            email="asset-crud@example.com",
+            password_hash="test_hash_asset_crud",
+            is_active=True,
+            is_verified=False,
+        )
+        db_session.add(user_orm)
+        await db_session.flush()
+
         asset_orm = DigitalAssetORM(
             id=uuid4(),
-            user_id=uuid4(),
+            user_id=user_orm.id,
             asset_type=AssetType.URL,
+            raw_value="https://example.com",
             normalized_value="https://example.com",
-            sha256_hash="abc123def456",
+            
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -530,9 +642,11 @@ class TestAllRepositoriesPagination:
             analysis_orm = AnalysisORM(
                 id=uuid4(),
                 digital_asset_id=asset_orm.id,
+                requested_by=user_orm.id,
                 analyzer_key=f"analyzer{i}",
                 analyzer_version="1.0.0",
                 status=AnalysisStatus.PENDING,
+                analyzer_slugs=[f"analyzer{i}"],
             )
             db_session.add(analysis_orm)
         await db_session.flush()

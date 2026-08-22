@@ -115,10 +115,10 @@ E4V.T5 (Concurrency Review & Certification) [depends on E4V.T2, E4V.T3, E4V.T4]
 - [x] Database setup complete (E4V.T1 passed)
 - [x] All 6 registration tests pass
 - [x] All 4 login tests pass
-- [~] All 3 refresh tests pass
-- [~] All 3 logout tests pass
-- [~] All 3 profile tests pass
-- [~] Exit code: 0
+- [x] All 3 refresh tests pass
+- [x] All 3 logout tests pass
+- [x] All 3 profile tests pass
+- [x] Exit code: 0
 
 **Exit Criteria:**
 
@@ -173,12 +173,12 @@ E4V.T5 (Concurrency Review & Certification) [depends on E4V.T2, E4V.T3, E4V.T4]
 
 **Subtasks:**
 
-- [~] Python venv initialized (if needed)
-- [~] Dependencies installed
-- [~] MyPy command executed
-- [~] All errors resolved
-- [ ] Exit code: 0
-- [~] Critical modules verified (0 errors each)
+- [x] Python venv initialized (if needed)
+- [x] Dependencies installed
+- [x] MyPy command executed
+- [x] All errors resolved
+- [x] Exit code: 0
+- [x] Critical modules verified (0 errors each)
 
 **Exit Criteria:**
 
@@ -216,11 +216,11 @@ E4V.T5 (Concurrency Review & Certification) [depends on E4V.T2, E4V.T3, E4V.T4]
 
 **Subtasks:**
 
-- [~] Python available in PATH
-- [~] Compileall command executed
-- [~] No syntax errors
-- [ ] Exit code: 0
-- [~] `.pyc` files generated
+- [x] Python available in PATH
+- [x] Compileall command executed
+- [x] No syntax errors
+- [x] Exit code: 0
+- [x] `.pyc` files generated
 
 **Exit Criteria:**
 
@@ -245,19 +245,19 @@ E4V.T5 (Concurrency Review & Certification) [depends on E4V.T2, E4V.T3, E4V.T4]
    - Only one succeeds (HTTP 200)
    - One fails with 401 Unauthorized (TokenRevokedError)
 3. Security & Quality Certification Checklist completed:
-   - [~] Ruff: 0 violations
-   - [~] MyPy --strict: 0 errors
-   - [~] Compileall: Exit 0
-   - [~] Integration Tests: 19/19 pass
-   - [~] Password Hashing: Constant-time verification
-   - [~] JWT Claims: All required claims present
-   - [~] Token Lifetimes: Access 15min, Refresh 30days
-   - [~] Token Revocation: Checked on every refresh
-   - [~] RBAC: Role from JWT only
-   - [~] Enumeration Prevention: 404 on forbidden
-   - [~] Audit Logging: All events logged
-   - [~] Soft-Delete: Inactive users filtered
-   - [~] Token Rotation Concurrency: Atomic, race-condition-free
+   - [x] Ruff: 0 violations
+   - [x] MyPy --strict: 0 errors
+   - [x] Compileall: Exit 0
+   - [x] Integration Tests: 19/19 pass
+   - [x] Password Hashing: Constant-time verification
+   - [x] JWT Claims: All required claims present
+   - [x] Token Lifetimes: Access 15min, Refresh 30days
+   - [x] Token Revocation: Checked on every refresh
+   - [x] RBAC: Role from JWT only
+   - [x] Enumeration Prevention: 404 on forbidden
+   - [x] Audit Logging: All events logged
+   - [x] Soft-Delete: Inactive users filtered
+   - [x] Token Rotation Concurrency: Atomic, race-condition-free
 4. All checklist items marked ✓ (complete)
 5. Verification report created with final status
 
@@ -286,13 +286,13 @@ E4V.T5 (Concurrency Review & Certification) [depends on E4V.T2, E4V.T3, E4V.T4]
 
 **Subtasks:**
 
-- [~] Code review: Database row locking verified
-- [~] Concurrency test written
-- [~] Concurrency test passes (one success, one failure)
-- [~] Security checklist reviewed and completed
-- [~] All checklist items marked ✓
-- [~] Verification report created
-- [~] Epic 4 status updated to COMPLETE & VERIFIED
+- [x] Code review: Database row locking verified
+- [x] Concurrency test written
+- [x] Concurrency test passes (one success, one failure)
+- [x] Security checklist reviewed and completed
+- [x] All checklist items marked ✓
+- [x] Verification report created
+- [x] Epic 4 status updated to COMPLETE & VERIFIED
 
 **Exit Criteria:**
 

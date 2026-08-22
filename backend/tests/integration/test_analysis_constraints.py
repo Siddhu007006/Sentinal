@@ -96,7 +96,7 @@ async def test_fk_constraint_accepts_valid_digital_asset_id(
 
     # Create valid user and asset
     user = User(
-        email="valid-asset-test@example.com",
+        email="valid-fk-asset-test@example.com",
         password_hash="$2b$12$hash",
         full_name="Valid Asset Test",
         role=UserRole.ANALYST.value,
@@ -107,8 +107,8 @@ async def test_fk_constraint_accepts_valid_digital_asset_id(
     asset = DigitalAsset(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="example.com",
-        normalized_value="example.com",
+        raw_value="valid-fk-asset-test.com",
+        normalized_value="valid-fk-asset-test.com",
     )
     db_session.add(asset)
     await db_session.flush()
@@ -167,8 +167,8 @@ async def test_fk_constraint_rejects_invalid_requested_by(
     asset = DigitalAsset(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="example.com",
-        normalized_value="example.com",
+        raw_value="example-fk-invalid-requested-by.com",
+        normalized_value="example-fk-invalid-requested-by.com"
     )
     db_session.add(asset)
     await db_session.flush()
@@ -217,7 +217,7 @@ async def test_fk_on_delete_restrict_prevents_asset_deletion(
 
     # Create user, asset, and analysis
     user = User(
-        email="restrict-test@example.com",
+        email="restrict-asset-delete-test@example.com",
         password_hash="$2b$12$hash",
         full_name="Restrict Test",
         role=UserRole.ANALYST.value,
@@ -228,8 +228,8 @@ async def test_fk_on_delete_restrict_prevents_asset_deletion(
     asset = DigitalAsset(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="restrict.com",
-        normalized_value="restrict.com",
+        raw_value="restrict-asset-delete-test.com",
+        normalized_value="restrict-asset-delete-test.com",
     )
     db_session.add(asset)
     await db_session.flush()
@@ -246,7 +246,7 @@ async def test_fk_on_delete_restrict_prevents_asset_deletion(
     await db_session.commit()
 
     # Attempt to delete asset (should be blocked by FK ON DELETE RESTRICT)
-    db_session.delete(asset)  # type: ignore[unused-coroutine]
+    await db_session.delete(asset)
 
     with pytest.raises(IntegrityError):
         await db_session.commit()
@@ -297,8 +297,8 @@ async def test_fk_on_delete_restrict_prevents_user_deletion(
     asset = DigitalAsset(
         user_id=owner.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="restrict.com",
-        normalized_value="restrict.com",
+        raw_value="restrict-user-delete-test.com",
+        normalized_value="restrict-user-delete-test.com",
     )
     db_session.add(asset)
     await db_session.flush()
@@ -315,7 +315,7 @@ async def test_fk_on_delete_restrict_prevents_user_deletion(
     await db_session.commit()
 
     # Attempt to delete requester (should be blocked by FK ON DELETE RESTRICT)
-    db_session.delete(requester)  # type: ignore[unused-coroutine]
+    await db_session.delete(requester)
 
     with pytest.raises(IntegrityError):
         await db_session.commit()
@@ -721,7 +721,7 @@ async def test_unique_index_enforces_completed_idempotency(
 
     # Create valid user and asset
     user = User(
-        email="idempotency@example.com",
+        email="completed-idempotency-test@example.com",
         password_hash="$2b$12$hash",
         full_name="Idempotency",
         role=UserRole.ANALYST.value,
@@ -732,8 +732,8 @@ async def test_unique_index_enforces_completed_idempotency(
     asset = DigitalAsset(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="idempotent.com",
-        normalized_value="idempotent.com",
+        raw_value="completed-idempotency-test.com",
+        normalized_value="completed-idempotency-test.com",
     )
     db_session.add(asset)
     await db_session.flush()
@@ -800,7 +800,7 @@ async def test_partial_unique_index_allows_pending_duplicates(
 
     # Create valid user and asset
     user = User(
-        email="pending-retry@example.com",
+        email="pending-duplicate-test@example.com",
         password_hash="$2b$12$hash",
         full_name="Pending Retry",
         role=UserRole.ANALYST.value,
@@ -811,8 +811,8 @@ async def test_partial_unique_index_allows_pending_duplicates(
     asset = DigitalAsset(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="pending.com",
-        normalized_value="pending.com",
+        raw_value="pending-duplicate-test.com",
+        normalized_value="pending-duplicate-test.com",
     )
     db_session.add(asset)
     await db_session.flush()
@@ -874,7 +874,7 @@ async def test_partial_unique_index_allows_failed_duplicates(
 
     # Create valid user and asset
     user = User(
-        email="failed-retry@example.com",
+        email="failed-duplicate-test@example.com",
         password_hash="$2b$12$hash",
         full_name="Failed Retry",
         role=UserRole.ANALYST.value,
@@ -885,8 +885,8 @@ async def test_partial_unique_index_allows_failed_duplicates(
     asset = DigitalAsset(
         user_id=user.id,
         asset_type=AssetType.DOMAIN,
-        raw_value="failed.com",
-        normalized_value="failed.com",
+        raw_value="failed-duplicate-test.com",
+        normalized_value="failed-duplicate-test.com",
     )
     db_session.add(asset)
     await db_session.flush()

@@ -352,7 +352,7 @@ E4.T9 (Audit Logging) → E4.T10 (Session Mgmt) → E4.T11 (Integration)
 - [x] Implement GET /users/{userId} (ownership check, 404 on forbidden)
 - [x] Implement PATCH /users/{userId} (role change with RBAC)
 - [x] Implement DELETE /users/{userId} (soft-delete)
-- [ ] Write integration tests
+- [x] Write integration tests
 
 ---
 

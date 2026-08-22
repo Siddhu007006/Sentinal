@@ -27,11 +27,14 @@ from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
 
 from app.domain.entities.user import User, UserRole
+from app.domain.exceptions import NotFound
 from app.infrastructure.security.jwt import InvalidTokenError, TokenExpiredError
 from app.infrastructure.security.password import get_password_hasher
 
 
 if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from app.domain.repositories.refresh_token import RefreshTokenRepository
     from app.domain.repositories.user import UserRepository
     from app.domain.services.audit_service import AuditService
@@ -152,16 +155,11 @@ class AuthService:
         # Validate email is unique
         try:
             await self.user_repo.get_by_email(email)
-            # If we get here, user exists
+        except NotFound:
+            # Email available — proceed with registration
+            pass
+        else:
             raise DuplicateEmailError(f"Email already registered: {email}")
-        except Exception as e:
-            # Expected: NotFound exception if user doesn't exist
-            # Unexpected: other exceptions should be re-raised
-            if "NotFound" not in str(type(e).__name__):
-                if isinstance(e, DuplicateEmailError):
-                    raise
-                # Other exceptions: could be database error
-                raise
 
         # Validate password strength (minimum 12 characters)
         if len(password) < 12:
@@ -477,8 +475,6 @@ class AuthService:
         # without affecting the outer transaction.
         from typing import cast
 
-        from sqlalchemy.ext.asyncio import AsyncSession
-
         new_access_token: str | None = None
         new_refresh_token: str | None = None
 
@@ -486,12 +482,24 @@ class AuthService:
             # Cast to access the session directly (protected attribute of repository)
             session = cast("AsyncSession", self.refresh_token_repo.session)  # type: ignore[attr-defined]
             async with session.begin_nested():
-                # Within savepoint: revoke old token atomically
+                # Check the token state BEFORE attempting the
+                # atomic race-winning revocation update.
+                existing_token = await self.refresh_token_repo.get_by_jti(payload.jti)
+
+                if existing_token is None:
+                    raise InvalidTokenError("Refresh token not found")
+
+                if existing_token.is_revoked:
+                    raise TokenRevokedError("Token has been revoked")
+
+                # Atomically revoke the active token to win the refresh race.
                 revoked_successfully = (
                     await self.refresh_token_repo.atomic_revoke_by_jti(payload.jti)
                 )
+
                 if not revoked_successfully:
-                    # Another request already revoked this token
+                    # We observed an active token, but another concurrent request
+                    # revoked it before this request could win the atomic update.
                     raise TokenAlreadyRotatedError(
                         "Refresh token was concurrently rotated by another request"
                     )
@@ -501,7 +509,6 @@ class AuthService:
                     user.id, user.role
                 )
                 new_refresh_token = self.token_service.create_refresh_token(user.id)
-
                 # Decode new refresh token to get JTI for storage
                 new_refresh_payload = self.token_service.decode_token(
                     new_refresh_token

@@ -43,6 +43,7 @@ def valid_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
         full_name="Test User",
     )
@@ -57,6 +58,7 @@ def inactive_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=False,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -70,6 +72,7 @@ def admin_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.ADMIN,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -83,6 +86,7 @@ def analyst_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.ANALYST,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -517,6 +521,7 @@ async def test_get_current_user_with_uppercase_bearer() -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -561,6 +566,7 @@ async def test_require_role_with_list_of_single_role() -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.ADMIN,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -583,6 +589,7 @@ async def test_require_role_all_three_roles() -> None:
             password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
             role=role,
             is_active=True,
+            is_verified=False,
             created_at=datetime.now(tz=UTC),
         )
 

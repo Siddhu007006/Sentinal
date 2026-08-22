@@ -372,11 +372,11 @@ async def test_check_constraints_created_after_migration(
 
     # Expected CHECK constraints
     expected_constraints = {
-        "ck_analyses_status",
-        "ck_analyses_threat_score",
-        "ck_analyses_confidence",
-        "ck_analyses_severity",
-        "ck_analyses_retry_count",
+        "ck_analyses_ck_analyses_status",
+        "ck_analyses_ck_analyses_threat_score",
+        "ck_analyses_ck_analyses_confidence",
+        "ck_analyses_ck_analyses_severity",
+        "ck_analyses_ck_analyses_retry_count",
     }
 
     actual_constraints = set(constraints)

@@ -6,6 +6,7 @@ Pydantic models for API contracts for authentication endpoints:
 - LoginRequest, TokenPairResponse (for POST /auth/login)
 - RefreshTokenRequest, TokenPairResponse (for POST /auth/refresh)
 - LogoutRequest (for POST /auth/logout)
+- UserUpdateRequest (for PATCH /users/{userId})
 
 Traces to: Requirement 6 in requirements.md
 Traces to: 07-Backend-Development-Standards §4 (Pydantic schemas)
@@ -15,6 +16,7 @@ Traces to: backend/openapi.yaml (exact response schemas)
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003
+from typing import Literal
 from uuid import UUID  # noqa: TC003
 
 from pydantic import Field
@@ -73,6 +75,27 @@ class UserResponse(BaseSchema):
         ...,
         alias="createdAt",
         examples=["2024-02-10T08:00:00Z"],
+    )
+
+
+class UserUpdateRequest(BaseSchema):
+    """Request body for PATCH /users/{userId}.
+
+    Partial update of a user profile. Profile fields (fullName) can be
+    changed by the owner or an admin. The role field can only be changed
+    by an admin (403 otherwise). Omitted fields are left unchanged.
+    """
+
+    full_name: str | None = Field(
+        None,
+        alias="fullName",
+        examples=["Alice Smith"],
+        description="User's new full name (optional)",
+    )
+    role: Literal["admin", "analyst", "viewer"] | None = Field(
+        None,
+        examples=["analyst"],
+        description="New role (admin-only; one of: admin, analyst, viewer)",
     )
 
 

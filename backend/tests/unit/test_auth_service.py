@@ -30,6 +30,7 @@ from app.application.services.auth_service import (
 )
 from app.domain.entities.refresh_token import RefreshToken
 from app.domain.entities.user import User, UserRole
+from app.domain.exceptions import NotFound
 from app.infrastructure.security.jwt import (
     InvalidTokenError,
     TokenExpiredError,
@@ -50,7 +51,19 @@ def user_repo() -> AsyncMock:
 @pytest.fixture
 def refresh_token_repo() -> AsyncMock:
     """Mock RefreshTokenRepository."""
-    return AsyncMock()
+    repo = AsyncMock()
+
+    session = AsyncMock()
+
+    transaction = AsyncMock()
+    transaction.__aenter__.return_value = None
+    transaction.__aexit__.return_value = None
+
+    session.begin_nested = MagicMock(return_value=transaction)
+
+    repo.session = session
+
+    return repo
 
 
 @pytest.fixture
@@ -96,6 +109,7 @@ def valid_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(UTC),
     )
 
@@ -109,6 +123,7 @@ def inactive_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=False,
+        is_verified=False,
         created_at=datetime.now(UTC),
     )
 
@@ -156,16 +171,14 @@ async def test_register_success_creates_user_with_viewer_role(
     **Validates: Requirement 5, AC #1**
     """
     # Setup: User doesn't exist
-    class NotFoundError(Exception):
-        pass
-
-    user_repo.get_by_email.side_effect = NotFoundError("User not found")
+    user_repo.get_by_email.side_effect = NotFound("User not found")
     created_user = User(
         id=uuid4(),
         email="newuser@example.com",
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(UTC),
     )
     user_repo.create.return_value = created_user
@@ -221,10 +234,7 @@ async def test_register_password_too_weak_raises_error(
 
     **Validates: Requirement 5, AC #4**
     """
-    class NotFoundError(Exception):
-        pass
-
-    user_repo.get_by_email.side_effect = NotFoundError("User not found")
+    user_repo.get_by_email.side_effect = NotFound("User not found")
 
     with pytest.raises(PasswordTooWeakError, match="at least 12 characters"):
         await auth_service.register(
@@ -244,10 +254,7 @@ async def test_register_invalid_email_raises_error(
 
     **Validates: Requirement 5, AC #3**
     """
-    class NotFoundError(Exception):
-        pass
-
-    user_repo.get_by_email.side_effect = NotFoundError("User not found")
+    user_repo.get_by_email.side_effect = NotFound("User not found")
 
     with pytest.raises(ValueError, match="Invalid email format"):
         await auth_service.register(
@@ -268,16 +275,14 @@ async def test_register_audit_failure_does_not_block(
 
     **Validates: Requirement 5, AC #13**
     """
-    class NotFoundError(Exception):
-        pass
-
-    user_repo.get_by_email.side_effect = NotFoundError("User not found")
+    user_repo.get_by_email.side_effect = NotFound("User not found")
     created_user = User(
         id=uuid4(),
         email="user@example.com",
         password_hash="$argon2id$...",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(UTC),
     )
     user_repo.create.return_value = created_user
@@ -453,14 +458,16 @@ async def test_refresh_success_returns_new_token_pair(
     token_service.create_access_token.return_value = "new_access_token"
     token_service.create_refresh_token.return_value = "new_refresh_token"
     refresh_token_repo.create.return_value = None
-    refresh_token_repo.revoke.return_value = None
+    refresh_token_repo.atomic_revoke_by_jti.return_value = True
 
     access, refresh = await auth_service.refresh(refresh_token="old_refresh_token_jwt")
 
     assert access == "new_access_token"
     assert refresh == "new_refresh_token"
     # Verify token rotation: old token revoked, new token stored
-    refresh_token_repo.revoke.assert_called_once()
+    refresh_token_repo.atomic_revoke_by_jti.assert_called_once_with(
+        valid_token_payload.jti
+    )
     refresh_token_repo.create.assert_called_once()
     audit_service.log_token_refresh.assert_called_once()
 
@@ -503,7 +510,7 @@ async def test_refresh_revoked_token_raises_error(
         created_at=datetime.now(UTC),
     )
     refresh_token_repo.get_by_jti.return_value = revoked_token
-
+    refresh_token_repo.atomic_revoke_by_jti.return_value = False
     with pytest.raises(TokenRevokedError, match="has been revoked"):
         await auth_service.refresh(refresh_token="revoked_token")
 
@@ -563,7 +570,7 @@ async def test_logout_specific_token_revokes_only_that_token(
     """
     token_service.decode_token.return_value = valid_token_payload
     refresh_token_repo.get_by_jti.return_value = valid_refresh_token
-    refresh_token_repo.revoke.return_value = None
+    refresh_token_repo.atomic_revoke_by_jti.return_value = True
 
     await auth_service.logout(
         user_id=valid_user_id,
@@ -659,10 +666,7 @@ async def test_password_validation_boundary_11_chars_fails(
     user_repo: AsyncMock,
 ) -> None:
     """Test: Password with 11 characters fails validation."""
-    class NotFoundError(Exception):
-        pass
-
-    user_repo.get_by_email.side_effect = NotFoundError("User not found")
+    user_repo.get_by_email.side_effect = NotFound("User not found")
 
     with pytest.raises(PasswordTooWeakError):
         await auth_service.register(
@@ -678,16 +682,14 @@ async def test_password_validation_boundary_12_chars_passes(
     audit_service: AsyncMock,
 ) -> None:
     """Test: Password with exactly 12 characters passes validation."""
-    class NotFoundError(Exception):
-        pass
-
-    user_repo.get_by_email.side_effect = NotFoundError("User not found")
+    user_repo.get_by_email.side_effect = NotFound("User not found")
     created_user = User(
         id=uuid4(),
         email="user@example.com",
         password_hash="$argon2id$...",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(UTC),
     )
     user_repo.create.return_value = created_user
@@ -714,9 +716,6 @@ async def test_email_validation_accepts_valid_formats(
     audit_service: AsyncMock,
 ) -> None:
     """Test: Email validation accepts various valid formats."""
-    class NotFoundError(Exception):
-        pass
-
     valid_emails = [
         "user@example.com",
         "user+tag@example.com",
@@ -724,7 +723,7 @@ async def test_email_validation_accepts_valid_formats(
     ]
 
     for email in valid_emails:
-        user_repo.get_by_email.side_effect = NotFoundError("User not found")
+        user_repo.get_by_email.side_effect = NotFound("User not found")
 
         created_user = User(
             id=uuid4(),
@@ -732,6 +731,7 @@ async def test_email_validation_accepts_valid_formats(
             password_hash="$argon2id$...",
             role=UserRole.VIEWER,
             is_active=True,
+            is_verified=False,
             created_at=datetime.now(UTC),
         )
         user_repo.create.return_value = created_user
@@ -757,9 +757,6 @@ async def test_email_validation_rejects_invalid_formats(
     user_repo: AsyncMock,
 ) -> None:
     """Test: Email validation rejects invalid formats."""
-    class NotFoundError(Exception):
-        pass
-
     invalid_emails = [
         "no-at-sign",
         "user@",
@@ -767,7 +764,7 @@ async def test_email_validation_rejects_invalid_formats(
     ]
 
     for email in invalid_emails:
-        user_repo.get_by_email.side_effect = NotFoundError("User not found")
+        user_repo.get_by_email.side_effect = NotFound("User not found")
 
         with pytest.raises(ValueError, match="Invalid email format"):
             await auth_service.register(
@@ -825,7 +822,7 @@ async def test_refresh_stores_new_token_with_jti(
     token_service.create_access_token.return_value = "new_access_token"
     token_service.create_refresh_token.return_value = "new_refresh_token"
     refresh_token_repo.create.return_value = None
-    refresh_token_repo.revoke.return_value = None
+    refresh_token_repo.atomic_revoke_by_jti.return_value = True
 
     await auth_service.refresh(refresh_token="refresh_token_jwt")
 

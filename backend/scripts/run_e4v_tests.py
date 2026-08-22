@@ -15,7 +15,7 @@ os.environ["ENVIRONMENT"] = "test"
 # Run pytest
 result = subprocess.run(
     [sys.executable, "-m", "pytest", "tests/integration/", "-v", "--tb=short"],
-    cwd=os.path.dirname(os.path.abspath(__file__)),
+    cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 )
 
 sys.exit(result.returncode)

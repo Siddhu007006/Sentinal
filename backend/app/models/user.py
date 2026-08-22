@@ -120,11 +120,11 @@ class User(BaseModel):
     # Uploads relationship - One-to-many: a user has many uploads
     # Lazy loading strategy: "select" (separate query, default SQLAlchemy behavior)
     # Rationale: Collection may be large; selectin and joined both cause issues.
-    #           Use default lazy="select" to load on explicit access only.
+    #           Use default lazy="selectin" to load on explicit access only.
     uploads: Mapped[list[Upload]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Upload",
         back_populates="user",
-        lazy="select",
+        lazy="selectin",
     )
 
     # Analyses relationship - One-to-many: a user has many analyses they requested
@@ -134,7 +134,7 @@ class User(BaseModel):
     analyses_requested: Mapped[list[Analysis]] = relationship(  # type: ignore[name-defined]  # noqa: F821
         "Analysis",
         back_populates="user",
-        lazy="select",
+        lazy="selectin",
         foreign_keys="Analysis.requested_by",
     )
 

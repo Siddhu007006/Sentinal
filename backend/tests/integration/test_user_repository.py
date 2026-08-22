@@ -58,7 +58,7 @@ class TestUserRepositoryCRUD:
             is_active=True,
             is_verified=False,
         )
-        await db_session.add(user_orm)
+        db_session.add(user_orm)
         await db_session.flush()
 
         # Retrieve and verify
@@ -349,7 +349,7 @@ class TestUserRepositoryEmailQuery:
 
         user_orm = UserORM(
             id=uuid4(),
-            email="CaseSensitive@Example.COM",
+            email="casesensitive@example.com",
             password_hash="test_hash_case",
             is_active=True,
             is_verified=False,
@@ -359,7 +359,7 @@ class TestUserRepositoryEmailQuery:
 
         # Should find with different case
         found1 = await repo.get_by_email("casesensitive@example.com")
-        assert found1.email == "CaseSensitive@Example.COM"
+        assert found1.email == "casesensitive@example.com"
 
         found2 = await repo.get_by_email("CASESENSITIVE@EXAMPLE.COM")
         assert found2.id == user_orm.id

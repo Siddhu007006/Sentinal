@@ -30,7 +30,6 @@ Usage in route handlers:
 Traces to: 07-Backend-Development-Standards §4 (dependency injection)
 Traces to: 08-Security-Architecture §5 (authorization checks)
 """
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -222,7 +221,9 @@ def require_role(
     # Convert to UserRole enum values for comparison
     required_role_values = list(roles)
 
-    async def role_check(current_user: User) -> User:
+    async def role_check(
+        current_user: User = Depends(get_current_user),  # noqa: B008
+    ) -> User:
         """Inner dependency that checks role and returns user or raises 403.
 
         Args:

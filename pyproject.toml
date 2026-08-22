@@ -1,4 +1,4 @@
-﻿[build-system]
+[build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
@@ -137,6 +137,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "backend/tests/**" = [
     "S101",    # assert is the test mechanism
+    "S107",    # hardcoded test passwords are intentional in fixtures
     "S105",    # hardcoded secrets in test env vars
     "S106",    # hardcoded password fixture (tests use fixed test values)
     "S603",    # subprocess call in tests
@@ -244,7 +245,6 @@ filterwarnings = [
     "ignore::DeprecationWarning:passlib.*",
     "ignore::DeprecationWarning:asyncio.*",
     "ignore::DeprecationWarning:pytest_asyncio.*",
-    "ignore::starlette.exceptions.StarletteDeprecationWarning",
     "ignore::RuntimeWarning:asyncio.*",
     "ignore::ResourceWarning",
 ]

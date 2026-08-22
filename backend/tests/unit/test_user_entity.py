@@ -43,6 +43,7 @@ def valid_user(valid_user_id: UUID) -> User:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -79,6 +80,7 @@ def test_user_creation_with_all_fields(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.ADMIN,
         is_active=True,
+        is_verified=False,
         created_at=now,
         full_name="John Doe",
         updated_at=now,
@@ -98,6 +100,7 @@ def test_user_creation_with_admin_role(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.ADMIN,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -112,6 +115,7 @@ def test_user_creation_with_analyst_role(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.ANALYST,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -126,6 +130,7 @@ def test_user_creation_with_viewer_role(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -155,6 +160,7 @@ def test_user_email_validation_accepts_complex_format(valid_user_id: UUID) -> No
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -172,6 +178,7 @@ def test_user_email_validation_rejects_no_at_symbol(valid_user_id: UUID) -> None
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -190,6 +197,7 @@ def test_user_email_validation_rejects_at_without_domain(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -208,6 +216,7 @@ def test_user_email_validation_rejects_at_without_local_part(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -224,6 +233,7 @@ def test_user_email_validation_rejects_empty_email(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -247,6 +257,7 @@ def test_user_role_validation_accepts_all_three_roles(
             password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
             role=role,
             is_active=True,
+            is_verified=False,
             created_at=datetime.now(tz=UTC),
         )
 
@@ -267,6 +278,7 @@ def test_user_role_validation_rejects_invalid_string_role(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,  # Set valid role initially
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -286,6 +298,7 @@ def test_user_role_validation_rejects_none_role(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -313,6 +326,7 @@ def test_user_password_hash_validation_rejects_empty_hash(
         password_hash="",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -331,6 +345,7 @@ def test_user_password_hash_validation_rejects_none_hash(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -356,6 +371,7 @@ def test_user_password_hash_is_not_plaintext(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -405,6 +421,7 @@ def test_user_email_immutability_never_changes(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -435,6 +452,7 @@ def test_user_created_at_immutability_never_changes(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=created_at,
     )
 
@@ -465,6 +483,7 @@ def test_user_password_hash_immutability_never_changes(
         password_hash=password_hash,
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -625,6 +644,7 @@ def test_user_update_profile_preserves_deleted_at(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=False,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
         deleted_at=deleted_at,
     )
@@ -667,6 +687,7 @@ def test_user_update_role_changes_role_to_viewer(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.ADMIN,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -757,6 +778,7 @@ def test_user_validate_catches_all_email_validation_errors(
             password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
             role=UserRole.VIEWER,
             is_active=True,
+            is_verified=False,
             created_at=datetime.now(tz=UTC),
         )
 
@@ -777,6 +799,7 @@ def test_user_validate_catches_all_role_validation_errors(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -802,6 +825,7 @@ def test_user_validate_catches_all_password_hash_errors(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 
@@ -834,6 +858,7 @@ def test_user_validate_with_complex_scenario(valid_user_id: UUID) -> None:
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$s4v8n0Jw8m8$B4tVG9cB4mVHqXq8",
         role=UserRole.ANALYST,
         is_active=False,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
         full_name="Complex User Name",
         updated_at=datetime.now(tz=UTC),
@@ -860,6 +885,7 @@ def test_user_full_lifecycle_deactivate_update_then_reactivate(
         password_hash="$argon2id$v=19$m=65536,t=2,p=4$hash",
         role=UserRole.VIEWER,
         is_active=True,
+        is_verified=False,
         created_at=datetime.now(tz=UTC),
     )
 

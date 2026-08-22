@@ -27,8 +27,11 @@ from typing import TYPE_CHECKING, AsyncGenerator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.infrastructure.database.session import get_db_session
 from app.main import create_app
+from tests.conftest import get_session_engine
 
 
 if TYPE_CHECKING:
@@ -52,9 +55,29 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
         AsyncClient: Async HTTP client connected to test app
     """
     app = create_app()
+    engine = get_session_engine()
+    assert engine is not None
+
+    session_factory = async_sessionmaker(
+        engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
+        async with session_factory() as session:
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    app.dependency_overrides[get_db_session] = override_get_db_session
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as async_client:
         yield async_client
+    app.dependency_overrides.clear()
 
 
 class TestAuthRegister:

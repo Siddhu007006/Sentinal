@@ -18,9 +18,8 @@ transactional consistency without manual session management in business logic.
 Engine lifecycle:
 - Created once on first database access
 - Reused for entire application lifetime
-- TODO: Must be disposed during application shutdown (await engine.dispose())
-  to properly close connection pool. Currently not implemented - engine will
-  be cleaned up on process termination.
+- Disposed during application shutdown via dispose_engine(), called from
+  the application lifespan in app/main.py
 
 Traces to: 07-Backend-Development-Standards §8 (transactions, session lifecycle)
 Traces to: 22-Engineering-Backlog E3.T1 (session factory, request-scoped DI)
@@ -28,6 +27,7 @@ Traces to: 22-Engineering-Backlog E3.T1 (session factory, request-scoped DI)
 
 from collections.abc import AsyncGenerator
 
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.core.settings import Settings
@@ -39,9 +39,8 @@ from app.infrastructure.database.engine import create_database_engine
 # for all subsequent requests. This avoids recreating infrastructure
 # on every request.
 #
-# Note: Engine should be disposed during application shutdown with
-# await engine.dispose() to properly close the connection pool.
-# This will be implemented when wiring application startup/shutdown lifecycle.
+# Engine disposal is handled by the application lifespan (app/main.py),
+# which calls dispose_engine() on shutdown to close the connection pool.
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
@@ -126,76 +125,23 @@ def _get_session_factory(settings: Settings) -> async_sessionmaker[AsyncSession]
 
     return _session_factory
 
+def _get_settings() -> Settings:
+    """Provide application settings to FastAPI without creating an import cycle."""
+    from app.core.dependencies import get_settings
 
-async def get_db_session() -> AsyncGenerator[AsyncSession]:
+    return get_settings()
+
+
+async def get_db_session(
+    settings: Settings = Depends(_get_settings),  # noqa: B008
+) -> AsyncGenerator[AsyncSession]:
     """
     FastAPI dependency providing request-scoped database session.
 
     This is the ONLY way database sessions should be obtained in the application.
     All route handlers, services, and repositories that need database access
     must declare this as a dependency.
-
-    Lifecycle (automatic, per request):
-        1. Session created from factory
-        2. Session yielded to request handler
-        3. On success: session.commit() → session.close()
-        4. On exception: session.rollback() → session.close() → re-raise
-
-    The commit/rollback/close sequence is guaranteed even if the request
-    handler raises an exception, preventing connection leaks and ensuring
-    transactional consistency.
-
-    Usage in route handlers:
-        ```python
-        @router.get("/users/{user_id}")
-        async def get_user(
-            user_id: UUID,
-            db: AsyncSession = Depends(get_db_session),
-        ) -> UserResponse:
-            # db is request-scoped, auto-managed
-            result = await db.execute(select(User).where(User.id == user_id))
-            user = result.scalar_one_or_none()
-            if not user:
-                raise HTTPException(404)
-            return UserResponse.from_orm(user)
-            # Auto-commit on success, auto-rollback on HTTPException
-        ```
-
-    Usage in Application services:
-        ```python
-        class UserService:
-            def __init__(self, db: AsyncSession):
-                self.db = db
-
-            async def create_user(self, data: CreateUserData) -> User:
-                user = User(**data.model_dump())
-                self.db.add(user)
-                await self.db.flush()  # Get ID without committing
-                return user
-                # Service doesn't commit — request handler commits
-        ```
-
-    Yields:
-        AsyncSession: Request-scoped database session
-
-    Raises:
-        Any exception from request handler (after rollback + close)
-
-    Security considerations (08-Security-Architecture):
-        - No connection string leakage (managed internally)
-        - Automatic rollback prevents partial writes on error
-        - Session isolation ensures no cross-request data leakage
-
-    Performance considerations (07-Backend-Development-Standards §13):
-        - Engine and factory cached at module level
-        - Connections reused from pool
-        - expire_on_commit=False reduces post-commit query load
-        - Explicit session.close() returns connection to pool immediately
     """
-    # Import here to avoid circular import at module level
-    from app.core.dependencies import get_settings as _get_settings_func
-
-    settings = _get_settings_func()
     session_factory = _get_session_factory(settings)
     session = session_factory()
 

@@ -178,5 +178,5 @@ def downgrade() -> None:
     op.drop_index("ix_reports_created_by", table_name="reports")
     op.drop_index("ix_reports_status_created", table_name="reports")
     op.drop_index("ix_reports_asset_created", table_name="reports")
-    op.drop_constraint("ck_reports_status_valid", "reports")
+    op.drop_constraint("ck_reports_ck_reports_status_valid", "reports")
     op.drop_table("reports")

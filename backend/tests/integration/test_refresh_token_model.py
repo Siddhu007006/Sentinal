@@ -13,8 +13,7 @@ Traces to: 11-Testing-Strategy §6 (integration test patterns)
 """
 
 from datetime import UTC, datetime, timedelta
-from uuid import UUID
-
+from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -75,6 +74,7 @@ async def test_insert_valid_refresh_token(
         user_id=test_user.id,
         token_hash="a" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add(token)
     await db_session.commit()
@@ -112,6 +112,7 @@ async def test_duplicate_token_hash_raises_integrity_error(
         user_id=test_user.id,
         token_hash="b" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add(token1)
     await db_session.commit()
@@ -121,6 +122,7 @@ async def test_duplicate_token_hash_raises_integrity_error(
         user_id=another_test_user.id,
         token_hash="b" * 64,  # Duplicate!
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add(token2)
 
@@ -157,11 +159,13 @@ async def test_user_deletion_cascades_to_tokens(db_session: AsyncSession) -> Non
         user_id=user_id,
         token_hash="c" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     token2 = RefreshToken(
         user_id=user_id,
         token_hash="d" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add_all([token1, token2])
     await db_session.commit()
@@ -201,11 +205,13 @@ async def test_query_tokens_by_user_id(
         user_id=test_user.id,
         token_hash="e" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     token2 = RefreshToken(
         user_id=test_user.id,
         token_hash="f" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add_all([token1, token2])
     await db_session.commit()
@@ -239,6 +245,7 @@ async def test_revoke_token(db_session: AsyncSession, test_user: User) -> None:
         user_id=test_user.id,
         token_hash="g" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add(token)
     await db_session.commit()
@@ -279,6 +286,7 @@ async def test_query_active_tokens(db_session: AsyncSession, test_user: User) ->
         token_hash="h" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
         is_revoked=False,
+        jti=str(uuid4()),
     )
 
     # Create revoked token
@@ -288,6 +296,7 @@ async def test_query_active_tokens(db_session: AsyncSession, test_user: User) ->
         expires_at=datetime.now(UTC) + timedelta(days=30),
         is_revoked=True,
         revoked_at=datetime.now(UTC),
+        jti=str(uuid4()),
     )
 
     db_session.add_all([active, revoked])
@@ -333,6 +342,7 @@ async def test_validation_query_pattern(
         token_hash="j" * 64,
         expires_at=now_utc + timedelta(days=30),
         is_revoked=False,
+        jti=str(uuid4()),
     )
 
     # Expired token
@@ -341,6 +351,7 @@ async def test_validation_query_pattern(
         token_hash="k" * 64,
         expires_at=now_utc - timedelta(days=1),  # Past
         is_revoked=False,
+        jti=str(uuid4()),
     )
 
     # Revoked token
@@ -349,6 +360,7 @@ async def test_validation_query_pattern(
         token_hash="l" * 64,
         expires_at=now_utc + timedelta(days=30),
         is_revoked=True,
+        jti=str(uuid4()),
     )
 
     db_session.add_all([valid, expired, revoked])
@@ -413,6 +425,7 @@ async def test_query_expired_tokens(
         token_hash="m" * 64,
         expires_at=now_utc - timedelta(days=1),
         is_revoked=False,
+        jti=str(uuid4()),
     )
 
     # Active, not expired (should NOT be cleaned up)
@@ -421,6 +434,7 @@ async def test_query_expired_tokens(
         token_hash="n" * 64,
         expires_at=now_utc + timedelta(days=30),
         is_revoked=False,
+        jti=str(uuid4()),
     )
 
     # Expired but revoked (should NOT be cleaned up by this query)
@@ -429,6 +443,7 @@ async def test_query_expired_tokens(
         token_hash="o" * 64,
         expires_at=now_utc - timedelta(days=1),
         is_revoked=True,
+        jti=str(uuid4()),
     )
 
     db_session.add_all([expired_active, valid, expired_revoked])
@@ -468,6 +483,7 @@ async def test_foreign_key_constraint_user_id(db_session: AsyncSession) -> None:
         user_id=fake_user_id,
         token_hash="p" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add(token)
 
@@ -493,6 +509,7 @@ async def test_not_null_constraints(db_session: AsyncSession) -> None:
         user_id=None,  # type: ignore[arg-type]
         token_hash="q" * 64,
         expires_at=datetime.now(UTC) + timedelta(days=30),
+        jti=str(uuid4()),
     )
     db_session.add(token)
 
@@ -524,6 +541,7 @@ async def test_multiple_tokens_per_user(
             token_hash=chr(97 + i) * 64,  # "a"*64, "b"*64, etc.
             expires_at=now + timedelta(days=30 + i),
             user_agent=f"Device {i}",
+            jti=str(uuid4()),
         )
         for i in range(5)
     ]
@@ -562,6 +580,7 @@ async def test_token_session_context(db_session: AsyncSession, test_user: User) 
         expires_at=datetime.now(UTC) + timedelta(days=30),
         user_agent=user_agent,
         ip_address=ip_address,
+        jti=str(uuid4()),
     )
     db_session.add(token)
     await db_session.commit()

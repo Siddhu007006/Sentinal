@@ -22,9 +22,11 @@ from typing import Any
 from pydantic import Field, SecretStr, field_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic_settings.sources.base import PydanticBaseSettingsSource
-from pydantic_settings.sources.providers.dotenv import DotEnvSettingsSource
-from pydantic_settings.sources.providers.env import EnvSettingsSource
+from pydantic_settings.sources import (
+    DotEnvSettingsSource,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+)
 
 
 # ---------------------------------------------------------------------------
