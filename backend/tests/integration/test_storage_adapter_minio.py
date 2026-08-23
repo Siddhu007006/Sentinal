@@ -109,6 +109,39 @@ class TestUploadDownloadDelete:
         await adapter.delete(key)
 
     @pytest.mark.asyncio
+    async def test_multipart_upload_large_file_roundtrip(
+        self, adapter: S3StorageAdapter
+    ) -> None:
+        """Payload larger than one 8 MiB part round-trips via multipart.
+
+        Proves the true multipart path (>1 part) against real MinIO:
+        memory stays bounded to one part while the object reassembles
+        byte-identically.
+        """
+        import secrets
+
+        key = f"e5t1-test/multipart/{uuid4()}"
+        # 12 MiB of random data: guarantees at least two parts
+        # (one 8 MiB flushed part + 4 MiB final part).
+        payload = secrets.token_bytes(12 * 1024 * 1024)
+
+        await adapter.upload_stream(
+            key,
+            _stream_of(payload, chunk_size=256 * 1024),
+            "application/octet-stream",
+        )
+        assert await adapter.exists(key) is True
+
+        downloaded = b"".join(
+            [chunk async for chunk in adapter.download_stream(key)]
+        )
+        assert downloaded == payload
+        assert len(downloaded) == 12 * 1024 * 1024
+
+        await adapter.delete(key)
+        assert await adapter.exists(key) is False
+
+    @pytest.mark.asyncio
     async def test_delete_removes_object(self, adapter: S3StorageAdapter) -> None:
         """Delete removes the object; it no longer exists."""
         key = f"e5t1-test/delete/{uuid4()}"

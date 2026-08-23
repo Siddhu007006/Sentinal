@@ -25,6 +25,7 @@ Traces to: 09-Deployment-Architecture §8 (object storage persistence)
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
 import aioboto3
@@ -48,6 +49,11 @@ _CONNECTION_ERROR_TYPES: tuple[type[Exception], ...] = (
     ConnectionError,
     TimeoutError,
 )
+
+# Multipart part size. S3 requires >= 5 MiB per part except the final
+# part; 8 MiB keeps every flushed part safely above the minimum while
+# bounding peak memory to roughly one part regardless of file size.
+_PART_SIZE = 8 * 1024 * 1024
 
 
 class S3StorageAdapter(StorageAdapter):
@@ -88,12 +94,16 @@ class S3StorageAdapter(StorageAdapter):
         stream: AsyncIterator[bytes],
         content_type: str,
     ) -> str:
-        """Upload a stream of bytes to the bucket.
+        """Upload a stream of bytes to the bucket via multipart upload.
 
-        Buffers the stream and issues a single PUT. Streaming/multipart
-        upload without full in-memory buffering is deferred to the
-        upload pipeline (E5.T4), which computes the content hash during
-        streaming.
+        Streams the input: chunks are buffered only until one part
+        (_PART_SIZE, 8 MiB) is full, then flushed with upload_part.
+        Peak memory is bounded to roughly one part regardless of file
+        size — the E5.T4 "never buffer the whole file" requirement is
+        satisfied by wrapping the stream with a hashing tee, no adapter
+        change needed. The final part may be smaller than the S3 5 MiB
+        minimum (only non-final parts must meet it). On failure the
+        multipart upload is aborted so no orphaned parts linger.
 
         Args:
             key: Object key
@@ -107,18 +117,57 @@ class S3StorageAdapter(StorageAdapter):
             StorageConnectionError: If storage is unreachable
             StorageError: On any other storage failure
         """
-        chunks: list[bytes] = []
-        async for chunk in stream:
-            chunks.append(chunk)
-
+        bucket = self._settings.bucket_name
         try:
             async with self._client() as client:
-                await client.put_object(
-                    Bucket=self._settings.bucket_name,
+                created = await client.create_multipart_upload(
+                    Bucket=bucket,
                     Key=key,
-                    Body=b"".join(chunks),
                     ContentType=content_type,
                 )
+                upload_id = created["UploadId"]
+
+                try:
+                    parts: list[dict[str, Any]] = []
+                    part_number = 1
+                    buffer = bytearray()
+
+                    async for chunk in stream:
+                        buffer.extend(chunk)
+                        while len(buffer) >= _PART_SIZE:
+                            part = await self._upload_part(
+                                client, bucket, key, upload_id,
+                                part_number, bytes(buffer[:_PART_SIZE]),
+                            )
+                            parts.append(part)
+                            part_number += 1
+                            del buffer[:_PART_SIZE]
+
+                    # Final part: any size, but only when there is a
+                    # remainder or nothing was flushed yet (zero-byte
+                    # object). A stream ending exactly on a part
+                    # boundary needs no trailing empty part.
+                    if buffer or not parts:
+                        part = await self._upload_part(
+                            client, bucket, key, upload_id,
+                            part_number, bytes(buffer),
+                        )
+                        parts.append(part)
+
+                    await client.complete_multipart_upload(
+                        Bucket=bucket,
+                        Key=key,
+                        UploadId=upload_id,
+                        MultipartUpload={"Parts": parts},
+                    )
+                except Exception:
+                    with suppress(Exception):
+                        await client.abort_multipart_upload(
+                            Bucket=bucket,
+                            Key=key,
+                            UploadId=upload_id,
+                        )
+                    raise
         except _CONNECTION_ERROR_TYPES as exc:
             raise StorageConnectionError(
                 f"Could not connect to object storage at "
@@ -128,6 +177,28 @@ class S3StorageAdapter(StorageAdapter):
             raise StorageError(f"Upload failed for key {key!r}: {exc}") from exc
 
         return key
+
+    async def _upload_part(
+        self,
+        client: Any,  # noqa: ANN401  # aioboto3 client is untyped
+        bucket: str,
+        key: str,
+        upload_id: str,
+        part_number: int,
+        body: bytes,
+    ) -> dict[str, Any]:
+        """Upload one multipart part and return its completion entry."""
+        response = await client.upload_part(
+            Bucket=bucket,
+            Key=key,
+            UploadId=upload_id,
+            PartNumber=part_number,
+            Body=body,
+        )
+        return {
+            "PartNumber": part_number,
+            "ETag": response["ETag"],
+        }
 
     async def download_stream(self, key: str) -> AsyncIterator[bytes]:
         """Download an object as a stream of chunks.

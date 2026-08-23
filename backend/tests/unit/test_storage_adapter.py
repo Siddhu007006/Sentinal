@@ -90,11 +90,12 @@ def _adapter(settings: StorageSettings) -> S3StorageAdapter:
 
 class TestUploadStream:
     @pytest.mark.asyncio
-    async def test_upload_joins_chunks_and_returns_key(
-        self, settings: StorageSettings, s3_client: MagicMock
+    async def test_upload_small_stream_single_final_part(
+        self, settings: StorageSettings, s3_client: AsyncMock
     ) -> None:
-        """upload_stream joins chunks, PUTs them, returns the key."""
-        s3_client.put_object.return_value = {}
+        """Small stream completes as one multipart part (< part size)."""
+        s3_client.create_multipart_upload.return_value = {"UploadId": "mpu-1"}
+        s3_client.upload_part.return_value = {"ETag": "etag-1"}
 
         adapter = _adapter(settings)
         key = await adapter.upload_stream(
@@ -102,19 +103,119 @@ class TestUploadStream:
         )
 
         assert key == "k1"
-        s3_client.put_object.assert_awaited_once_with(
+        s3_client.create_multipart_upload.assert_awaited_once_with(
             Bucket="sentinel-assets",
             Key="k1",
-            Body=b"abcd",
             ContentType="application/pdf",
+        )
+        # Single final part carrying the joined payload
+        s3_client.upload_part.assert_awaited_once_with(
+            Bucket="sentinel-assets",
+            Key="k1",
+            UploadId="mpu-1",
+            PartNumber=1,
+            Body=b"abcd",
+        )
+        s3_client.complete_multipart_upload.assert_awaited_once_with(
+            Bucket="sentinel-assets",
+            Key="k1",
+            UploadId="mpu-1",
+            MultipartUpload={
+                "Parts": [{"PartNumber": 1, "ETag": "etag-1"}]
+            },
         )
 
     @pytest.mark.asyncio
+    async def test_upload_flushes_parts_without_full_buffering(
+        self,
+        settings: StorageSettings,
+        s3_client: AsyncMock,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Stream larger than one part flushes parts at the boundary."""
+        monkeypatch.setattr(
+            "app.infrastructure.storage.s3_adapter._PART_SIZE", 4
+        )
+        s3_client.create_multipart_upload.return_value = {"UploadId": "mpu-2"}
+        s3_client.upload_part.side_effect = [
+            {"ETag": "etag-1"},
+            {"ETag": "etag-2"},
+        ]
+
+        adapter = _adapter(settings)
+        key = await adapter.upload_stream(
+            "k1", _chunks(b"ab", b"cd", b"efg"), "text/plain"
+        )
+
+        assert key == "k1"
+        # Part boundary at 4 bytes: "abcd" flushed mid-stream, "efg"
+        # is the final part. Peak buffering = one part, not the whole
+        # stream, and no trailing empty part is uploaded.
+        assert s3_client.upload_part.await_count == 2
+        calls = s3_client.upload_part.await_args_list
+        assert [(c.kwargs["PartNumber"], c.kwargs["Body"]) for c in calls] == [
+            (1, b"abcd"),
+            (2, b"efg"),
+        ]
+
+        completed = s3_client.complete_multipart_upload.await_args.kwargs
+        assert completed["MultipartUpload"]["Parts"] == [
+            {"PartNumber": 1, "ETag": "etag-1"},
+            {"PartNumber": 2, "ETag": "etag-2"},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_upload_zero_byte_stream_single_empty_part(
+        self,
+        settings: StorageSettings,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Empty stream completes as a single zero-byte part."""
+        s3_client.create_multipart_upload.return_value = {"UploadId": "mpu-4"}
+        s3_client.upload_part.return_value = {"ETag": "etag-1"}
+
+        adapter = _adapter(settings)
+        key = await adapter.upload_stream("k1", _chunks(), "text/plain")
+
+        assert key == "k1"
+        s3_client.upload_part.assert_awaited_once_with(
+            Bucket="sentinel-assets",
+            Key="k1",
+            UploadId="mpu-4",
+            PartNumber=1,
+            Body=b"",
+        )
+
+    @pytest.mark.asyncio
+    async def test_upload_failure_aborts_multipart(
+        self,
+        settings: StorageSettings,
+        s3_client: AsyncMock,
+    ) -> None:
+        """Failure mid-upload aborts the multipart upload."""
+        s3_client.create_multipart_upload.return_value = {"UploadId": "mpu-3"}
+        s3_client.upload_part.side_effect = ClientError(
+            {"Error": {"Code": "500", "Message": "boom"}},
+            "UploadPart",
+        )
+
+        adapter = _adapter(settings)
+        with pytest.raises(StorageError):
+            await adapter.upload_stream("k1", _chunks(b"x"), "text/plain")
+
+        s3_client.abort_multipart_upload.assert_awaited_once_with(
+            Bucket="sentinel-assets",
+            Key="k1",
+            UploadId="mpu-3",
+        )
+        s3_client.complete_multipart_upload.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_connection_error_is_structured(
-        self, settings: StorageSettings, s3_client: MagicMock
+        self, settings: StorageSettings, s3_client: AsyncMock
     ) -> None:
         """EndpointConnectionError → StorageConnectionError, no secrets."""
-        s3_client.put_object.side_effect = EndpointConnectionError(
+        s3_client.create_multipart_upload.side_effect = EndpointConnectionError(
             endpoint_url="http://localhost:9000"
         )
 
