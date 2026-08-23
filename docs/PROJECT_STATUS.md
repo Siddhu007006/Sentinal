@@ -116,7 +116,35 @@
 
 ## 🟡 IN PROGRESS: EPIC 5 - Asset Upload & Management
 
-**Status:** 1/8 TASKS COMPLETE
+**Status:** 1/8 TASKS COMPLETE + contract reconciliation
+
+### DigitalAsset contract reconciliation (2026-08-23)
+
+Resolved the three-way conflict between 02-Domain-Model (content-addressed),
+the E3.T5 spec (IOC-centric), and the implementation. The reconciled schema
+(migration `reconcile_digital_assets`):
+
+- **Content identity** (file / file_hash assets): `sha256_hash` column
+  (64 lowercase hex, CHECK-enforced format) with a **global partial unique
+  index** — identical content uploaded by any user resolves to the SAME
+  asset (E5.T4 dedup depends on this). `mime_type` and `size_bytes` are
+  first-class columns, CHECK-required for `file`. `storage_key` nullable
+  (assigned later in the upload lifecycle).
+- **Classification** (url / domain / ip_address assets): unchanged columns;
+  dedup is now **per-user** — UNIQUE(user_id, normalized_value,
+  asset_type) replaces the old global (normalized_value, asset_type)
+  constraint, which contradicted the documented per-user semantics.
+- **Ownership semantics (explicit decision):** DigitalAsset is globally
+  content-addressed; `user_id` records the originating/first-upload context
+  only, NOT exclusive ownership. Per-user file visibility arrives with the
+  E5.T3 Upload rebuild (uploads.digital_asset_id); a user↔asset
+  association table is the documented alternative if per-user file scoping
+  is needed sooner.
+- `get_by_hash()` now queries the real column (was a JSONB probe against a
+  key no writer ever wrote); `get_by_normalized_value()` gained the
+  documented `user_id` scope.
+- Deferred to E5.T3: moving the Upload↔Asset FK to
+  `uploads.digital_asset_id`.
 
 - ✅ E5.T1: Object Storage Adapter — abstract `StorageAdapter` interface
   (domain layer) + `S3StorageAdapter` (aioboto3, S3-compatible/MinIO).
@@ -130,9 +158,9 @@ Architecture boundary: routes/services depend only on the abstract
 `StorageAdapter` interface (domain layer); the concrete S3/MinIO
 implementation (aioboto3) stays in infrastructure.
 
-Remaining tasks: E5.T2 digital asset entity, E5.T3 upload entity,
-E5.T4 upload service, E5.T5 file validation, E5.T6 upload routes,
-E5.T7 asset routes, E5.T8 cleanup job.
+Remaining tasks: E5.T2 digital asset entity tests (done as part of the
+reconciliation), E5.T3 upload entity, E5.T4 upload service, E5.T5 file
+validation, E5.T6 upload routes, E5.T7 asset routes, E5.T8 cleanup job.
 
 ---
 

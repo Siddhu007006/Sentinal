@@ -79,13 +79,15 @@ async def test_digital_assets_table_exists_after_migration(
 async def test_all_digital_asset_columns_present_in_schema(
     db_session: AsyncSession | None,
 ) -> None:
-    """Test: All 12 columns present in digital_assets table.
+    """Test: All 16 columns present in digital_assets table.
 
-    **Validates: R4 AC #2**
+    **Validates: R4 AC #2 + reconciled contract (2026-08-23)**
 
     Verifies that all expected columns exist in the digital_assets table:
     id, user_id, upload_id, asset_type, raw_value, normalized_value,
-    display_label, metadata, is_active, created_at, updated_at, deleted_at
+    display_label, metadata, is_active, created_at, updated_at, deleted_at,
+    plus the content-identity columns: sha256_hash, mime_type, size_bytes,
+    storage_key.
     """
     if db_session is None:
         pytest.skip("Database not available")
@@ -116,6 +118,10 @@ async def test_all_digital_asset_columns_present_in_schema(
         "created_at",
         "updated_at",
         "deleted_at",
+        "sha256_hash",
+        "mime_type",
+        "size_bytes",
+        "storage_key",
     }
 
     actual_columns = set(columns)
@@ -307,7 +313,10 @@ async def test_fk_constraint_accepts_valid_upload_id(
         upload_id=upload.id,
         asset_type=AssetType.FILE,
         raw_value="test.exe",
-        normalized_value="test.exe",
+        normalized_value="b" * 64,
+        sha256_hash="b" * 64,
+        mime_type="application/octet-stream",
+        size_bytes=1024,
     )
 
     db_session.add(asset)
@@ -548,13 +557,17 @@ async def test_check_constraint_accepts_valid_asset_types(
             asset_type=AssetType.FILE_HASH,
             raw_value="a" * 64,
             normalized_value="a" * 64,
+            sha256_hash="a" * 64,
         ),
         DigitalAsset(
             user_id=user.id,
             upload_id=upload.id,
             asset_type=AssetType.FILE,
             raw_value="test.bin",
-            normalized_value="test.bin",
+            normalized_value="b" * 64,
+            sha256_hash="b" * 64,
+            mime_type="application/octet-stream",
+            size_bytes=512,
         ),
     ]
 
@@ -1196,3 +1209,288 @@ async def test_upload_model_still_works_after_digital_asset_migration(
     # Verify uploads were created
     for upload in uploads:
         assert upload.id is not None
+
+
+# ===========================================================================
+# Reconciled contract (2026-08-23): content identity + per-user IOC dedup
+# Migration: reconcile_digital_assets
+# ===========================================================================
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_reconciliation_global_hash_unique_across_users(
+    db_session: AsyncSession | None,
+) -> None:
+    """Reconciled contract: identical content hash is globally ONE asset.
+
+    Two different users inserting assets with the same sha256_hash must
+    collide on the partial unique index — content identity spans users
+    (E5.T4 deduplication depends on this).
+    """
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    users = []
+    for i in range(2):
+        user = User(
+            email=f"hash-dedup-{i}@example.com",
+            password_hash="$2b$12$hash",
+            role=UserRole.ANALYST.value,
+        )
+        db_session.add(user)
+        users.append(user)
+    await db_session.flush()
+
+    content_hash = "c" * 64
+    for user in users:
+        db_session.add(
+            DigitalAsset(
+                user_id=user.id,
+                asset_type=AssetType.FILE_HASH,
+                raw_value=content_hash,
+                normalized_value=content_hash,
+                sha256_hash=content_hash,
+            )
+        )
+
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_reconciliation_file_without_hash_rejected(
+    db_session: AsyncSession | None,
+) -> None:
+    """CHECK ck_digital_assets_file_hash_required: file needs a hash."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="file-no-hash@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.ANALYST.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    upload = Upload(
+        user_id=user.id,
+        original_filename="no-hash.bin",
+        storage_key="uploads/2026/08/23/no-hash.bin",
+        content_type="application/octet-stream",
+        file_size_bytes=10,
+        upload_status=UploadStatus.COMPLETED.value,
+    )
+    db_session.add(upload)
+    await db_session.flush()
+
+    db_session.add(
+        DigitalAsset(
+            user_id=user.id,
+            upload_id=upload.id,
+            asset_type=AssetType.FILE,
+            raw_value="no-hash.bin",
+            normalized_value="no-hash.bin",
+            mime_type="application/octet-stream",
+            size_bytes=10,
+            # sha256_hash intentionally omitted
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_reconciliation_file_hash_type_without_hash_rejected(
+    db_session: AsyncSession | None,
+) -> None:
+    """CHECK ck_digital_assets_file_hash_required: file_hash needs a hash."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="filehash-no-hash@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.ANALYST.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    db_session.add(
+        DigitalAsset(
+            user_id=user.id,
+            asset_type=AssetType.FILE_HASH,
+            raw_value="not-a-real-hash-submission",
+            normalized_value="not-a-real-hash-submission",
+            # sha256_hash intentionally omitted
+        )
+    )
+
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_reconciliation_file_without_mime_and_size_rejected(
+    db_session: AsyncSession | None,
+) -> None:
+    """CHECKs: file assets require mime_type AND size_bytes."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="file-no-mime@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.ANALYST.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    upload = Upload(
+        user_id=user.id,
+        original_filename="sparse.bin",
+        storage_key="uploads/2026/08/23/sparse.bin",
+        content_type="application/octet-stream",
+        file_size_bytes=8,
+        upload_status=UploadStatus.COMPLETED.value,
+    )
+    db_session.add(upload)
+    await db_session.flush()
+
+    content_hash = "d" * 64
+
+    # Missing mime_type
+    db_session.add(
+        DigitalAsset(
+            user_id=user.id,
+            upload_id=upload.id,
+            asset_type=AssetType.FILE,
+            raw_value="sparse.bin",
+            normalized_value=content_hash,
+            sha256_hash=content_hash,
+            size_bytes=8,
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+    # Missing size_bytes
+    db_session.add(
+        DigitalAsset(
+            user_id=user.id,
+            upload_id=upload.id,
+            asset_type=AssetType.FILE,
+            raw_value="sparse.bin",
+            normalized_value=content_hash,
+            sha256_hash=content_hash,
+            mime_type="application/octet-stream",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_reconciliation_invalid_hash_format_rejected(
+    db_session: AsyncSession | None,
+) -> None:
+    """CHECK ck_digital_assets_sha256_format: 64 lowercase hex only."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="bad-hash@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.ANALYST.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    for bad_hash in ["XYZ" * 16, "g" * 64, "a" * 63]:
+        db_session.add(
+            DigitalAsset(
+                user_id=user.id,
+                asset_type=AssetType.FILE_HASH,
+                raw_value=bad_hash,
+                normalized_value=bad_hash,
+                sha256_hash=bad_hash,
+            )
+        )
+        with pytest.raises(IntegrityError):
+            await db_session.commit()
+        await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_reconciliation_storage_key_nullable_for_file(
+    db_session: AsyncSession | None,
+) -> None:
+    """storage_key stays NULL until object storage assignment (E5.T4)."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="late-storage-key@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.ANALYST.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    upload = Upload(
+        user_id=user.id,
+        original_filename="late.bin",
+        storage_key="uploads/2026/08/23/late.bin",
+        content_type="application/octet-stream",
+        file_size_bytes=16,
+        upload_status=UploadStatus.COMPLETED.value,
+    )
+    db_session.add(upload)
+    await db_session.flush()
+
+    content_hash = "e" * 64
+    asset = DigitalAsset(
+        user_id=user.id,
+        upload_id=upload.id,
+        asset_type=AssetType.FILE,
+        raw_value="late.bin",
+        normalized_value=content_hash,
+        sha256_hash=content_hash,
+        mime_type="application/octet-stream",
+        size_bytes=16,
+        # storage_key intentionally omitted
+    )
+    db_session.add(asset)
+    await db_session.commit()
+
+    assert asset.storage_key is None

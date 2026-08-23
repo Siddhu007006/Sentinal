@@ -67,7 +67,15 @@ from __future__ import annotations
 import enum
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, UniqueConstraint
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    String,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -152,8 +160,11 @@ class AssetType(enum.StrEnum):
 
     Examples: malware.exe, invoice.pdf, suspicious.zip
 
-    Metadata: original_filename, detected_mime_type, file_size_bytes,
-    checksum_sha256, storage_key.
+    Content-addressed: sha256_hash (business identity, globally unique
+    across users), mime_type, and size_bytes are first-class columns
+    (CHECK-enforced NOT NULL for this type). storage_key holds the
+    object-storage reference once assigned. Content hash is always
+    computed server-side from the received bytes.
 
     Linked to Upload (upload_id FK). upload_id is non-NULL for this type only.
     Enforced via CHECK constraint: (asset_type = 'file') = (upload_id IS NOT NULL)
@@ -183,11 +194,13 @@ class DigitalAsset(BaseModel):
     updated. New content = new row. This preserves the historical record and
     simplifies auditing.
 
-    **Deduplication:** Constraint on (normalized_value, asset_type) enforces
-    that a user cannot have two assets with the same normalized value and type.
-    This is the deduplication key: submitting the same asset twice returns the
-    existing asset (idempotent). Different users can have the same asset;
-    it is not deduplicated globally.
+    **Deduplication (reconciled contract, 2026-08-23):**
+    - File-like assets (file, file_hash): globally content-addressed by
+      sha256_hash (partial unique index). Identical bytes uploaded by
+      any user resolve to the SAME asset.
+    - IOC assets (url, domain, ip_address): per-user uniqueness on
+      (user_id, normalized_value, asset_type). Different users can own
+      the same indicator.
 
     **Identity Strategy:** UUID PK (technical) vs. (normalized_value, asset_type)
     UNIQUE (domain). The database PK is a technical identifier (efficient,
@@ -341,6 +354,48 @@ class DigitalAsset(BaseModel):
         comment="Optional user-provided label for UI and reports",
     )
 
+    # SHA-256 content hash - Business identity for file-like assets
+    # (file / file_hash). 64 lowercase hex characters. Globally unique
+    # (partial unique index where not null) — identical content resolves
+    # to the SAME asset across users (content-addressed deduplication).
+    # ALWAYS computed server-side from received bytes (02-Domain-Model
+    # § Digital Asset invariant). NULL for url/domain/ip_address assets.
+    sha256_hash: Mapped[str | None] = mapped_column(
+        String(64),
+        nullable=True,
+        comment=(
+            "SHA-256 content hash (64 lowercase hex); business identity "
+            "for file/file_hash assets, NULL for IOC assets"
+        ),
+    )
+
+    # MIME type - Detected content type of the stored file
+    # Required for 'file' assets (CHECK-enforced). Detected via magic
+    # bytes server-side, never trusted from the client Content-Type.
+    mime_type: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Detected MIME type (required for file assets)",
+    )
+
+    # Size in bytes - Content size of the stored file
+    # Required for 'file' assets (CHECK-enforced). Non-negative.
+    size_bytes: Mapped[int | None] = mapped_column(
+        BigInteger(),
+        nullable=True,
+        comment="Content size in bytes (required for file assets)",
+    )
+
+    # Storage key - Object storage reference
+    # Points at the object in S3-compatible storage. Nullable because
+    # object-storage assignment happens later in the upload lifecycle
+    # than asset creation (E5.T4 pipeline).
+    storage_key: Mapped[str | None] = mapped_column(
+        String(1024),
+        nullable=True,
+        comment="Object storage key; assigned during upload lifecycle",
+    )
+
     # Metadata - Asset-type-specific attributes as JSONB
     # Flexible JSON document storing attributes specific to the asset type.
     # Examples:
@@ -379,19 +434,31 @@ class DigitalAsset(BaseModel):
 
     # Table-level constraints and indexes
     __table_args__ = (
-        # UNIQUE constraint: (normalized_value, asset_type)
-        # Deduplication key: a user cannot have two assets with the same
-        # normalized value and type. This is the domain identity constraint.
-        # Allows same normalized_value with different types (e.g., URL and
-        # domain pointing to same host).
+        # UNIQUE constraint: (user_id, normalized_value, asset_type)
+        # Per-user IOC deduplication: a user cannot have two assets with
+        # the same normalized value and type; different users CAN own the
+        # same indicator (04-Database-Design §6.3 — dedup key is per-user).
+        # File-like assets dedup globally by sha256_hash instead (see
+        # partial unique index below).
         UniqueConstraint(
+            "user_id",
             "normalized_value",
             "asset_type",
-            name="uq_digital_assets_normalized_value_type",
+            name="uq_digital_assets_user_value_type",
             comment=(
-                "Deduplication constraint: "
-                "user cannot have duplicate (normalized_value, asset_type)"
+                "Per-user deduplication: one (normalized_value, asset_type) "
+                "per user; identical content across users dedups by sha256_hash"
             ),
+        ),
+        # PARTIAL UNIQUE index: sha256_hash (global content identity)
+        # WHERE sha256_hash IS NOT NULL. Identical bytes uploaded by any
+        # user resolve to the SAME asset (content-addressed deduplication,
+        # 02-Domain-Model § Digital Asset: "Hash is unique").
+        Index(
+            "uq_digital_assets_sha256_hash",
+            "sha256_hash",
+            unique=True,
+            postgresql_where=text("sha256_hash IS NOT NULL"),
         ),
         # CHECK constraint: asset_type must be one of five values
         # Defense in depth: prevents invalid types at database level
@@ -406,6 +473,26 @@ class DigitalAsset(BaseModel):
         CheckConstraint(
             "(asset_type = 'file') = (upload_id IS NOT NULL)",
             name="ck_digital_assets_file_upload_invariant",
+        ),
+        # CHECK constraint: file-like assets are content-addressed
+        # A file/file_hash asset without a hash contradicts its identity.
+        CheckConstraint(
+            "asset_type NOT IN ('file', 'file_hash') OR sha256_hash IS NOT NULL",
+            name="ck_digital_assets_file_hash_required",
+        ),
+        # CHECK constraint: file assets must describe their content
+        CheckConstraint(
+            "asset_type <> 'file' OR mime_type IS NOT NULL",
+            name="ck_digital_assets_file_mime_required",
+        ),
+        CheckConstraint(
+            "asset_type <> 'file' OR size_bytes IS NOT NULL",
+            name="ck_digital_assets_file_size_required",
+        ),
+        # CHECK constraint: hash format when present (64 lowercase hex)
+        CheckConstraint(
+            "sha256_hash IS NULL OR sha256_hash ~ '^[a-f0-9]{64}$'",
+            name="ck_digital_assets_sha256_format",
         ),
         # Index: (user_id, created_at DESC)
         # Query: SELECT * FROM digital_assets WHERE user_id = ?
@@ -433,8 +520,9 @@ class DigitalAsset(BaseModel):
         # Index: (normalized_value, asset_type)
         # Query: SELECT * FROM digital_assets WHERE normalized_value = ?
         #        AND asset_type = ?
-        # Use case: Deduplication check (does user already have this asset?).
-        # This is the UNIQUE constraint index (used for both uniqueness and lookup).
+        # Use case: Deduplication lookup (does this value+type already
+        # exist?). Uniqueness itself is enforced by the user-scoped
+        # UNIQUE constraint uq_digital_assets_user_value_type.
         Index(
             "ix_digital_assets_normalized_value_type",
             "normalized_value",

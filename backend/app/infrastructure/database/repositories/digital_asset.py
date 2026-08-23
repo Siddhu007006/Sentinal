@@ -216,6 +216,10 @@ class PostgreSQLDigitalAssetRepository(
                 else None
             ),
             is_active=entity.is_active,
+            sha256_hash=entity.sha256_hash,
+            mime_type=entity.mime_type,
+            size_bytes=entity.size_bytes,
+            storage_key=entity.storage_key,
             deleted_at=entity.deleted_at,
         )
 
@@ -248,6 +252,10 @@ class PostgreSQLDigitalAssetRepository(
                 else None
             ),
             is_active=orm_obj.is_active,
+            sha256_hash=orm_obj.sha256_hash,
+            mime_type=orm_obj.mime_type,
+            size_bytes=orm_obj.size_bytes,
+            storage_key=orm_obj.storage_key,
             created_at=orm_obj.created_at,
             updated_at=orm_obj.updated_at,
             deleted_at=orm_obj.deleted_at,
@@ -314,12 +322,13 @@ class PostgreSQLDigitalAssetRepository(
 
     async def get_by_hash(self, sha256_hash: str) -> DigitalAsset:
         """
-        Retrieve asset by SHA-256 hash (for file_hash asset type).
+        Retrieve asset by SHA-256 content hash.
 
-        Performs a lookup of the asset by its SHA-256 content hash. This is used
-        when a file's hash (not the file itself) is submitted for analysis.
-        Returns the first asset with the matching hash (case-insensitive hex
-        comparison).
+        Content-addressed lookup against the real sha256_hash column
+        (partial unique index). Used by the upload pipeline (E5.T4) to
+        resolve duplicate content to the existing asset, and when a
+        file's hash (not the file itself) is submitted for analysis.
+        Case-insensitive hex comparison.
 
         Soft-delete filtering is applied: soft-deleted assets (deleted_at IS NOT NULL)
         are excluded from the search result.
@@ -336,21 +345,18 @@ class PostgreSQLDigitalAssetRepository(
 
         Example:
             >>> asset = await asset_repo.get_by_hash(
-            ...     "a3f5c1d8e9f2b7c4a6d1e8f3b7c9d2e1"
+            ...     "a3f5c1d8e9f2b7c4a6d1e8f3b7c9d2e1..."
             ... )
 
         Traces to: E3.T7 Specification § Requirement R4.3 (DigitalAssetRepository)
-        Traces to: 02-Domain-Model § Asset Type (FILE_HASH)
+        Traces to: 02-Domain-Model § Digital Asset (SHA-256 identity)
         """
         try:
-            stmt = (
-                select(DigitalAssetORM)
-                .where(
-                    and_(
-                        DigitalAssetORM.metadata_json["sha256_hash"].astext
-                        == sha256_hash,
-                        DigitalAssetORM.deleted_at.is_(None),
-                    )
+            stmt = select(DigitalAssetORM).where(
+                and_(
+                    func.lower(DigitalAssetORM.sha256_hash)
+                    == sha256_hash.lower(),
+                    DigitalAssetORM.deleted_at.is_(None),
                 )
             )
             orm_obj = await self.session.scalar(stmt)
@@ -454,19 +460,22 @@ class PostgreSQLDigitalAssetRepository(
         self,
         asset_type: str,
         normalized_value: str,
+        user_id: UUID,
     ) -> DigitalAsset:
         """
-        Retrieve asset by domain identity (normalized_value + asset_type).
+        Retrieve asset by per-user domain identity.
 
-        Performs a lookup of the asset using the domain identity: the combination of
-        asset_type and normalized_value. This is the deduplication key used for
-        idempotency: submitting the same asset twice returns the existing asset
-        (no duplicate created).
+        Performs a lookup of the asset using the per-user domain identity:
+        (user_id, asset_type, normalized_value). This is the IOC
+        deduplication key used for idempotency: submitting the same
+        asset twice returns the existing asset (no duplicate created).
 
-        The domain identity is unique per user (enforced by UNIQUE constraint):
-        a user cannot have two assets with the same asset_type + normalized_value pair.
-        However, different users can have the same domain identity (they reference
-        the same threat/resource).
+        The domain identity is unique per user (enforced by UNIQUE
+        constraint uq_digital_assets_user_value_type): a user cannot
+        have two assets with the same asset_type + normalized_value
+        pair. Different users CAN own the same indicator. File-like
+        assets dedup globally by sha256_hash instead — use
+        get_by_hash() for those.
 
         Soft-delete filtering is applied: soft-deleted assets (deleted_at IS NOT NULL)
         are excluded from the search result.
@@ -474,13 +483,14 @@ class PostgreSQLDigitalAssetRepository(
         Args:
             asset_type: Asset classification (url, domain, ip_address, file_hash, file)
             normalized_value: Canonicalized form (lowercased domain, defanged URL, etc.)
+            user_id: UUID of the owning user (per-user identity scope)
 
         Returns:
             DigitalAsset entity with the specified domain identity
 
         Raises:
-            NotFound: If no asset found with the specified type and value, or if
-                     asset is soft-deleted (deleted_at IS NOT NULL)
+            NotFound: If no asset found with the specified type and value for
+                     this user, or if asset is soft-deleted (deleted_at IS NOT NULL)
 
         Example:
             ```python
@@ -488,7 +498,8 @@ class PostgreSQLDigitalAssetRepository(
             try:
                 asset = await asset_repo.get_by_normalized_value(
                     asset_type="domain",
-                    normalized_value="evil.com"
+                    normalized_value="evil.com",
+                    user_id=user_id,
                 )
                 # Asset already exists, use existing
             except NotFound:
@@ -498,24 +509,22 @@ class PostgreSQLDigitalAssetRepository(
 
         Traces to: E3.T7 Specification § Requirement R4.3
         Traces to: 02-Domain-Model § Asset deduplication (domain identity)
-        Traces to: 04-Database-Design § DigitalAsset UNIQUE constraint
+        Traces to: 04-Database-Design §6.3 (per-user dedup key)
         """
         try:
-            stmt = (
-                select(DigitalAssetORM)
-                .where(
-                    and_(
-                        DigitalAssetORM.normalized_value == normalized_value,
-                        DigitalAssetORM.asset_type == asset_type,
-                        DigitalAssetORM.deleted_at.is_(None),
-                    )
+            stmt = select(DigitalAssetORM).where(
+                and_(
+                    DigitalAssetORM.user_id == user_id,
+                    DigitalAssetORM.normalized_value == normalized_value,
+                    DigitalAssetORM.asset_type == asset_type,
+                    DigitalAssetORM.deleted_at.is_(None),
                 )
             )
             orm_obj = await self.session.scalar(stmt)
             if not orm_obj:
                 raise NotFound(
                     f"DigitalAsset with type {asset_type} and value "
-                    f"{normalized_value} not found"
+                    f"{normalized_value} not found for user {user_id}"
                 )
             return self._to_domain(orm_obj)
         except NotFound:
