@@ -1,0 +1,51 @@
+# ===========================================================================
+# Line-ending and encoding normalization
+# ===========================================================================
+# One-time renormalization landed 2026-08-23; this file keeps the tree
+# from drifting back into CRLF/LF phantom diffs on Windows checkouts.
+
+* text=auto
+
+# Source and config files: LF in the repository
+*.py text
+*.pyi text
+*.md text
+*.rst text
+*.yml text
+*.yaml text
+*.toml text
+*.sql text
+*.json text
+*.txt text
+*.cfg text
+*.ini text
+*.example text
+*.env text
+*.gitignore text
+*.gitattributes text
+Dockerfile* text
+*.Dockerfile text
+dockerfile* text
+
+# Shell scripts must stay LF even on Windows checkouts
+*.sh text eol=lf
+
+# Windows-only scripts stay CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Binaries: never touch
+*.exe binary
+*.dll binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.pyc binary
+*.zip binary
+*.gz binary
