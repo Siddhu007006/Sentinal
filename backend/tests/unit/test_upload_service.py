@@ -20,11 +20,11 @@ import pytest
 
 from app.application.services.upload_service import (
     FileTooLargeError,
-    MimeTypeNotAllowedError,
     UploadService,
 )
 from app.core.settings import UploadSettings
 from app.domain.exceptions import NotFound, StorageConnectionError
+from app.utils.file_validation import MimeTypeNotAllowedError
 
 
 if TYPE_CHECKING:
@@ -34,7 +34,8 @@ if TYPE_CHECKING:
     from app.domain.entities.upload import Upload
 
 
-_PAYLOAD = b"sentinel-upload-service-test-payload" * 20
+# Textual payload: content is declared and validated as text/plain
+_PAYLOAD = b"sentinel upload service test payload line\n" * 20
 _PAYLOAD_HASH = hashlib.sha256(_PAYLOAD).hexdigest()
 
 _ALLOWED = UploadSettings(
@@ -150,8 +151,8 @@ class TestHashAuthority:
 
         result = await service.process_upload(
             user_id=uuid4(),
-            original_filename="evidence.pdf",
-            content_type="application/pdf",
+            original_filename="evidence.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
         )
 
@@ -176,14 +177,14 @@ class TestHashAuthority:
         other = b"completely different content" * 10
         await service.process_upload(
             user_id=uuid4(),
-            original_filename="evidence.pdf",
-            content_type="application/pdf",
+            original_filename="evidence.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
         )
         await service.process_upload(
             user_id=uuid4(),
-            original_filename="evidence.pdf",  # identical metadata
-            content_type="application/pdf",
+            original_filename="evidence.txt",  # identical metadata
+            content_type="text/plain",
             stream=_stream(other),
         )
 
@@ -207,14 +208,14 @@ class TestDeduplication:
 
         first = await service.process_upload(
             user_id=user,
-            original_filename="a.pdf",
-            content_type="application/pdf",
+            original_filename="a.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
         )
         second = await service.process_upload(
             user_id=user,
-            original_filename="b.pdf",
-            content_type="application/pdf",
+            original_filename="b.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
         )
 
@@ -235,14 +236,14 @@ class TestDeduplication:
 
         await service.process_upload(
             user_id=user,
-            original_filename="a.pdf",
-            content_type="application/pdf",
+            original_filename="a.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
         )
         await service.process_upload(
             user_id=user,
-            original_filename="b.pdf",
-            content_type="application/pdf",
+            original_filename="b.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
         )
 
@@ -265,8 +266,8 @@ class TestFailurePaths:
         with pytest.raises(StorageConnectionError):
             await service.process_upload(
                 user_id=uuid4(),
-                original_filename="x.pdf",
-                content_type="application/pdf",
+                original_filename="x.txt",
+                content_type="text/plain",
                 stream=_stream(_PAYLOAD),
             )
 
@@ -280,7 +281,7 @@ class TestFailurePaths:
         """Size limit enforced while streaming; no full buffering."""
         small = UploadSettings(
             UPLOAD_MAX_FILE_SIZE=16,
-            UPLOAD_ALLOWED_MIME_TYPES=["application/pdf"],
+            UPLOAD_ALLOWED_MIME_TYPES=["text/plain"],
         )
         uploads = _passthrough_upload_repo()
         service = UploadService(
@@ -294,8 +295,8 @@ class TestFailurePaths:
         with pytest.raises(FileTooLargeError):
             await service.process_upload(
                 user_id=uuid4(),
-                original_filename="big.pdf",
-                content_type="application/pdf",
+                original_filename="big.txt",
+                content_type="text/plain",
                 stream=_stream(b"x" * 10_000, chunk_size=8),
             )
 
@@ -336,15 +337,15 @@ class TestIdempotency:
 
         first = await service.process_upload(
             user_id=user,
-            original_filename="a.pdf",
-            content_type="application/pdf",
+            original_filename="a.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
             idempotency_key="req-001",
         )
         replay = await service.process_upload(
             user_id=user,
-            original_filename="a.pdf",
-            content_type="application/pdf",
+            original_filename="a.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
             idempotency_key="req-001",
         )
@@ -364,15 +365,15 @@ class TestIdempotency:
 
         a = await service.process_upload(
             user_id=uuid4(),
-            original_filename="a.pdf",
-            content_type="application/pdf",
+            original_filename="a.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
             idempotency_key="shared-key",
         )
         b = await service.process_upload(
             user_id=uuid4(),
-            original_filename="a.pdf",
-            content_type="application/pdf",
+            original_filename="a.txt",
+            content_type="text/plain",
             stream=_stream(_PAYLOAD),
             idempotency_key="shared-key",
         )
@@ -390,3 +391,42 @@ class TestStorageKey:
         assert ".." not in key
         # Traversal collapsed into a safe flat component
         assert "etc_passwd" in key.split("/")[-1]
+
+
+class TestMagicByteValidation:
+    @pytest.mark.asyncio
+    async def test_magic_mismatch_rejected_before_storage(self) -> None:
+        """E5.T5 wiring: spoofed content fails closed, never stored."""
+        from app.utils.file_validation import MimeTypeMismatchError
+
+        uploads = _passthrough_upload_repo()
+        storage = _consuming_storage()
+        service = _service(upload_repo=uploads, storage=storage)
+
+        # Executable bytes wearing a PDF filename/declaration
+        with pytest.raises(MimeTypeMismatchError):
+            await service.process_upload(
+                user_id=uuid4(),
+                original_filename="report.pdf",
+                content_type="application/pdf",
+                stream=_stream(b"MZ\x90\x00\x03\x00\x00\x00\x04pdf?"),
+            )
+
+        # Nothing reached object storage; the upload is persisted failed
+        storage.upload_stream.assert_not_awaited()
+        failed = next(iter(uploads.store.values()))
+        assert failed.upload_status == "failed"
+
+    @pytest.mark.asyncio
+    async def test_content_type_parameters_do_not_bypass(self) -> None:
+        """Declared type with parameters still validates + normalizes."""
+        uploads = _passthrough_upload_repo()
+        service = _service(upload_repo=uploads)
+
+        result = await service.process_upload(
+            user_id=uuid4(),
+            original_filename="notes.txt",
+            content_type="text/plain; charset=utf-8",
+            stream=_stream(b"parameterized but textual"),
+        )
+        assert result.upload_status == "completed"

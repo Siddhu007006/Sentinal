@@ -116,7 +116,19 @@
 
 ## 🟡 IN PROGRESS: EPIC 5 - Asset Upload & Management
 
-**Status:** 3/8 TASKS COMPLETE + contract reconciliation
+**Status:** 4/8 TASKS COMPLETE + contract reconciliation
+
+- ✅ E5.T5: File Validation Utilities — `app/utils/file_validation.py`
+  (pure stdlib, no framework imports). Declared-MIME allow-list check
+  with parameter/case normalization; fail-closed magic-byte
+  verification of the actual leading bytes (PDF, PNG, JPEG, GIF87a/89a,
+  WebP RIFF+WEBP, ZIP family incl. Office containers; text/plain via
+  UTF-8 + no-control-bytes policy); bounded-memory sniff window (16
+  bytes) with a replay stream returning every original byte exactly
+  once, preserving the E5.T4 single-pass 100 MB contract. Wired into
+  UploadService BEFORE any storage write — spoofed content is persisted
+  as failed and never reaches object storage. Validation errors are a
+  distinct FileValidationError family, separable from StorageError.
 
 - ✅ E5.T4: Upload Service — full pipeline with the locked hash
   authority: the SHA-256 is computed exclusively from the streamed

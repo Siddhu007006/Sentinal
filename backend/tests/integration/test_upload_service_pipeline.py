@@ -136,7 +136,7 @@ class TestFullPipeline:
             upload_settings=_upload_settings(),
         )
 
-        block = os.urandom(64 * 1024)
+        block = b"%PDF-1.7\n" + os.urandom(64 * 1024 - 9)
         stream, expected_hash, total = _pattern_stream(block, repeat=3)
 
         result = await service.process_upload(
@@ -177,7 +177,7 @@ class TestFullPipeline:
             upload_settings=_upload_settings(),
         )
 
-        block = os.urandom(32 * 1024)
+        block = b"%PDF-1.7\n" + os.urandom(32 * 1024 - 9)
         stream_a, expected_hash, _total = _pattern_stream(block, repeat=2)
         first = await service.process_upload(
             user_id=user.id,  # type: ignore[attr-defined]
@@ -229,19 +229,19 @@ class TestFullPipeline:
             upload_settings=_upload_settings(),
         )
 
-        stream_a, _h, _t = _pattern_stream(b"idempotent-block", repeat=4)
+        stream_a, _h, _t = _pattern_stream(b"idempotent textual block\n", repeat=4)
         first = await service.process_upload(
             user_id=user.id,  # type: ignore[attr-defined]
-            original_filename="once.pdf",
-            content_type="application/pdf",
+            original_filename="once.txt",
+            content_type="text/plain",
             stream=stream_a,
             idempotency_key="req-integration-001",
         )
-        stream_b, _h2, _t2 = _pattern_stream(b"idempotent-block", repeat=4)
+        stream_b, _h2, _t2 = _pattern_stream(b"idempotent textual block\n", repeat=4)
         replay = await service.process_upload(
             user_id=user.id,  # type: ignore[attr-defined]
-            original_filename="once.pdf",
-            content_type="application/pdf",
+            original_filename="once.txt",
+            content_type="text/plain",
             stream=stream_b,
             idempotency_key="req-integration-001",
         )
@@ -275,7 +275,7 @@ class TestLargeStream:
             upload_settings=_upload_settings(),
         )
 
-        block = os.urandom(1024 * 1024)  # 1 MiB random block
+        block = b"%PDF-1.7\n" + os.urandom(1024 * 1024 - 9)  # PDF-signed block
         stream, expected_hash, total = _pattern_stream(
             block, repeat=100  # 100 MiB
         )
@@ -311,7 +311,7 @@ class TestLargeStream:
             upload_settings=_upload_settings(max_bytes=1024 * 1024),
         )
 
-        block = os.urandom(256 * 1024)
+        block = b"%PDF-1.7\n" + os.urandom(256 * 1024 - 9)
         stream, _h, _t = _pattern_stream(block, repeat=16)  # 4 MiB > 1 MiB
 
         with pytest.raises(FileTooLargeError):

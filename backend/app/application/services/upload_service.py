@@ -2,20 +2,22 @@
 Upload application service.
 
 Orchestrates the upload pipeline per openapi.yaml and 02-Domain-Model
-(22-Engineering-Backlog E5.T4):
+(22-Engineering-Backlog E5.T4 + E5.T5):
 
     1. Idempotency: a retried (user, idempotency_key) returns the
        original upload without re-processing.
-    2. Declared MIME allow-list check (cheap, before any I/O). Magic-
-       byte verification of the ACTUAL content is E5.T5.
+    2. Declared MIME allow-list check (cheap, before any I/O).
     3. Create the Upload row (pending), transition to processing.
-    4. Stream the bytes to object storage via multipart while computing
+    4. Magic-byte validation of the actual content against the declared
+       type (fail closed, BEFORE any storage write — E5.T5); the
+       validator returns a replay stream of the same bytes.
+    5. Stream the bytes to object storage via multipart while computing
        the SHA-256 digest concurrently — a hashing tee feeds every chunk
        to hashlib; memory stays bounded to one storage part.
-    5. Resolve the DigitalAsset by content hash (deduplication):
+    6. Resolve the DigitalAsset by content hash (deduplication):
        existing asset reused, otherwise a new content-addressed asset.
-    6. complete() the upload with the authoritative hash + asset.
-    7. Audit (fail-safe: audit failures never fail the upload).
+    7. complete() the upload with the authoritative hash + asset.
+    8. Audit (fail-safe: audit failures never fail the upload).
 
 HASH AUTHORITY (non-negotiable domain invariant, locked 2026-08-23):
 the SHA-256 is authoritative ONLY from the streamed bytes — every chunk
@@ -42,6 +44,11 @@ from uuid import UUID, uuid4
 from app.domain.entities.digital_asset import DigitalAsset
 from app.domain.entities.upload import Upload
 from app.domain.exceptions import NotFound, StorageError
+from app.utils.file_validation import (
+    FileValidationError,
+    validate_declared_mime_type,
+    validate_upload_stream,
+)
 
 
 if TYPE_CHECKING:
@@ -72,16 +79,6 @@ class FileTooLargeError(Exception):
         super().__init__(
             f"Upload of {size_bytes} bytes exceeds the maximum "
             f"allowed size of {max_bytes} bytes"
-        )
-
-
-class MimeTypeNotAllowedError(Exception):
-    """The declared content type is not in the upload allow-list."""
-
-    def __init__(self, content_type: str) -> None:
-        self.content_type = content_type
-        super().__init__(
-            f"Content type {content_type!r} is not allowed for uploads"
         )
 
 
@@ -189,9 +186,11 @@ class UploadService:
                     user_id, idempotency_key
                 )
 
-        # 2. Declared MIME allow-list — cheap rejection before any I/O.
-        if content_type not in self._settings.allowed_mime_types:
-            raise MimeTypeNotAllowedError(content_type)
+        # 2. Declared MIME allow-list — cheap rejection before any I/O
+        #    (normalizes parameters/case; 08-Security §6 reject-early).
+        normalized_type = validate_declared_mime_type(
+            content_type, self._settings.allowed_mime_types
+        )
 
         # 3. Create the pending upload and start processing.
         upload = Upload.create(
@@ -201,7 +200,7 @@ class UploadService:
             storage_key=self._derive_storage_key(
                 uuid4(), original_filename
             ),
-            content_type=content_type,
+            content_type=normalized_type,
             # Real size arrives from the stream; 0 is the honest intake
             # value for a stream of unknown length (CHECK: >= 0).
             file_size_bytes=0,
@@ -213,13 +212,28 @@ class UploadService:
             persisted.id, {"upload_status": processing.upload_status}
         )
 
-        # 4. Stream to storage while hashing — the tee is consumed by
+        # 4. Magic-byte validation (E5.T5, 08-Security §6): sniff the
+        #    minimum prefix and fail closed BEFORE any storage write —
+        #    invalid content is rejected outright, never stored. The
+        #    validator returns a replay of the same bytes so the
+        #    pipeline stays single-pass and bounded-memory.
+        try:
+            replay = await validate_upload_stream(
+                stream,
+                declared_content_type=normalized_type,
+                allowed_mime_types=self._settings.allowed_mime_types,
+            )
+        except FileValidationError as exc:
+            await self._fail_upload(processing, reason=str(exc))
+            raise
+
+        # 5. Stream to storage while hashing — the tee is consumed by
         #    the adapter's multipart upload; the digest accumulates
         #    server-side from the same bytes that reach storage.
-        tee = _HashingTee(stream, self._settings.max_file_size)
+        tee = _HashingTee(replay, self._settings.max_file_size)
         try:
             await self.storage.upload_stream(
-                processing.storage_key, tee, content_type
+                processing.storage_key, tee, normalized_type
             )
         except (StorageError, FileTooLargeError) as exc:
             await self._fail_upload(processing, reason=str(exc))
@@ -232,7 +246,7 @@ class UploadService:
         asset = await self._resolve_asset(
             processing=processing,
             checksum=checksum,
-            content_type=content_type,
+            content_type=normalized_type,
             size_bytes=tee.size_bytes,
             original_filename=original_filename,
             user_id=user_id,
