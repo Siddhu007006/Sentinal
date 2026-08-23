@@ -206,15 +206,109 @@ def reset_database_tables() -> Generator[None, None, None]:
     immutability). Each cleanup runs on its own short-lived event loop;
     the cleanup engine uses NullPool, so every TRUNCATE checks out and
     disposes a fresh connection (no connections cross event loops).
-    """
 
-    def cleanup() -> None:
+    Self-healing: migration-lifecycle tests legitimately drop the schema
+    (alembic downgrade base). If the expected tables are missing at
+    cleanup time, the schema is restored with `alembic upgrade head`
+    before truncating, so a dropped schema never cascades errors into
+    unrelated tests.
+    """
+    expected_tables = (
+        "reports",
+        "user_refresh_tokens",
+        "audit_logs",
+        "analyses",
+        "digital_assets",
+        "uploads",
+        "users",
+    )
+
+    def restore_schema_if_needed() -> None:
+        assert _cleanup_engine is not None
         engine = _cleanup_engine
-        if engine is None:
+
+        async def _schema_needs_restore() -> bool:
+            async with engine.connect() as conn:
+                result = await conn.execute(
+                    text(
+                        "SELECT table_name FROM information_schema.tables "
+                        "WHERE table_schema = 'public'"
+                    )
+                )
+                present = {row[0] for row in result.fetchall()}
+                missing = [t for t in expected_tables if t not in present]
+                if missing:
+                    return True
+
+                # Migration-lifecycle tests can also restore the schema
+                # themselves while leaving audit_logs with full DML
+                # (default privileges). Detect the broken immutability.
+                audit = await conn.execute(
+                    text(
+                        "SELECT COUNT(*) FROM information_schema.role_table_grants "
+                        "WHERE table_schema = 'public' "
+                        "AND table_name = 'audit_logs' "
+                        "AND grantee = 'sentinel_api' "
+                        "AND privilege_type IN ('UPDATE', 'DELETE', 'TRUNCATE')"
+                    )
+                )
+                forbidden = audit.scalar_one()
+                return forbidden > 0
+
+        if not asyncio.run(_schema_needs_restore()):
             return
 
-        async def _truncate() -> None:
+        print(
+            "Schema incomplete or audit immutability broken; restoring",
+            file=sys.stderr,
+        )
+        backend_dir = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), ".."
+        )
+        subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=backend_dir,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=True,
+        )
+
+        # Re-apply the audit_logs immutability fix: the migration
+        # default privileges grant full DML, and nothing else reapplies
+        # the INSERT-only restriction after a schema restore (mirrors
+        # docker/bootstrap/fix_audit_logs_post_migration.sql).
+        async def _apply_audit_fix() -> None:
             async with engine.begin() as conn:
+                await conn.execute(
+                    text(
+                        "REVOKE ALL PRIVILEGES ON TABLE public.audit_logs "
+                        "FROM sentinel_api"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "GRANT SELECT ON TABLE public.audit_logs "
+                        "TO sentinel_api"
+                    )
+                )
+                await conn.execute(
+                    text(
+                        "GRANT INSERT ON TABLE public.audit_logs "
+                        "TO sentinel_api"
+                    )
+                )
+
+        asyncio.run(_apply_audit_fix())
+
+    def cleanup() -> None:
+        if _cleanup_engine is None:
+            return
+
+        restore_schema_if_needed()
+
+        async def _truncate() -> None:
+            async with _cleanup_engine.begin() as conn:
                 await conn.execute(
                     text(
                         "TRUNCATE TABLE "

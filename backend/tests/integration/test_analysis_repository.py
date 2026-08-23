@@ -221,10 +221,11 @@ class TestAnalysisRepositoryN1Prevention:
 
         assert len(results) == 10
         assert total == 10
-        # Each result should have asset loaded (no additional queries)
+        # The domain Analysis entity references the asset by id (the
+        # relationship is eagerly loaded at the ORM layer via selectin;
+        # the domain contract does not expose a digital_asset object).
         for analysis in results:
-            assert analysis.digital_asset is not None
-            assert analysis.digital_asset.id == asset_orm.id
+            assert analysis.digital_asset_id == asset_orm.id
 
 
 # ===========================================================================

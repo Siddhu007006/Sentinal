@@ -521,18 +521,20 @@ async def test_not_null_constraint_on_upload_status(
     db_session.add(user)
     await db_session.flush()
 
-    upload = Upload(
-        user_id=user.id,
-        original_filename="file.txt",
-        storage_key="uploads/2025/07/19/uuid/file.txt",
-        content_type="text/plain",
-        file_size_bytes=100,
-        upload_status=None,
-    )
-
-    db_session.add(upload)
-
+    # Raw SQL: the ORM applies a Python-side default ('pending') when
+    # the attribute is None, which would mask the DB constraint. Insert
+    # without the column to exercise the database-level NOT NULL.
     with pytest.raises(IntegrityError):
+        await db_session.execute(
+            text(
+                "INSERT INTO uploads "
+                "(user_id, original_filename, storage_key, "
+                "content_type, file_size_bytes) "
+                "VALUES (:user_id, 'file.txt', "
+                "'uploads/2025/07/19/uuid/file.txt', 'text/plain', 100)"
+            ),
+            {"user_id": user.id},
+        )
         await db_session.commit()
 
     await db_session.rollback()
@@ -919,6 +921,11 @@ async def test_user_uploads_relationship_works(
         db_session.add(upload)
 
     await db_session.commit()
+
+    # The uploads collection is not loaded on flush-inserted objects;
+    # refresh explicitly (async sessions cannot lazy-load attributes
+    # outside statement execution).
+    await db_session.refresh(user, attribute_names=["uploads"])
 
     # Verify relationship works
     assert user.uploads is not None

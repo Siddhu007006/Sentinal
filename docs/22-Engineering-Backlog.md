@@ -87,7 +87,7 @@ The backlog is reviewed after every completed epic and after any approved archit
 | **Priority** | P0 |
 | **Dependencies** | E1.T3 |
 | **Estimated Effort** | 4h |
-| **Description** | Create `docker-compose.yml` per 09-Deployment-Architecture with services: PostgreSQL 16 (port 5432, persistent volume, health check), Redis 7 (port 6379, health check), MinIO (ports 9000/9001, health check, auto-create default bucket via `mc`). Create `docker/Dockerfile.backend` with multi-stage build (builder + runtime) using Python 3.12 slim base. Ensure environment parity per 09-Deployment-Architecture §2. |
+| **Description** | Create `docker-compose.yml` per 09-Deployment-Architecture with services: PostgreSQL 16 (port 5432, persistent volume, health check), Redis 7 (port 6379, health check), MinIO (ports 9000/9001, health check, auto-create default bucket via `mc`). Create `docker/backend.Dockerfile` with multi-stage build (builder + runtime) using Python 3.12 slim base. Ensure environment parity per 09-Deployment-Architecture §2. |
 | **Acceptance Criteria** | `docker compose up -d` starts all services. `docker compose ps` shows all healthy. PostgreSQL accepts connections on 5432. MinIO console accessible on 9001. Redis responds to PING. |
 | **Definition of Done** | Merged to `main`, tested on at least one OS. |
 
@@ -979,7 +979,7 @@ Before implementation begins, each task must have satisfied dependencies, a stab
 | **Priority** | P0 |
 | **Dependencies** | E1.T4 |
 | **Estimated Effort** | 3h |
-| **Description** | Finalize `docker/Dockerfile.backend` per 12-CI-CD-Architecture §3. Multi-stage: (1) builder stage installs dependencies, (2) runtime stage copies only installed packages and app code. Minimal base image (python:3.12-slim). Non-root user. Health check instruction. Build args for version tagging. |
+| **Description** | Finalize `docker/backend.Dockerfile` per 12-CI-CD-Architecture §3. Multi-stage: (1) builder stage installs dependencies, (2) runtime stage copies only installed packages and app code. Minimal base image (python:3.12-slim). Non-root user. Health check instruction. Build args for version tagging. |
 | **Acceptance Criteria** | Built image runs application correctly. Image size minimized (< 500MB). Runs as non-root. Health check works in Docker. |
 | **Definition of Done** | CI builds and pushes image. Merged. |
 
