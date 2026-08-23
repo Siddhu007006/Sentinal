@@ -191,6 +191,7 @@ class PostgreSQLUploadRepository(PostgreSQLRepository["Upload"], UploadRepositor
             upload_status=entity.upload_status,
             completed_at=entity.completed_at,
             digital_asset_id=entity.digital_asset_id,
+            idempotency_key=entity.idempotency_key,
         )
 
     def _to_domain(self, orm_obj: UploadORM) -> Upload:
@@ -217,6 +218,7 @@ class PostgreSQLUploadRepository(PostgreSQLRepository["Upload"], UploadRepositor
             upload_status=orm_obj.upload_status,
             completed_at=orm_obj.completed_at,
             digital_asset_id=orm_obj.digital_asset_id,
+            idempotency_key=orm_obj.idempotency_key,
             created_at=orm_obj.created_at,
             updated_at=orm_obj.updated_at,
         )
@@ -305,6 +307,49 @@ class PostgreSQLUploadRepository(PostgreSQLRepository["Upload"], UploadRepositor
             if not orm_obj:
                 raise NotFound(
                     f"Upload with storage_key {storage_key} not found"
+                )
+            return self._to_domain(orm_obj)
+        except NotFound:
+            raise
+        except Exception as exc:
+            raise map_db_exception(exc) from exc
+
+    async def get_by_idempotency_key(
+        self,
+        user_id: UUID,
+        idempotency_key: str,
+    ) -> Upload:
+        """
+        Retrieve a user's upload by its idempotency key.
+
+        One upload exists per (user_id, idempotency_key) — the partial
+        unique index uq_uploads_user_idempotency_key enforces it. A
+        retried request with the same key returns the original upload
+        instead of re-processing. Soft-deleted uploads are excluded.
+
+        Args:
+            user_id: Owner of the upload (per-user key scope)
+            idempotency_key: Client-supplied idempotency key
+
+        Returns:
+            Upload entity with the specified key for this user
+
+        Raises:
+            NotFound: If no upload exists for this user+key
+
+        Traces to: 22-Engineering-Backlog E5.T4 (idempotent uploads)
+        """
+        try:
+            stmt = select(UploadORM).where(
+                UploadORM.user_id == user_id,
+                UploadORM.idempotency_key == idempotency_key,
+                UploadORM.deleted_at.is_(None),
+            )
+            orm_obj = await self.session.scalar(stmt)
+            if not orm_obj:
+                raise NotFound(
+                    f"Upload with idempotency_key {idempotency_key!r} "
+                    f"not found for user {user_id}"
                 )
             return self._to_domain(orm_obj)
         except NotFound:

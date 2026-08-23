@@ -376,6 +376,62 @@ class AuditService:
 
         return await self.audit_repo.create(audit)
 
+    async def log_upload_completed(
+        self,
+        user_id: UUID,
+        upload_id: UUID,
+        asset_id: UUID,
+        user_role: UserRole | None = None,
+        ip_address: str | None = None,
+        request_id: str | None = None,
+        user_agent: str | None = None,
+    ) -> AuditLog:
+        """Log upload completion event (E5.T4 pipeline).
+
+        The server-computed content hash is deliberately NOT included:
+        audit records describe the event; the upload/asset linkage
+        carries the authoritative hash.
+
+        Args:
+            user_id: Owning user
+            upload_id: Completed upload
+            asset_id: DigitalAsset the content resolved to
+            user_role: Actor's role snapshot (optional)
+            ip_address: Client IP address (optional)
+            request_id: Request correlation ID (optional)
+            user_agent: Client User-Agent (optional)
+
+        Returns:
+            Created AuditLog record
+
+        Raises:
+            RepositoryException: If database error occurs
+        """
+        after_state = cast("dict[str, object]", {
+            "user_id": str(user_id),
+            "upload_id": str(upload_id),
+            "asset_id": str(asset_id),
+            "action": "upload_completed",
+        })
+
+        audit = AuditLog(
+            actor_id=user_id,
+            actor_role=user_role.value if user_role else "unknown",
+            action="UPLOAD_COMPLETED",
+            resource_type="Upload",
+            resource_id=upload_id,
+            before_state=None,
+            after_state=after_state,
+            ip_address=ip_address,
+            request_id=request_id,
+            user_agent=user_agent,
+            success=True,
+            failure_reason=None,
+            occurred_at=datetime.now(tz=UTC),
+        )
+
+        return await self.audit_repo.create(audit)
+
     async def log_user_deactivation(
         self,
         user_id: UUID,

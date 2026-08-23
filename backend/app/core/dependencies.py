@@ -29,6 +29,7 @@ from typing import Any
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.upload_service import UploadService
 from app.core.settings import Settings
 from app.domain.repositories import (
     AnalysisRepository,
@@ -38,6 +39,7 @@ from app.domain.repositories import (
     UploadRepository,
     UserRepository,
 )
+from app.domain.services.audit_service import AuditService
 from app.domain.services.storage_adapter import StorageAdapter
 from app.infrastructure.database.repositories.analysis import (
     PostgreSQLAnalysisRepository,
@@ -71,6 +73,7 @@ __all__ = [
     "get_settings",
     "get_storage_adapter",
     "get_upload_repository",
+    "get_upload_service",
     "get_user_repository",
 ]
 
@@ -528,3 +531,32 @@ def get_storage_adapter(
     See: 22-Engineering-Backlog E5.T1.
     """
     return S3StorageAdapter(settings.storage)
+
+
+def get_upload_service(
+    upload_repo: UploadRepository = Depends(get_upload_repository),  # noqa: B008
+    asset_repo: DigitalAssetRepository = Depends(  # noqa: B008
+        get_digital_asset_repository
+    ),
+    storage: StorageAdapter = Depends(get_storage_adapter),  # noqa: B008
+    audit_log_repo: AuditLogRepository = Depends(  # noqa: B008
+        get_audit_log_repository
+    ),
+) -> UploadService:
+    """Get UploadService dependency for use in routes.
+
+    Wires the upload pipeline: repositories, the storage adapter
+    (behind its domain interface), fail-safe audit logging, and the
+    upload constraint settings.
+
+    See: 22-Engineering-Backlog E5.T4 (Upload Service).
+    """
+    from app.core.settings import UploadSettings
+
+    return UploadService(
+        upload_repo=upload_repo,
+        asset_repo=asset_repo,
+        storage=storage,
+        audit_service=AuditService(audit_log_repo),
+        upload_settings=UploadSettings(),
+    )

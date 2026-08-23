@@ -49,7 +49,7 @@ import enum
 from datetime import datetime  # noqa: TC003
 from uuid import UUID  # noqa: TC003
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, text
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -329,6 +329,19 @@ class Upload(BaseModel):
         lazy="selectin",
     )
 
+    # Idempotency key - Client-supplied deduplication key (optional)
+    # POST /uploads may carry an Idempotency-Key header: retrying the
+    # same request returns the original upload instead of re-processing
+    # (one upload per user+key; enforced by partial unique index).
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment=(
+            "Client idempotency key; one upload per user+key "
+            "(unique where not null)"
+        ),
+    )
+
     # Table-level constraints and indexes
     __table_args__ = (
         # CHECK constraint: upload_status must be one of the valid values
@@ -353,6 +366,15 @@ class Upload(BaseModel):
         CheckConstraint(
             "digital_asset_id IS NULL OR upload_status = 'completed'",
             name="ck_uploads_digital_asset_completed",
+        ),
+        # PARTIAL UNIQUE index: one upload per (user, idempotency key).
+        # NULL keys (no idempotency requested) are unrestricted.
+        Index(
+            "uq_uploads_user_idempotency_key",
+            "user_id",
+            "idempotency_key",
+            unique=True,
+            postgresql_where=text("idempotency_key IS NOT NULL"),
         ),
         # Composite index: (user_id, created_at DESC)
         # Optimizes query: SELECT * FROM uploads

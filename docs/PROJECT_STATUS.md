@@ -116,7 +116,18 @@
 
 ## 🟡 IN PROGRESS: EPIC 5 - Asset Upload & Management
 
-**Status:** 2/8 TASKS COMPLETE + contract reconciliation
+**Status:** 3/8 TASKS COMPLETE + contract reconciliation
+
+- ✅ E5.T4: Upload Service — full pipeline with the locked hash
+  authority: the SHA-256 is computed exclusively from the streamed
+  bytes (hashing tee feeds every chunk to hashlib on its way to
+  multipart storage); the service exposes NO hash input parameter.
+  Content deduplication by hash (duplicate uploads resolve to the
+  existing asset; the redundant object is cleaned up), per-user
+  idempotency keys (uploads.idempotency_key, partial unique), size
+  limit enforced at the stream boundary, MIME allow-list before any
+  I/O, fail-safe audit. 100 MB bounded-memory upload verified against
+  real MinIO.
 
 - ✅ E5.T3: Upload Domain Entity — state machine (pending → processing
   → completed|failed; pending → failed allowed for the E5.T8 cleanup

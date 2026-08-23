@@ -146,6 +146,42 @@ class UploadRepository(BaseRepository["Upload"]):
         pass
 
     @abstractmethod
+    async def get_by_idempotency_key(
+        self,
+        user_id: UUID,
+        idempotency_key: str,
+    ) -> Upload:
+        """
+        Retrieve a user's upload by its idempotency key.
+
+        Idempotency lookup for POST /uploads retries: one upload exists
+        per (user_id, idempotency_key); a retried request with the same
+        key returns the original upload (whatever its terminal or
+        in-flight state) instead of re-processing. Soft-deleted uploads
+        are excluded.
+
+        Args:
+            user_id: Owner of the upload (per-user key scope)
+            idempotency_key: Client-supplied idempotency key
+
+        Returns:
+            Upload entity with the specified key for this user
+
+        Raises:
+            NotFound: If no upload exists for this user+key
+
+        Example:
+            ```python
+            upload = await upload_repo.get_by_idempotency_key(
+                user_id=user_id, idempotency_key="req-2026-08-23-001"
+            )
+            ```
+
+        Traces to: 22-Engineering-Backlog E5.T4 (idempotent uploads)
+        """
+        pass
+
+    @abstractmethod
     async def list_by_user(
         self,
         user_id: UUID,

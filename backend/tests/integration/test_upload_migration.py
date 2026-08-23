@@ -1354,3 +1354,101 @@ async def test_digital_assets_upload_id_column_removed(
         )
     )
     assert result.scalar_one() == 0
+
+
+# ===========================================================================
+# E5.T4: uploads.idempotency_key — per-user partial unique
+# ===========================================================================
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_idempotency_key_column_present_and_nullable(
+    db_session: AsyncSession | None,
+) -> None:
+    """E5.T4: idempotency_key exists on uploads and is nullable."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    result = await db_session.execute(
+        text(
+            """
+            SELECT column_name, is_nullable FROM information_schema.columns
+            WHERE table_name = 'uploads' AND column_name = 'idempotency_key'
+            """
+        )
+    )
+    row = result.fetchone()
+
+    assert row is not None, "uploads.idempotency_key column missing"
+    assert row[1] == "YES", "idempotency_key should be nullable"
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_idempotency_key_unique_per_user(
+    db_session: AsyncSession | None,
+) -> None:
+    """One upload per (user, key); different users may share a key."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    users = []
+    for i in range(2):
+        user = User(
+            email=f"idem-{i}@example.com",
+            password_hash="$2b$12$hash",
+            role=UserRole.VIEWER.value,
+        )
+        db_session.add(user)
+        users.append(user)
+    await db_session.commit()  # survive the later intentional rollback
+    user_ids = [u.id for u in users]  # capture before rollback expires them
+
+    first = Upload(
+        user_id=user_ids[0],
+        original_filename="a.txt",
+        storage_key="uploads/2026/08/23/idem-a.txt",
+        content_type="text/plain",
+        file_size_bytes=1,
+        upload_status=UploadStatus.COMPLETED.value,
+        idempotency_key="shared-key",
+    )
+    db_session.add(first)
+    await db_session.flush()
+
+    # Same user + same key → rejected
+    db_session.add(
+        Upload(
+            user_id=user_ids[0],
+            original_filename="a2.txt",
+            storage_key="uploads/2026/08/23/idem-a2.txt",
+            content_type="text/plain",
+            file_size_bytes=1,
+            upload_status=UploadStatus.PENDING.value,
+            idempotency_key="shared-key",
+        )
+    )
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+    # Different user + same key → allowed (per-user scope)
+    db_session.add(
+        Upload(
+            user_id=user_ids[1],
+            original_filename="b.txt",
+            storage_key="uploads/2026/08/23/idem-b.txt",
+            content_type="text/plain",
+            file_size_bytes=1,
+            upload_status=UploadStatus.PENDING.value,
+            idempotency_key="shared-key",
+        )
+    )
+    await db_session.commit()

@@ -85,6 +85,7 @@ class Upload:
     created_at: datetime
     checksum_sha256: str | None = None
     digital_asset_id: UUID | None = None
+    idempotency_key: str | None = None
     completed_at: datetime | None = None
     updated_at: datetime | None = None
     deleted_at: datetime | None = None
@@ -164,6 +165,7 @@ class Upload:
         storage_key: str,
         content_type: str,
         file_size_bytes: int,
+        idempotency_key: str | None = None,
         created_at: datetime | None = None,
     ) -> Upload:
         """Create a new upload in the pending state.
@@ -179,6 +181,8 @@ class Upload:
             content_type: Declared MIME type (verified later by
                 magic-byte validation, E5.T5)
             file_size_bytes: Content size in bytes
+            idempotency_key: Optional client key; one upload per
+                (user, key)
             created_at: Creation timestamp (defaults to now)
 
         Returns:
@@ -196,6 +200,7 @@ class Upload:
             file_size_bytes=file_size_bytes,
             upload_status=PENDING,
             created_at=created_at or datetime.now(tz=UTC),
+            idempotency_key=idempotency_key,
         )
 
     # ------------------------------------------------------------------
