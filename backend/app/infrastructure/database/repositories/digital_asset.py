@@ -205,7 +205,6 @@ class PostgreSQLDigitalAssetRepository(
         return DigitalAssetORM(
             id=entity.id,
             user_id=entity.user_id,
-            upload_id=entity.upload_id,
             asset_type=entity.asset_type,
             raw_value=entity.raw_value,
             normalized_value=entity.normalized_value,
@@ -241,7 +240,6 @@ class PostgreSQLDigitalAssetRepository(
         return DigitalAsset(
             id=orm_obj.id,
             user_id=orm_obj.user_id,
-            upload_id=orm_obj.upload_id,
             asset_type=orm_obj.asset_type,
             raw_value=orm_obj.raw_value,
             normalized_value=orm_obj.normalized_value,

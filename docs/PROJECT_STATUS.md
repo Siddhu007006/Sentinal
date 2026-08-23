@@ -14,7 +14,7 @@
 | **E2** | Backend Core (9/9) | ✅ COMPLETE | ✅ | 120+ passing | ✅ Verified |
 | **E3** | Database Foundation (11/11) | ✅ COMPLETE | ✅ | 600+ passing | ✅ Verified |
 | **E4** | Authentication & Authorization (11/11) | ✅ **COMPLETE & VERIFIED** | ✅ | 640 unit + 42 integration | ✅ Verified |
-| **E5** | Asset Upload & Management (1/8) | 🟡 **IN PROGRESS** | ✅ | 18 storage tests | ✅ T1 verified |
+| **E5** | Asset Upload & Management (2/8) | 🟡 **IN PROGRESS** | ✅ | 171 focused tests | ✅ T1+T3 verified |
 | **E6-E25** | Remaining Epics (0/xxx) | ❌ NOT STARTED | ❌ | - | - |
 
 **Project Completion:** ~30% (4 complete epics, Epic 5 starting)
@@ -116,7 +116,16 @@
 
 ## 🟡 IN PROGRESS: EPIC 5 - Asset Upload & Management
 
-**Status:** 1/8 TASKS COMPLETE + contract reconciliation
+**Status:** 2/8 TASKS COMPLETE + contract reconciliation
+
+- ✅ E5.T3: Upload Domain Entity — state machine (pending → processing
+  → completed|failed; pending → failed allowed for the E5.T8 cleanup
+  job), digital_asset_id NULL until completed (entity + DB CHECK),
+  terminal states immutable, per-user ownership. FK direction moved to
+  uploads.digital_asset_id → digital_assets.id (02-Domain-Model ERD:
+  one asset matched by many uploads); digital_assets.upload_id and its
+  invariant CHECK dropped, with best-effort backfill and a verified
+  upgrade/downgrade round-trip.
 
 ### DigitalAsset contract reconciliation (2026-08-23)
 
@@ -181,10 +190,26 @@ validation, E5.T6 upload routes, E5.T7 asset routes, E5.T8 cleanup job.
 | Check | Tool | Command | Result | Status |
 |-------|------|---------|--------|--------|
 | **Linting** | Ruff | `ruff check backend/app` | 0 violations | ✅ PASS |
-| **Type Checking** | MyPy --strict | `mypy backend/app --strict` | 0 errors (104 files) | ✅ PASS |
-| **Unit Tests** | Pytest | `pytest backend/tests/unit` | 640 passing | ✅ PASS |
-| **Integration Tests** | Pytest | auth + user route suites | 42 passing | ✅ PASS |
+| **Type Checking** | MyPy --strict | `mypy backend/app --strict` | 0 errors (106 files) | ✅ PASS |
+| **Unit Tests** | Pytest | `pytest backend/tests/unit` | 667 passing | ✅ PASS |
+| **Integration Tests** | Pytest | `pytest backend/tests/integration` | 255 passing | ✅ PASS |
 | **Compilation** | Python | `compileall backend/app` | 100% success | ✅ PASS |
+
+### Engineering evidence (2026-08-23)
+
+The first full integration-suite run (all 255 tests in one session,
+two-role credentials) exposed **5 genuine pre-existing test defects**
+plus **108 phantom cascading errors**: migration-lifecycle tests drop
+the schema, and the truncate fixture could not recover — one dropped
+schema cascaded setup errors into every subsequent test, masking real
+results. The fixture now self-heals (detects missing tables OR broken
+audit_logs immutability; restores via `alembic upgrade head` + the
+INSERT-only privilege fix), and the five defects were fixed (N+1 test
+asserted a nonexistent domain attribute; NOT NULL test masked by an
+ORM Python-side default; async lazy-load misuse; a perf fixture
+violating the idempotency partial index; an over-tight wall-clock
+benchmark). The suite is now trustworthy end-to-end — 255/255 green —
+which is what qualifies CI to enforce it.
 
 ---
 

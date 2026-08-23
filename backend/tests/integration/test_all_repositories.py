@@ -23,6 +23,7 @@ Traces to: E3.T7 Design §8 (Testing Strategy)
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
@@ -43,7 +44,8 @@ from app.models.analysis import Analysis as AnalysisORM
 from app.models.analysis import AnalysisStatus
 from app.models.digital_asset import AssetType
 from app.models.digital_asset import DigitalAsset as DigitalAssetORM
-from app.models.upload import Upload as UploadORM, UploadStatus
+from app.models.upload import Upload as UploadORM
+from app.models.upload import UploadStatus
 from app.models.user import User as UserORM
 
 
@@ -156,6 +158,7 @@ class TestAllRepositoriesUploadCRUD:
             content_type="text/plain",
             file_size_bytes=1024,
             upload_status=UploadStatus.COMPLETED,
+            completed_at=datetime.now(tz=UTC),
             storage_key="s3://bucket/key",
         )
         db_session.add(upload_orm)
@@ -165,7 +168,8 @@ class TestAllRepositoriesUploadCRUD:
         created = await repo.get_by_id(upload_orm.id)
         assert created.original_filename == "test.txt"
 
-        # Update
+        # Update (terminal states carry completed_at per the entity
+        # state machine invariants)
         updated = await repo.update(
             upload_orm.id,
             {"upload_status": UploadStatus.FAILED},
@@ -205,6 +209,7 @@ class TestAllRepositoriesUploadCRUD:
                 content_type="text/plain",
                 file_size_bytes=1024 * (i + 1),
                 upload_status=UploadStatus.COMPLETED,
+                completed_at=datetime.now(tz=UTC),
                 storage_key=f"s3://bucket/key{i}",
             )
             db_session.add(upload_orm)
@@ -333,7 +338,7 @@ class TestAllRepositoriesDigitalAssetCRUD:
                 asset_type=AssetType.URL,
                 raw_value=f"https://example{i}.com",
                 normalized_value=f"https://example{i}.com",
-               
+
             )
             db_session.add(asset_orm)
         await db_session.flush()
@@ -377,7 +382,7 @@ class TestAllRepositoriesAnalysisCRUD:
             asset_type=AssetType.URL,
             raw_value="https://example.com",
             normalized_value="https://example.com",
-            
+
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -437,7 +442,7 @@ class TestAllRepositoriesAnalysisCRUD:
             asset_type=AssetType.URL,
             raw_value="https://example.com",
             normalized_value="https://example.com",
-            
+
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -492,7 +497,7 @@ class TestAllRepositoriesConsistency:
         db_session.add(user_orm)
         await db_session.flush()
 
-      
+
 
         # Create 2 assets for user
         for i in range(2):
@@ -502,7 +507,7 @@ class TestAllRepositoriesConsistency:
                 asset_type=AssetType.URL,
                 raw_value=f"https://example{i}.com",
                 normalized_value=f"https://example{i}.com",
-                
+
             )
             db_session.add(asset_orm)
         await db_session.flush()
@@ -539,7 +544,7 @@ class TestAllRepositoriesConsistency:
             asset_type=AssetType.URL,
             raw_value="https://example.com",
             normalized_value="https://example.com",
-            
+
         )
         db_session.add(asset_orm)
         await db_session.flush()
@@ -549,7 +554,7 @@ class TestAllRepositoriesConsistency:
             analysis_orm = AnalysisORM(
                 id=uuid4(),
                 digital_asset_id=asset_orm.id,
-                
+
                 requested_by=user_orm.id,
                 analyzer_key=f"analyzer{i}",
                 analyzer_version="1.0.0",
@@ -632,7 +637,7 @@ class TestAllRepositoriesPagination:
             asset_type=AssetType.URL,
             raw_value="https://example.com",
             normalized_value="https://example.com",
-            
+
         )
         db_session.add(asset_orm)
         await db_session.flush()

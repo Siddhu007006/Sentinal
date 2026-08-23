@@ -32,12 +32,10 @@ def test_instantiate_digital_asset_with_all_fields() -> None:
     database commit needed, just in-memory object).
     """
     user_id = uuid4()
-    upload_id = uuid4()
     metadata = {"tld": "com", "registered_domain": "example.com"}
 
     asset = DigitalAsset(
         user_id=user_id,
-        upload_id=upload_id,
         asset_type=AssetType.DOMAIN,
         raw_value="Example.COM",
         normalized_value="example.com",
@@ -47,7 +45,6 @@ def test_instantiate_digital_asset_with_all_fields() -> None:
     )
 
     assert asset.user_id == user_id
-    assert asset.upload_id == upload_id
     assert asset.asset_type == AssetType.DOMAIN
     assert asset.raw_value == "Example.COM"
     assert asset.normalized_value == "example.com"
@@ -83,7 +80,6 @@ def test_instantiate_digital_asset_with_minimal_fields() -> None:
     assert asset.raw_value == "https://example.com"
     assert asset.normalized_value == "https://example.com"
     # Nullable fields should be None by default
-    assert asset.upload_id is None
     assert asset.display_label is None
     assert asset.metadata_json is None
 
@@ -102,11 +98,9 @@ def test_field_types_are_correct() -> None:
     with values.
     """
     user_id = uuid4()
-    upload_id = uuid4()
 
     asset = DigitalAsset(
         user_id=user_id,
-        upload_id=upload_id,
         asset_type=AssetType.FILE,
         raw_value="malware.exe",
         normalized_value="malware.exe",
@@ -117,7 +111,6 @@ def test_field_types_are_correct() -> None:
 
     # UUID fields
     assert isinstance(asset.user_id, UUID)
-    assert isinstance(asset.upload_id, UUID)
 
     # String fields
     assert isinstance(asset.asset_type, str)
@@ -148,17 +141,13 @@ def test_user_id_is_uuid_type() -> None:
 
 def test_upload_id_is_uuid_type_when_set() -> None:
     """Test: upload_id field is UUID type when set."""
-    upload_id = uuid4()
     asset = DigitalAsset(
         user_id=uuid4(),
-        upload_id=upload_id,
         asset_type=AssetType.FILE,
         raw_value="file.txt",
         normalized_value="file.txt",
     )
 
-    assert isinstance(asset.upload_id, UUID)
-    assert asset.upload_id == upload_id
 
 
 def test_is_active_is_boolean_type() -> None:
@@ -550,10 +539,8 @@ def test_digital_asset_with_file_hash_type() -> None:
 
 def test_digital_asset_with_file_type() -> None:
     """Test: DigitalAsset can be created with FILE type."""
-    upload_id = uuid4()
     asset = DigitalAsset(
         user_id=uuid4(),
-        upload_id=upload_id,
         asset_type=AssetType.FILE,
         raw_value="malware.exe",
         normalized_value="malware.exe",
@@ -574,10 +561,8 @@ def test_upload_id_can_be_none() -> None:
         asset_type=AssetType.URL,
         raw_value="https://example.com",
         normalized_value="https://example.com",
-        upload_id=None,
     )
 
-    assert asset.upload_id is None
 
 
 def test_display_label_can_be_none() -> None:

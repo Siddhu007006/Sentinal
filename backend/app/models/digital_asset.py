@@ -166,8 +166,9 @@ class AssetType(enum.StrEnum):
     object-storage reference once assigned. Content hash is always
     computed server-side from the received bytes.
 
-    Linked to Upload (upload_id FK). upload_id is non-NULL for this type only.
-    Enforced via CHECK constraint: (asset_type = 'file') = (upload_id IS NOT NULL)
+    Upload linkage lives on the Upload side
+    (uploads.digital_asset_id, E5.T3): one asset is matched by many
+    uploads via content deduplication.
 
     Eligible analyzers: ClamAV antivirus, Yara rules, Androguard (APK),
     PDF analysis, archive extraction, AI-powered content analysis.
@@ -285,6 +286,14 @@ class DigitalAsset(BaseModel):
         back_populates="digital_asset",
     )
 
+    # Uploads that resolved to this asset (E5.T3 FK direction: the
+    # foreign key lives on uploads.digital_asset_id — one asset is
+    # matched by many uploads via content deduplication).
+    uploads_resolved: Mapped[list[Upload]] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "Upload",
+        back_populates="digital_asset",
+    )
+
     # User ID - Foreign key to users table
     # Asset owner. Every asset belongs to exactly one user. NOT NULL.
     # On DELETE RESTRICT: Prevents deletion of users with associated assets
@@ -296,17 +305,9 @@ class DigitalAsset(BaseModel):
         comment="Asset owner; FK to users.id with RESTRICT",
     )
 
-    # Upload ID - Optional foreign key to uploads table
-    # Only populated for 'file' asset type. Links to the Upload that produced
-    # this asset. Null for all other types (url, domain, ip_address, file_hash).
-    # Enforced via CHECK constraint: (asset_type = 'file') = (upload_id IS NOT NULL)
-    # ON DELETE SET NULL: If upload record deleted, orphan the asset but preserve it.
-    upload_id: Mapped[UUID | None] = mapped_column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("uploads.id", ondelete="SET NULL"),
-        nullable=True,
-        comment="FK to uploads.id; only non-NULL for 'file' asset type",
-    )
+    # NOTE (E5.T3): the asset→upload FK was removed. Upload linkage
+    # lives on the Upload side (uploads.digital_asset_id) per
+    # 02-Domain-Model ERD: one asset matched by many uploads.
 
     # Asset type - Classification determining which analyzers can process this asset
     # Values: 'url', 'domain', 'ip_address', 'file_hash', 'file'
@@ -465,14 +466,6 @@ class DigitalAsset(BaseModel):
         CheckConstraint(
             "asset_type IN ('url', 'domain', 'ip_address', 'file_hash', 'file')",
             name="ck_digital_assets_asset_type_valid",
-        ),
-        # CHECK constraint: (asset_type = 'file') = (upload_id IS NOT NULL)
-        # Structural invariant: only 'file' type has associated upload.
-        # Symmetric implication: if file type, upload_id must be non-null;
-        # if upload_id is non-null, type must be file.
-        CheckConstraint(
-            "(asset_type = 'file') = (upload_id IS NOT NULL)",
-            name="ck_digital_assets_file_upload_invariant",
         ),
         # CHECK constraint: file-like assets are content-addressed
         # A file/file_hash asset without a hash contradicts its identity.

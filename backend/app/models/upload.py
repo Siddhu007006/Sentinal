@@ -306,6 +306,29 @@ class Upload(BaseModel):
         ),
     )
 
+    # Digital asset linkage - FK on the Upload side (02-Domain-Model
+    # ERD: DIGITAL_ASSET ||--|{ UPLOAD : "matched by"; one asset is
+    # matched by many uploads via content deduplication).
+    # NULL until status is 'completed' (CHECK-enforced); assigned by
+    # the completing transition with the server-computed hash.
+    digital_asset_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("digital_assets.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+        comment=(
+            "Resolved DigitalAsset; NULL until upload_status='completed' "
+            "(content deduplication target)"
+        ),
+    )
+
+    # Digital asset relationship - eager-loaded with selectin (reverse
+    # of DigitalAsset.uploads; avoids async lazy-load errors).
+    digital_asset: Mapped[DigitalAsset] = relationship(  # type: ignore[name-defined]  # noqa: F821
+        "DigitalAsset",
+        back_populates="uploads_resolved",
+        lazy="selectin",
+    )
+
     # Table-level constraints and indexes
     __table_args__ = (
         # CHECK constraint: upload_status must be one of the valid values
@@ -323,6 +346,13 @@ class Upload(BaseModel):
         CheckConstraint(
             "file_size_bytes >= 0",
             name="ck_uploads_file_size_bytes_nonnegative",
+        ),
+        # CHECK constraint: digital_asset_id NULL until completed
+        # Mirror of the domain invariant (02-Domain-Model §11):
+        # asset linkage is a fact of completed uploads only.
+        CheckConstraint(
+            "digital_asset_id IS NULL OR upload_status = 'completed'",
+            name="ck_uploads_digital_asset_completed",
         ),
         # Composite index: (user_id, created_at DESC)
         # Optimizes query: SELECT * FROM uploads

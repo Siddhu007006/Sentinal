@@ -190,6 +190,7 @@ class PostgreSQLUploadRepository(PostgreSQLRepository["Upload"], UploadRepositor
             checksum_sha256=entity.checksum_sha256,
             upload_status=entity.upload_status,
             completed_at=entity.completed_at,
+            digital_asset_id=entity.digital_asset_id,
         )
 
     def _to_domain(self, orm_obj: UploadORM) -> Upload:
@@ -215,6 +216,7 @@ class PostgreSQLUploadRepository(PostgreSQLRepository["Upload"], UploadRepositor
             checksum_sha256=orm_obj.checksum_sha256,
             upload_status=orm_obj.upload_status,
             completed_at=orm_obj.completed_at,
+            digital_asset_id=orm_obj.digital_asset_id,
             created_at=orm_obj.created_at,
             updated_at=orm_obj.updated_at,
         )

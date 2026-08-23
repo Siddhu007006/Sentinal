@@ -524,7 +524,7 @@ async def test_not_null_constraint_on_upload_status(
     # Raw SQL: the ORM applies a Python-side default ('pending') when
     # the attribute is None, which would mask the DB constraint. Insert
     # without the column to exercise the database-level NOT NULL.
-    with pytest.raises(IntegrityError):
+    async def _insert_without_status() -> None:
         await db_session.execute(
             text(
                 "INSERT INTO uploads "
@@ -536,6 +536,9 @@ async def test_not_null_constraint_on_upload_status(
             {"user_id": user.id},
         )
         await db_session.commit()
+
+    with pytest.raises(IntegrityError):
+        await _insert_without_status()
 
     await db_session.rollback()
 
@@ -1176,3 +1179,178 @@ async def test_upload_table_structure_is_correct(
     # Verify nullable columns
     assert columns["checksum_sha256"][1] == "YES", "checksum_sha256 should be nullable"
     assert columns["completed_at"][1] == "YES", "completed_at should be nullable"
+
+
+# ===========================================================================
+# E5.T3: uploads.digital_asset_id — FK direction + null-until-completed
+# ===========================================================================
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_digital_asset_id_column_present_and_nullable(
+    db_session: AsyncSession | None,
+) -> None:
+    """E5.T3: digital_asset_id exists on uploads and is nullable."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    result = await db_session.execute(
+        text(
+            """
+            SELECT column_name, is_nullable FROM information_schema.columns
+            WHERE table_name = 'uploads' AND column_name = 'digital_asset_id'
+            """
+        )
+    )
+    row = result.fetchone()
+
+    assert row is not None, "uploads.digital_asset_id column missing"
+    assert row[1] == "YES", "digital_asset_id should be nullable"
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_digital_asset_id_rejected_before_completed(
+    db_session: AsyncSession | None,
+) -> None:
+    """CHECK ck_uploads_digital_asset_completed: NULL until completed."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="asset-id-pending@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.VIEWER.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    for status in (UploadStatus.PENDING.value, UploadStatus.PROCESSING.value):
+        upload = Upload(
+            user_id=user.id,
+            original_filename="early.bin",
+            storage_key=f"uploads/2026/08/23/early-{status}.bin",
+            content_type="application/octet-stream",
+            file_size_bytes=4,
+            upload_status=status,
+            digital_asset_id=uuid4(),
+        )
+        db_session.add(upload)
+        with pytest.raises(IntegrityError):
+            await db_session.commit()
+        await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_digital_asset_id_accepted_when_completed(
+    db_session: AsyncSession | None,
+) -> None:
+    """Asset linkage is valid on completed uploads (FK enforced)."""
+    from app.models.digital_asset import AssetType, DigitalAsset
+
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="asset-id-completed@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.VIEWER.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    content_hash = "f" * 64
+    asset = DigitalAsset(
+        user_id=user.id,
+        asset_type=AssetType.FILE_HASH,
+        raw_value=content_hash,
+        normalized_value=content_hash,
+        sha256_hash=content_hash,
+    )
+    db_session.add(asset)
+    await db_session.flush()
+
+    upload = Upload(
+        user_id=user.id,
+        original_filename="resolved.bin",
+        storage_key="uploads/2026/08/23/resolved.bin",
+        content_type="application/octet-stream",
+        file_size_bytes=8,
+        upload_status=UploadStatus.COMPLETED.value,
+        checksum_sha256=content_hash,
+        digital_asset_id=asset.id,
+    )
+    db_session.add(upload)
+    await db_session.commit()
+
+    assert upload.digital_asset_id == asset.id
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_digital_asset_id_fk_rejects_invalid_reference(
+    db_session: AsyncSession | None,
+) -> None:
+    """FK: digital_asset_id must reference an existing digital_asset."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    user = User(
+        email="asset-id-fk@example.com",
+        password_hash="$2b$12$hash",
+        role=UserRole.VIEWER.value,
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    upload = Upload(
+        user_id=user.id,
+        original_filename="dangling.bin",
+        storage_key="uploads/2026/08/23/dangling.bin",
+        content_type="application/octet-stream",
+        file_size_bytes=8,
+        upload_status=UploadStatus.COMPLETED.value,
+        digital_asset_id=uuid4(),  # no such asset
+    )
+    db_session.add(upload)
+
+    with pytest.raises(IntegrityError):
+        await db_session.commit()
+    await db_session.rollback()
+
+
+@pytest.mark.skipif(
+    not os.environ.get("DATABASE_MIGRATION_URL"),
+    reason="DATABASE_MIGRATION_URL not configured",
+)
+@pytest.mark.asyncio
+async def test_digital_assets_upload_id_column_removed(
+    db_session: AsyncSession | None,
+) -> None:
+    """E5.T3: the old asset-side FK column is gone."""
+    if db_session is None:
+        pytest.skip("Database not available")
+
+    result = await db_session.execute(
+        text(
+            """
+            SELECT COUNT(*) FROM information_schema.columns
+            WHERE table_name = 'digital_assets' AND column_name = 'upload_id'
+            """
+        )
+    )
+    assert result.scalar_one() == 0

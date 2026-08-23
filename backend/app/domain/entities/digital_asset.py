@@ -78,7 +78,6 @@ class DigitalAsset:
     asset_type: str
     normalized_value: str
     raw_value: str
-    upload_id: UUID | None = None
     display_label: str | None = None
     metadata_json: str | None = None
     is_active: bool = True
@@ -127,11 +126,6 @@ class DigitalAsset:
                 raise ValueError("file assets require mime_type")
             if self.size_bytes is None:
                 raise ValueError("file assets require size_bytes")
-            if self.upload_id is None:
-                raise ValueError(
-                    "file assets require upload_id (mirror of DB CHECK "
-                    "ck_digital_assets_file_upload_invariant)"
-                )
 
         if self.size_bytes is not None and self.size_bytes < 0:
             raise ValueError("size_bytes must be non-negative")
@@ -146,7 +140,6 @@ class DigitalAsset:
         size_bytes: int,
         raw_value: str,
         id: UUID,  # noqa: A002
-        upload_id: UUID,
         storage_key: str | None = None,
         display_label: str | None = None,
         metadata_json: str | None = None,
@@ -156,9 +149,11 @@ class DigitalAsset:
 
         E5.T2 factory: sha256_hash, mime_type, and size_bytes are
         required inputs; the hash is always the server-computed digest
-        of the received bytes, never client-supplied. upload_id is
-        required — file assets always originate from an upload (mirror
-        of DB CHECK ck_digital_assets_file_upload_invariant).
+        of the received bytes, never client-supplied.
+
+        Asset↔upload linkage lives on the Upload side
+        (uploads.digital_asset_id, per 02-Domain-Model ERD: one asset
+        matched by many uploads).
 
         Args:
             user_id: Originating (first-upload) user context
@@ -167,7 +162,6 @@ class DigitalAsset:
             size_bytes: Content size in bytes
             raw_value: Original filename
             id: Entity UUID (surrogate key)
-            upload_id: Originating upload
             storage_key: Object-storage key (assigned later; optional)
             display_label: Human-readable label (optional)
             metadata_json: Additional metadata as JSON string (optional)
@@ -185,7 +179,6 @@ class DigitalAsset:
             asset_type="file",
             normalized_value=sha256_hash,
             raw_value=raw_value,
-            upload_id=upload_id,
             display_label=display_label,
             metadata_json=metadata_json,
             sha256_hash=sha256_hash,

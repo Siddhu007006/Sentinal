@@ -30,7 +30,6 @@ class TestCreateFileFactory:
             size_bytes=1024,
             raw_value="report.pdf",
             id=uuid4(),
-            upload_id=uuid4(),
         )
 
         assert asset.asset_type == "file"
@@ -51,8 +50,7 @@ class TestCreateFileFactory:
                     size_bytes=1,
                     raw_value="x.pdf",
                     id=uuid4(),
-                    upload_id=uuid4(),
-                )
+                        )
 
     def test_rejects_missing_mime_or_size(self) -> None:
         """file assets require mime_type and size_bytes."""
@@ -65,8 +63,7 @@ class TestCreateFileFactory:
                 raw_value="x.pdf",
                 sha256_hash=_VALID_HASH,
                 size_bytes=1,
-                upload_id=uuid4(),
-            )
+                )
         with pytest.raises(ValueError, match="size_bytes"):
             DigitalAsset(
                 id=uuid4(),
@@ -76,8 +73,7 @@ class TestCreateFileFactory:
                 raw_value="x.pdf",
                 sha256_hash=_VALID_HASH,
                 mime_type="application/pdf",
-                upload_id=uuid4(),
-            )
+                )
 
 
 class TestCreateIocFactory:
@@ -129,7 +125,6 @@ class TestIdentity:
             size_bytes=1,
             raw_value="a.pdf",
             id=uuid4(),
-            upload_id=uuid4(),
         )
         b = DigitalAsset.create_file(
             user_id=uuid4(),  # different originating user
@@ -138,7 +133,6 @@ class TestIdentity:
             size_bytes=1,
             raw_value="b.pdf",
             id=uuid4(),
-            upload_id=uuid4(),
         )
 
         assert a == b  # same content hash → same entity, globally
@@ -152,7 +146,6 @@ class TestIdentity:
             size_bytes=1,
             raw_value="a.pdf",
             id=uuid4(),
-            upload_id=uuid4(),
         )
         b = DigitalAsset.create_file(
             user_id=uuid4(),
@@ -161,7 +154,6 @@ class TestIdentity:
             size_bytes=1,
             raw_value="a.pdf",
             id=uuid4(),
-            upload_id=uuid4(),
         )
 
         assert a != b
@@ -205,20 +197,6 @@ class TestStructuralInvariants:
                 raw_value="literally-anything",
             )
 
-    def test_file_type_requires_upload(self) -> None:
-        with pytest.raises(ValueError, match="upload_id"):
-            DigitalAsset(
-                id=uuid4(),
-                user_id=uuid4(),
-                asset_type="file",
-                normalized_value=_VALID_HASH,
-                raw_value="x.pdf",
-                sha256_hash=_VALID_HASH,
-                mime_type="application/pdf",
-                size_bytes=1,
-                # upload_id intentionally omitted
-            )
-
     def test_negative_size_rejected(self) -> None:
         with pytest.raises(ValueError, match="size_bytes"):
             DigitalAsset(
@@ -230,5 +208,4 @@ class TestStructuralInvariants:
                 sha256_hash=_VALID_HASH,
                 mime_type="application/pdf",
                 size_bytes=-1,
-                upload_id=uuid4(),
-            )
+                )
