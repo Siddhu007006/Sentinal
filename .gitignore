@@ -13,10 +13,13 @@ dist/
 build/
 *.whl
 
-# Virtual environments
-.venv/
+# Virtual environments (.venv*/ also catches stray copies like .venv-1)
+.venv*/
 venv/
 ENV/
+
+# Local agent/tool session state
+.zcode/
 
 # Tool caches
 .pytest_cache/
@@ -60,3 +63,9 @@ docker-compose.override.yml
 # UV lock file is committed (reproducible builds),
 # but local UV caches are not.
 .uv/
+
+# Generated verification artifacts (evidence belongs in docs, not raw output)
+/backend/test_*.txt
+/backend/test_*.log
+/backend/*_violations.txt
+/backend/coverage.json

@@ -1,5 +1,5 @@
-﻿# ===========================================================================
-# Sentinel â€” Docker Compose for Local Development
+# ===========================================================================
+# Sentinel — Docker Compose for Local Development
 # ===========================================================================
 #
 # Purpose: Provide local development environment with PostgreSQL, Redis, and
@@ -18,7 +18,7 @@
 
 services:
   # =========================================================================
-  # PostgreSQL 16 â€” System of Record
+  # PostgreSQL 16 — System of Record
   # =========================================================================
   # Per 09-Deployment-Architecture Â§8: "PostgreSQL is the durable system
   # of record for all structured metadata... its underlying storage volume
@@ -33,7 +33,7 @@ services:
     image: postgres:16-alpine
     container_name: sentinel-postgres
     environment:
-      # Bootstrap user (superuser) â€” used ONLY for initial setup and postgres-init service
+      # Bootstrap user (superuser) — used ONLY for initial setup and postgres-init service
       # Per 04-Database-Design Â§11.1: Privilege Separation
       # Application runtime connects as sentinel_api role (via DATABASE_URL)
       # Migrations connect as schema_owner role (via DATABASE_MIGRATION_URL)
@@ -157,9 +157,9 @@ services:
 
 
   # =========================================================================
-  # Redis 7 â€” Queue Broker
+  # Redis 7 — Queue Broker
   # =========================================================================
-  # Per 09-Deployment-Architecture Â§3: "Redis / Queue â€” the durable
+  # Per 09-Deployment-Architecture Â§3: "Redis / Queue — the durable
   # hand-off mechanism between the API (producer) and Workers (consumer)."
   #
   # Per 00-Project-Context: asynchronous pipeline with Celery + Redis.
@@ -183,7 +183,7 @@ services:
     restart: unless-stopped
 
   # =========================================================================
-  # MinIO â€” S3-Compatible Object Storage
+  # MinIO — S3-Compatible Object Storage
   # =========================================================================
   # Per 09-Deployment-Architecture Â§8: "Raw binary content (uploaded files)
   # persists in S3-compatible Object Storage... In Development, this may be
@@ -217,7 +217,7 @@ services:
     restart: unless-stopped
 
   # =========================================================================
-  # MinIO Client â€” Auto-create Default Bucket
+  # MinIO Client — Auto-create Default Bucket
   # =========================================================================
   # Per 09-Deployment-Architecture Â§5: Services should be initialized
   # with required configuration (health checks, startup validation).

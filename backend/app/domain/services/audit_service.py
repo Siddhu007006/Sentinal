@@ -1,4 +1,4 @@
-﻿"""Domain service for audit log creation.
+"""Domain service for audit log creation.
 
 AuditService encapsulates the business logic of creating audit log records.
 This is a domain service (not an application service) because it coordinates

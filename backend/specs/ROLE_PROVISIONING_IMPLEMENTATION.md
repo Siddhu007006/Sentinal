@@ -1,4 +1,4 @@
-﻿# PostgreSQL Role Provisioning Implementation Specification
+# PostgreSQL Role Provisioning Implementation Specification
 
 ------------------------------------------------------------------------
 
