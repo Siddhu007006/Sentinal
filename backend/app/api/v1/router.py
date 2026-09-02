@@ -12,7 +12,7 @@ See: backend/openapi.yaml (tags define the route modules).
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import auth, health, users
+from app.api.v1.routes import auth, health, uploads, users
 
 
 api_v1_router = APIRouter()
@@ -40,3 +40,6 @@ api_v1_router.include_router(auth.router, prefix="/auth")
 
 # User management routes at /users per openapi.yaml
 api_v1_router.include_router(users.router, prefix="/users")
+
+# Upload routes at /uploads per openapi.yaml
+api_v1_router.include_router(uploads.router, prefix="/uploads")
