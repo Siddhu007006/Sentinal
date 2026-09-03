@@ -196,7 +196,9 @@ def get_session_engine() -> AsyncEngine | None:
 
 
 @pytest.fixture(autouse=True)
-def reset_database_tables() -> Generator[None, None, None]:
+def reset_database_tables(
+    request: pytest.FixtureRequest,
+) -> Generator[None, None, None]:
     """Clean test tables before and after each test.
 
     Deliberately a SYNC fixture so truncation also runs around sync tests
@@ -213,6 +215,10 @@ def reset_database_tables() -> Generator[None, None, None]:
     before truncating, so a dropped schema never cascades errors into
     unrelated tests.
     """
+    if "integration" not in str(request.path).replace("\\", "/").split("/"):
+        yield
+        return
+
     expected_tables = (
         "reports",
         "user_refresh_tokens",
