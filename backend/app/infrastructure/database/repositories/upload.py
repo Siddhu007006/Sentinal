@@ -47,6 +47,7 @@ Traces to: 04-Database-Design § Upload ORM (Storage Key UNIQUE, Status enum)
 
 from __future__ import annotations
 
+from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any, List  # noqa: UP035
 
 from sqlalchemy import asc, desc, func, select
@@ -424,6 +425,27 @@ class PostgreSQLUploadRepository(PostgreSQLRepository["Upload"], UploadRepositor
             domain_results = [self._to_domain(orm) for orm in results]
 
             return (domain_results, total)
+        except Exception as exc:
+            raise map_db_exception(exc) from exc
+
+    async def list_pending_before(
+        self,
+        cutoff: datetime,
+        limit: int = 1000,
+    ) -> list[Upload]:
+        """Return pending uploads older than the supplied cutoff."""
+        try:
+            stmt = (
+                select(UploadORM)
+                .where(
+                    UploadORM.upload_status == "pending",
+                    UploadORM.created_at < cutoff,
+                )
+                .order_by(asc(UploadORM.created_at))
+                .limit(limit)
+            )
+            results = await self.session.scalars(stmt)
+            return [self._to_domain(orm) for orm in results]
         except Exception as exc:
             raise map_db_exception(exc) from exc
 

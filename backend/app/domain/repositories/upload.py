@@ -41,6 +41,7 @@ Traces to: E3.T7 Design § Section 3.2 (UploadRepository interface)
 from __future__ import annotations
 
 from abc import abstractmethod
+from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING
 from uuid import UUID  # noqa: TC003
 
@@ -225,6 +226,15 @@ class UploadRepository(BaseRepository["Upload"]):
         Traces to: E3.T7 Specification § Requirement R4.2
         Traces to: 04-Database-Design § Upload Index (ix_uploads_user_created)
         """
+        pass
+
+    @abstractmethod
+    async def list_pending_before(
+        self,
+        cutoff: datetime,
+        limit: int = 1000,
+    ) -> list[Upload]:
+        """List pending uploads created before a cleanup cutoff."""
         pass
 
     @abstractmethod
