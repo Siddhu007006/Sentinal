@@ -283,7 +283,41 @@ class PostgreSQLAnalysisRepository(
         # Import here to avoid circular imports at module level
         import json
 
-        from app.domain.entities.analysis import Analysis
+        from app.domain.entities.analysis import Analysis, AnalysisResult
+
+        result = None
+        if orm_obj.status == "completed":
+            reasoning = orm_obj.reasoning_payload or {}
+            enrichment = orm_obj.enrichment_data or {}
+            result = AnalysisResult(
+                verdict=str(
+                    reasoning.get("verdict")
+                    or enrichment.get("verdict")
+                    or orm_obj.severity
+                    or "unknown"
+                ),
+                evidence=reasoning.get("evidence", enrichment),
+                confidence=(
+                    orm_obj.confidence
+                    if orm_obj.confidence is not None
+                    else 0.0
+                ),
+                recommendation=str(
+                    reasoning.get("recommendation")
+                    or enrichment.get("recommendation")
+                    or "Review the analysis evidence"
+                ),
+            )
+
+        completed_at = orm_obj.completed_at
+        if (
+            orm_obj.status in ("completed", "failed", "cancelled")
+            and completed_at is None
+        ):
+            completed_at = orm_obj.updated_at or orm_obj.created_at
+        error_message = orm_obj.error_message
+        if orm_obj.status == "failed" and not error_message:
+            error_message = "Analysis failed"
 
         return Analysis(
             id=orm_obj.id,
@@ -292,6 +326,7 @@ class PostgreSQLAnalysisRepository(
             analyzer_key=orm_obj.analyzer_key,
             analyzer_version=orm_obj.analyzer_version,
             status=orm_obj.status,
+            result=result,
             analyzer_slugs=(
                 ",".join(orm_obj.analyzer_slugs)
                 if orm_obj.analyzer_slugs
@@ -299,7 +334,7 @@ class PostgreSQLAnalysisRepository(
             ),
             retry_count=orm_obj.retry_count,
             celery_task_id=orm_obj.celery_task_id,
-            error_message=orm_obj.error_message,
+            error_message=error_message,
             error_code=orm_obj.error_code,
             threat_score=orm_obj.threat_score,
             confidence=orm_obj.confidence,
@@ -315,7 +350,7 @@ class PostgreSQLAnalysisRepository(
                 else None
             ),
             started_at=orm_obj.started_at,
-            completed_at=orm_obj.completed_at,
+            completed_at=completed_at,
             created_at=orm_obj.created_at,
             updated_at=orm_obj.updated_at,
         )
