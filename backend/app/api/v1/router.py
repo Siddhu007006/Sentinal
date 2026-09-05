@@ -12,7 +12,7 @@ See: backend/openapi.yaml (tags define the route modules).
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import assets, auth, health, uploads, users
+from app.api.v1.routes import analyses, analyzers, assets, auth, health, uploads, users
 
 
 api_v1_router = APIRouter()
@@ -24,10 +24,7 @@ api_v1_router = APIRouter()
 # Routes are registered in the order they appear in the OpenAPI spec.
 #
 # Future Epics will add:
-#   api_v1_router.include_router(uploads.router, prefix="/uploads")
-#   api_v1_router.include_router(assets.router, prefix="/assets")
 #   api_v1_router.include_router(analyzers.router, prefix="/analyzers")
-#   api_v1_router.include_router(analyses.router, prefix="/analyses")
 #   api_v1_router.include_router(reports.router, prefix="/reports")
 #   api_v1_router.include_router(audit_logs.router, prefix="/audit-logs")
 # ---------------------------------------------------------------------------
@@ -46,3 +43,11 @@ api_v1_router.include_router(uploads.router, prefix="/uploads")
 
 # Asset routes at /assets per openapi.yaml
 api_v1_router.include_router(assets.router, prefix="/assets")
+
+# Analysis routes — no prefix because this module serves two URL families:
+#   /assets/{assetId}/analyses  (asset-scoped request + list)
+#   /analyses[/...]             (global list, detail, cancel)
+api_v1_router.include_router(analyses.router)
+
+# Analyzer routes at /analyzers per openapi.yaml
+api_v1_router.include_router(analyzers.router)

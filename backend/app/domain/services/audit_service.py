@@ -487,3 +487,127 @@ class AuditService:
 
         return await self.audit_repo.create(audit)
 
+    async def log_analysis_request(
+        self,
+        analysis_id: UUID,
+        asset_id: UUID,
+        analyzer_key: str,
+        analyzer_version: str,
+        requested_by: UUID,
+        requested_by_role: UserRole,
+        is_idempotent: bool = False,
+        ip_address: str | None = None,
+        request_id: str | None = None,
+        user_agent: str | None = None,
+    ) -> AuditLog:
+        """Log analysis request event.
+
+        Creates audit record for analysis request (new or idempotent return).
+
+        Args:
+            analysis_id: ID of the analysis
+            asset_id: ID of the asset being analyzed
+            analyzer_key: Analyzer being used
+            analyzer_version: Analyzer version
+            requested_by: User requesting analysis
+            requested_by_role: Role of requesting user
+            is_idempotent: Whether this was an idempotent return of existing analysis
+            ip_address: Client IP address (optional)
+            request_id: Request correlation ID (optional)
+            user_agent: Client User-Agent (optional)
+
+        Returns:
+            Created AuditLog record
+
+        Raises:
+            RepositoryException: If database error occurs
+        """
+        after_state = cast("dict[str, object]", {
+            "analysis_id": str(analysis_id),
+            "asset_id": str(asset_id),
+            "analyzer_key": analyzer_key,
+            "analyzer_version": analyzer_version,
+            "requested_by": str(requested_by),
+        })
+
+        action = (
+            "ANALYSIS_REQUEST_IDEMPOTENT"
+            if is_idempotent
+            else "ANALYSIS_REQUEST_CREATED"
+        )
+
+        audit = AuditLog(
+            actor_id=requested_by,
+            actor_role=requested_by_role.value,
+            action=action,
+            resource_type="Analysis",
+            resource_id=analysis_id,
+            before_state=None,
+            after_state=after_state,
+            ip_address=ip_address,
+            request_id=request_id,
+            user_agent=user_agent,
+            success=True,
+            failure_reason=None,
+            occurred_at=datetime.now(tz=UTC),
+        )
+
+        return await self.audit_repo.create(audit)
+
+    async def log_analysis_cancellation(
+        self,
+        analysis_id: UUID,
+        cancelled_by: UUID,
+        cancelled_by_role: UserRole,
+        previous_status: str,
+        ip_address: str | None = None,
+        request_id: str | None = None,
+        user_agent: str | None = None,
+    ) -> AuditLog:
+        """Log analysis cancellation event.
+
+        Creates audit record for analysis cancellation.
+
+        Args:
+            analysis_id: ID of the cancelled analysis
+            cancelled_by: User cancelling the analysis
+            cancelled_by_role: Role of cancelling user
+            previous_status: Status before cancellation
+            ip_address: Client IP address (optional)
+            request_id: Request correlation ID (optional)
+            user_agent: Client User-Agent (optional)
+
+        Returns:
+            Created AuditLog record
+
+        Raises:
+            RepositoryException: If database error occurs
+        """
+        before_state = cast("dict[str, object]", {
+            "analysis_id": str(analysis_id),
+            "status": previous_status,
+        })
+
+        after_state = cast("dict[str, object]", {
+            "analysis_id": str(analysis_id),
+            "status": "cancelled",
+        })
+
+        audit = AuditLog(
+            actor_id=cancelled_by,
+            actor_role=cancelled_by_role.value,
+            action="ANALYSIS_CANCELLED",
+            resource_type="Analysis",
+            resource_id=analysis_id,
+            before_state=before_state,
+            after_state=after_state,
+            ip_address=ip_address,
+            request_id=request_id,
+            user_agent=user_agent,
+            success=True,
+            failure_reason=None,
+            occurred_at=datetime.now(tz=UTC),
+        )
+
+        return await self.audit_repo.create(audit)
+

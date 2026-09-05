@@ -95,14 +95,14 @@ services:
           sleep 1
         done
         echo "PostgreSQL ready. Running role provisioning..."
-        
+
         # Create temporary file with substituted bootstrap script
         mkdir -p /tmp/bootstrap
         sed \
           -e "s|POSTGRESQL_SCHEMA_OWNER_PASSWORD|$POSTGRESQL_SCHEMA_OWNER_PASSWORD|g" \
           -e "s|POSTGRESQL_SENTINEL_API_PASSWORD|$POSTGRESQL_SENTINEL_API_PASSWORD|g" \
           /tmp/create_roles.sql > /tmp/bootstrap/create_roles_substituted.sql
-        
+
         # Execute bootstrap script
         # set -e ensures the script exits on first SQL error
         # (psql will output error details before exiting with status != 0)
@@ -241,6 +241,67 @@ services:
       exit 0;
       "
     restart: "no"
+
+  # =========================================================================
+  # Analysis Worker — Background Job Processing
+  # =========================================================================
+  # Per 09-Deployment-Architecture §5: Worker runs as a separate process
+  # from the API for asynchronous analysis pipeline.
+  #
+  # Per 22-Engineering-Backlog E6.T5: Worker processes analysis jobs from
+  # the queue, executes analyzers, and persists results.
+  # =========================================================================
+
+  analysis-worker:
+    build:
+      context: ./backend
+      dockerfile: docker/backend.Dockerfile
+    container_name: sentinel-analysis-worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      postgres-init:
+        condition: service_completed_successfully
+    environment:
+      # Database configuration
+      DATABASE_URL: postgresql+asyncpg://sentinel_api:${POSTGRESQL_SENTINEL_API_PASSWORD:-sentinel_api_password}@postgres:5432/sentinel
+      DATABASE_MIGRATION_URL: postgresql+asyncpg://schema_owner:${POSTGRESQL_SCHEMA_OWNER_PASSWORD:-schema_owner_password}@postgres:5432/sentinel
+
+      # Redis configuration
+      REDIS_URL: redis://redis:6379/0
+
+      # S3/MinIO configuration
+      S3_ENDPOINT_URL: http://minio:9000
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_BUCKET_NAME: sentinel-assets
+
+      # Application configuration
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+
+      # JWT configuration (required by settings, not used by worker)
+      JWT_SECRET_KEY: development_secret_key_change_in_production
+      JWT_ALGORITHM: HS256
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: 7
+
+      # CORS configuration (required by settings, not used by worker)
+      CORS_ORIGINS: http://localhost:3000,http://localhost:8000
+
+      # Worker-specific configuration
+      WORKER_ANALYSIS_TIMEOUT_SECONDS: 300
+      WORKER_MAX_RETRIES: 3
+    command: >
+      python -m app.workers.analysis_worker.__main__
+    restart: unless-stopped
+    # Worker can be scaled for higher throughput
+    deploy:
+      replicas: 1
 
 
 volumes:

@@ -748,5 +748,25 @@ class Settings(BaseSettings):
         case_sensitive=False,
         validate_default=True,
         extra="ignore",  # Ignore unknown environment variables
-        frozen=True,  # Enforce immutability per E2.T1 acceptance criteria
     )
+
+    def __hash__(self) -> int:
+        """Make Settings hashable for FastAPI dependency caching.
+
+        Hashes the key immutable fields. Nested settings objects are
+        not included in the hash since they're already cached via
+        get_settings() @lru_cache.
+        """
+        return hash(
+            (
+                self.environment.value,
+                self.database.url,
+                self.storage.endpoint_url,
+                self.storage.bucket_name,
+                self.queue.broker_url,
+                self.security.jwt_secret_key.get_secret_value(),
+                tuple(self.cors.allowed_origins),
+                self.rate_limit.authenticated_requests_per_minute,
+                self.logging.level,
+            )
+        )

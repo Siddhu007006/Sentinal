@@ -29,7 +29,10 @@ from typing import Any
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.services.analysis_service import AnalysisService
 from app.application.services.upload_service import UploadService
+from app.analyzers.metadata_analyzer.analyzer import MetadataAnalyzer
+from app.analyzers.registry.registry import AnalyzerRegistry
 from app.core.settings import Settings
 from app.domain.repositories import (
     AnalysisRepository,
@@ -40,6 +43,7 @@ from app.domain.repositories import (
     UserRepository,
 )
 from app.domain.services.audit_service import AuditService
+from app.domain.services.queue_adapter import QueueAdapter
 from app.domain.services.storage_adapter import StorageAdapter
 from app.infrastructure.database.repositories.analysis import (
     PostgreSQLAnalysisRepository,
@@ -56,6 +60,7 @@ from app.infrastructure.database.repositories.refresh_token import (
 from app.infrastructure.database.repositories.upload import PostgreSQLUploadRepository
 from app.infrastructure.database.repositories.user import PostgreSQLUserRepository
 from app.infrastructure.database.session import get_db_session
+from app.infrastructure.queue.redis_queue import CeleryRedisQueueAdapter
 from app.infrastructure.storage.s3_adapter import S3StorageAdapter
 
 
@@ -63,10 +68,13 @@ from app.infrastructure.storage.s3_adapter import S3StorageAdapter
 __all__ = [
     "RequestContext",
     "get_analysis_repository",
+    "get_analysis_service",
+    "get_analyzer_registry",
     "get_audit_log_repository",
     "get_db_session",
     "get_digital_asset_repository",
     "get_logger",
+    "get_queue_adapter",
     "get_refresh_token_repository",
     "get_request_context",
     "get_request_context_dict",
@@ -559,4 +567,116 @@ def get_upload_service(
         storage=storage,
         audit_service=AuditService(audit_log_repo),
         upload_settings=UploadSettings(),
+    )
+
+
+# ===========================================================================
+# Analyzer Registry
+# ===========================================================================
+# Provides the singleton analyzer registry populated with all analyzers that ship
+# with the application. New analyzers are registered here when added in
+# later Epics (E7). The registry is immutable after construction.
+#
+# See: 22-Engineering-Backlog E6.T3 (Analyzer Base Interface and Registry)
+# ===========================================================================
+
+
+@lru_cache(maxsize=1)
+def get_analyzer_registry() -> AnalyzerRegistry:
+    """Get the singleton AnalyzerRegistry populated with all analyzers.
+
+    Uses @lru_cache to ensure the registry is built exactly once at first
+    call. The MetadataAnalyzer is the initial shipped analyzer; additional
+    analyzers (E7) are appended to the tuple below as they are implemented.
+
+    Returns:
+        AnalyzerRegistry: Populated, ready for analyzer lookups.
+
+    See: 22-Engineering-Backlog E6.T3 (Analyzer Base Interface and Registry)
+    See: 22-Engineering-Backlog E6.T4 (Metadata Analyzer)
+    """
+    return AnalyzerRegistry(
+        analyzers=(MetadataAnalyzer(),),
+    )
+
+
+# ===========================================================================
+# Queue Adapter
+# ===========================================================================
+# Celery/Redis-backed queue adapter used by AnalysisService for analysis job
+# publication. Configured from QueueSettings.broker_url.
+#
+# See: 22-Engineering-Backlog E6.T1 (Queue Infrastructure Adapter)
+# ===========================================================================
+
+
+@lru_cache(maxsize=1)
+def get_queue_adapter(
+    settings: Settings = Depends(get_settings),  # noqa: B008
+) -> QueueAdapter:
+    """Get the singleton QueueAdapter for analysis job publication.
+
+    Uses @lru_cache to share a single CeleryRedisQueueAdapter instance
+    for the lifetime of the process, configured from the application's
+    QueueSettings.broker_url.
+
+    Args:
+        settings: Application settings (singleton).
+
+    Returns:
+        QueueAdapter: Celery/Redis queue adapter ready for publish.
+
+    See: 22-Engineering-Backlog E6.T1 (Queue Infrastructure Adapter)
+    """
+    return CeleryRedisQueueAdapter(
+        broker_url=settings.queue.broker_url,
+    )
+
+
+# ===========================================================================
+# Analysis Service
+# ===========================================================================
+# AnalysisService request-scoped provider. Wires analysis repository, asset
+# repository, analyzer registry, queue adapter, and fail-safe audit logging.
+#
+# See: 22-Engineering-Backlog E6.T6 (Analysis Service)
+# ===========================================================================
+
+
+def get_analysis_service(
+    analysis_repo: AnalysisRepository = Depends(get_analysis_repository),  # noqa: B008
+    asset_repo: DigitalAssetRepository = Depends(  # noqa: B008
+        get_digital_asset_repository
+    ),
+    analyzer_registry: AnalyzerRegistry = Depends(get_analyzer_registry),  # noqa: B008
+    queue: QueueAdapter = Depends(get_queue_adapter),  # noqa: B008
+    audit_log_repo: AuditLogRepository = Depends(  # noqa: B008
+        get_audit_log_repository
+    ),
+) -> AnalysisService:
+    """Get AnalysisService dependency for use in routes.
+
+    Wires the full analysis orchestration layer:
+    - AnalysisRepository for persistence
+    - DigitalAssetRepository for asset existence/visibility checks
+    - AnalyzerRegistry for analyzer + version resolution
+    - QueueAdapter for worker job publication
+    - AuditService (fail-safe) for audit trail
+
+    Args:
+        analysis_repo: Request-scoped analysis repository
+        asset_repo: Request-scoped digital asset repository
+        analyzer_registry: Singleton analyzer registry
+        queue: Singleton queue adapter
+        audit_log_repo: Request-scoped audit log repository
+
+    Returns:
+        AnalysisService: Ready to orchestrate analysis operations
+    """
+    return AnalysisService(
+        analysis_repo=analysis_repo,
+        asset_repo=asset_repo,
+        analyzer_registry=analyzer_registry,
+        queue=queue,
+        audit_service=AuditService(audit_log_repo),
     )
