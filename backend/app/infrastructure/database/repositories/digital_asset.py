@@ -57,7 +57,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, List  # noqa: UP035
 
-from sqlalchemy import and_, asc, desc, func, select
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+from sqlalchemy import Select, and_, asc, desc, func, select
 
 from app.domain.exceptions import NotFound
 from app.domain.repositories.digital_asset import DigitalAssetRepository
@@ -210,9 +214,7 @@ class PostgreSQLDigitalAssetRepository(
             normalized_value=entity.normalized_value,
             display_label=entity.display_label,
             metadata_json=(
-                json.loads(entity.metadata_json)
-                if entity.metadata_json
-                else None
+                json.loads(entity.metadata_json) if entity.metadata_json else None
             ),
             is_active=entity.is_active,
             sha256_hash=entity.sha256_hash,
@@ -245,9 +247,7 @@ class PostgreSQLDigitalAssetRepository(
             normalized_value=orm_obj.normalized_value,
             display_label=orm_obj.display_label,
             metadata_json=(
-                json.dumps(orm_obj.metadata_json)
-                if orm_obj.metadata_json
-                else None
+                json.dumps(orm_obj.metadata_json) if orm_obj.metadata_json else None
             ),
             is_active=orm_obj.is_active,
             sha256_hash=orm_obj.sha256_hash,
@@ -352,16 +352,13 @@ class PostgreSQLDigitalAssetRepository(
         try:
             stmt = select(DigitalAssetORM).where(
                 and_(
-                    func.lower(DigitalAssetORM.sha256_hash)
-                    == sha256_hash.lower(),
+                    func.lower(DigitalAssetORM.sha256_hash) == sha256_hash.lower(),
                     DigitalAssetORM.deleted_at.is_(None),
                 )
             )
             orm_obj = await self.session.scalar(stmt)
             if not orm_obj:
-                raise NotFound(
-                    f"DigitalAsset with hash {sha256_hash} not found"
-                )
+                raise NotFound(f"DigitalAsset with hash {sha256_hash} not found")
             return self._to_domain(orm_obj)
         except NotFound:
             raise
@@ -411,13 +408,10 @@ class PostgreSQLDigitalAssetRepository(
         """
         try:
             # Build WHERE clause for user_id and soft-delete filter
-            stmt = (
-                select(DigitalAssetORM)
-                .where(
-                    and_(
-                        DigitalAssetORM.user_id == user_id,
-                        DigitalAssetORM.deleted_at.is_(None),
-                    )
+            stmt = select(DigitalAssetORM).where(
+                and_(
+                    DigitalAssetORM.user_id == user_id,
+                    DigitalAssetORM.deleted_at.is_(None),
                 )
             )
 
@@ -527,5 +521,43 @@ class PostgreSQLDigitalAssetRepository(
             return self._to_domain(orm_obj)
         except NotFound:
             raise
+        except Exception as exc:
+            raise map_db_exception(exc) from exc
+
+    async def list_soft_deleted_before(
+        self,
+        cutoff: datetime,
+        limit: int = 1000,
+    ) -> list[DigitalAsset]:
+        """List soft-deleted assets before a cutoff timestamp.
+
+        Intentionally bypasses soft-delete filtering to access soft-deleted
+        entities for retention jobs.
+        """
+        try:
+            stmt: Select[Any] = (
+                select(self._model_class)
+                .where(self._model_class.deleted_at < cutoff)  # type: ignore[attr-defined]
+                .order_by(self._model_class.deleted_at)  # type: ignore[attr-defined]
+                .limit(limit)
+            )
+            results = await self.session.scalars(stmt)
+            return [self._to_domain(orm) for orm in results]
+        except Exception as exc:
+            raise map_db_exception(exc) from exc
+
+    async def hard_delete(self, entity_id: UUID) -> None:
+        """Permanently delete an asset from the database.
+
+        Irreversible operation that bypasses soft-delete semantics.
+        """
+        try:
+            stmt: Select[Any] = select(self._model_class).where(
+                self._model_class.id == entity_id  # type: ignore[attr-defined]
+            )
+            orm_obj = await self.session.scalar(stmt)
+            if not orm_obj:
+                raise NotFound(f"DigitalAsset with id {entity_id} not found")
+            await self.session.delete(orm_obj)
         except Exception as exc:
             raise map_db_exception(exc) from exc
