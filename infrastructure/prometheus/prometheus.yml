@@ -1,0 +1,29 @@
+﻿# Prometheus Configuration for Sentinel
+# Traces to: 22-Engineering-Backlog E11.T1 (Metrics Collection)
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'sentinel-staging'
+    environment: 'staging'
+
+# Scrape configurations
+scrape_configs:
+  # Sentinel API metrics
+  - job_name: 'sentinel-api'
+    static_configs:
+      # Using current private IP (10.0.11.176)
+      # NOTE: IP changes when tasks restart - TODO: Implement ECS Service Discovery
+      - targets: ['10.0.11.176:8000']
+        labels:
+          service: 'sentinel-api'
+          environment: 'staging'
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

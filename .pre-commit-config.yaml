@@ -13,6 +13,7 @@
 #   - ruff: v0.8.0 (from pyproject.toml)
 #   - mypy: v1.13.0 (from pyproject.toml)
 #   - pre-commit-hooks: v5.0.0 (standard library)
+#   - gitleaks: v8.29.1 (secret detection)
 
 repos:
   # Ruff — linting + formatting + import sorting
@@ -43,7 +44,14 @@ repos:
       - id: debug-statements
       - id: detect-private-key
 
-  # mypy — static type checking
+  # Blocks committed credentials and other high-confidence secret patterns.
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.29.1
+    hooks:
+      - id: gitleaks
+        name: gitleaks-secret-scan
+
+  # mypy - static type checking
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.13.0
     hooks:
