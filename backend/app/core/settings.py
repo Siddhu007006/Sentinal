@@ -742,7 +742,7 @@ class Settings(BaseSettings):
             data["logging"] = LoggingSettings()
         super().__init__(**data)  # type: ignore[arg-type]
 
-    model_config = SettingsConfigDict(
+    model_config = SettingsConfigDict(frozen=True,
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
