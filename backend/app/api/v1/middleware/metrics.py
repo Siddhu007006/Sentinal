@@ -15,7 +15,10 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from app.core.metrics import http_request_duration_seconds, http_requests_total
+from app.core.metrics import (
+    http_request_duration_seconds,
+    http_requests_total,
+)
 
 
 # Paths to exclude from metrics instrumentation
