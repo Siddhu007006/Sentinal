@@ -129,7 +129,7 @@ jobs:
           docker run --rm --network host \
             -e MC_HOST_minio=http://minioadmin:minioadmin@localhost:9000 \
             ${{ env.MC_IMAGE }} \
-            sh -c "mc mb --ignore-existing minio/sentinel-assets"
+            mb --ignore-existing minio/sentinel-assets
 
       # ---- Two-role DB privilege model (mirrors docker/bootstrap) ----
       - name: Provision schema_owner and sentinel_api roles
@@ -264,3 +264,4 @@ jobs:
             echo "Build verification failed"; exit 1
           fi
           echo "All checks passed"
+

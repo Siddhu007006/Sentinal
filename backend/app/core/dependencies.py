@@ -29,10 +29,10 @@ from typing import Any
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.application.services.analysis_service import AnalysisService
-from app.application.services.upload_service import UploadService
 from app.analyzers.metadata_analyzer.analyzer import MetadataAnalyzer
 from app.analyzers.registry.registry import AnalyzerRegistry
+from app.application.services.analysis_service import AnalysisService
+from app.application.services.upload_service import UploadService
 from app.core.settings import Settings
 from app.domain.repositories import (
     AnalysisRepository,

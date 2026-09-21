@@ -201,6 +201,7 @@ disallow_untyped_decorators = false
 
 [[tool.mypy.overrides]]
 module = [
+    "app.core.metrics",
     "celery.*",
     "passlib.*",
     "argon2.*",
