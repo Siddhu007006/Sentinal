@@ -138,7 +138,7 @@ jobs:
             -e "s|POSTGRESQL_SCHEMA_OWNER_PASSWORD|${SCHEMA_OWNER_PASSWORD}|g" \
             -e "s|POSTGRESQL_SENTINEL_API_PASSWORD|${SENTINEL_API_PASSWORD}|g" \
             docker/bootstrap/create_roles.sql \
-          | docker run --rm -i \
+          | docker run --rm -i --network host \
               -e PGPASSWORD=postgres \
               postgres:16-alpine \
               psql -h localhost -p 5432 -U postgres -d "$CI_DATABASE"
@@ -184,7 +184,7 @@ jobs:
 
       - name: Enforce audit_logs immutability (post-migration fix)
         run: |
-          docker run --rm -i \
+          docker run --rm -i --network host \
             -e PGPASSWORD=postgres \
             postgres:16-alpine \
             psql -h localhost -p 5432 -U postgres -d "$CI_DATABASE" \
@@ -264,4 +264,3 @@ jobs:
             echo "Build verification failed"; exit 1
           fi
           echo "All checks passed"
-
